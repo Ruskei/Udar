@@ -2,31 +2,19 @@ package com.ixume.udar.body
 
 import com.ixume.udar.physics.CollisionResult
 import com.ixume.udar.physics.Contact
-import org.bukkit.World
 import org.bukkit.util.BoundingBox
 import org.joml.Quaterniond
 import org.joml.Vector3d
-import java.util.UUID
 
-interface ActiveBody  {
-    val id: UUID
-    val type: BodyType
-    val velocity: Vector3d
-
-    val world: World
-
+interface ActiveBody : Body {
     val vertices: List<Vector3d>
     val edges: List<Pair<Vector3d, Vector3d>>
     val boundingBox: BoundingBox
 
-    val inverseMass: Double
-    val inverseInertia: Vector3d
-    val q: Quaterniond
-    val omega: Vector3d
+    val prevQ: Quaterniond
 
     val hasGravity: Boolean
 
-    val pos: Vector3d
     fun support(dir: Vector3d): Vector3d
 
     fun globalToLocal(vec: Vector3d): Vector3d

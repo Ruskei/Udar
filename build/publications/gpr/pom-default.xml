@@ -8,7 +8,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.ixume</groupId>
   <artifactId>udar</artifactId>
-  <version>0.0.0</version>
+  <version>0.0.1</version>
   <dependencies>
     <dependency>
       <groupId>org.jetbrains.kotlin</groupId>

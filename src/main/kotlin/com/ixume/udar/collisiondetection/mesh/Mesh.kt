@@ -1,6 +1,7 @@
-package com.ixume.udar.physics.mesh
+package com.ixume.udar.collisiondetection.mesh
 
 import com.ixume.udar.body.ActiveBody
+import com.ixume.udar.body.Body
 import com.ixume.udar.body.BodyType
 import com.ixume.udar.physics.CollisionResult
 import com.ixume.udar.physics.Contact
@@ -592,49 +593,4 @@ fun World.square(
         Vector3d(min.x, min.y, min.z).deshuffle(),
         options, interval
     )
-}
-
-class MeshBody(
-    override val world: World
-) : ActiveBody {
-    override val id: UUID = UUID.randomUUID()
-    override val type: BodyType = BodyType.PASSIVE
-    override val velocity: Vector3d = Vector3d()
-    override val vertices: List<Vector3d> = listOf()
-    override val edges: List<Pair<Vector3d, Vector3d>> = listOf()
-    override val boundingBox: BoundingBox = BoundingBox()
-    override val inverseMass: Double = 0.0
-    override val inverseInertia: Vector3d = Vector3d(0.0)
-    override val q: Quaterniond = Quaterniond()
-    override val omega: Vector3d = Vector3d()
-    override val hasGravity: Boolean = false
-    override val pos: Vector3d = Vector3d()
-    override val contacts: MutableList<Contact> = mutableListOf()
-    override val previousContacts: MutableList<Contact> = mutableListOf()
-
-    override fun support(dir: Vector3d): Vector3d {
-        return Vector3d()
-    }
-
-    override fun globalToLocal(vec: Vector3d): Vector3d {
-        return Vector3d()
-    }
-
-    override fun step() {}
-
-    override fun intersect(origin: Vector3d, end: Vector3d): List<Pair<Vector3d, Vector3d>> {
-        return listOf()
-    }
-
-    override fun collidesBody(other: ActiveBody): CollisionResult? {
-        return null
-    }
-
-    override fun collidesEnvironment(): List<CollisionResult> {
-        return listOf()
-    }
-
-    override fun kill() {}
-
-    override fun applyImpulse(point: Vector3d, normal: Vector3d, impulse: Vector3d) {}
 }

@@ -55,10 +55,70 @@ object TestingConfigLoader {
 
 class Config(
     val enabled: Boolean = false,
+    val timeStep: Double = DEFAULT_TIMESTEP,
     val gravity: Vector3d = Vector3d(0.0, -5.0, 0.0),
     val collision: CollisionConfig = CollisionConfig(),
+    val satConfig: SATConfig = SATConfig(),
     val debug: DebugConfig = DebugConfig(),
 ) {
+    companion object : TypeAdapter<Config>() {
+        private var DEFAULT_GRAVITY = Vector3d(0.0, -5.0, 0.0)
+        private var DEFAULT_TIMESTEP = 0.005
+
+        override fun write(out: JsonWriter, value: Config?) {
+            if (value == null) {
+                out.nullValue()
+                return
+            }
+
+            out.beginObject()
+
+            out.name("enabled").value(value.enabled)
+            out.name("gravity"); Vector3dTypeAdapter.write(out, value.gravity)
+            out.name("collision"); CollisionConfig.write(out, value.collision)
+            out.name("debug"); DebugConfig.write(out, value.debug)
+
+            out.endObject()
+        }
+
+        override fun read(`in`: JsonReader): Config? {
+            `in`.beginObject()
+
+            var enabled = false
+            var timestep = DEFAULT_TIMESTEP
+            var gravity = DEFAULT_GRAVITY
+            var collision = CollisionConfig()
+            var debug = DebugConfig()
+            var sat = SATConfig()
+
+            while (`in`.hasNext()) {
+                val name = `in`.nextName()
+                when (name) {
+                    "enabled" -> {
+                        enabled = `in`.nextBoolean()
+                    }
+                    "timestep" -> timestep = `in`.nextDouble()
+                    "gravity" -> {
+                        gravity = Vector3dTypeAdapter.read(`in`)
+                    }
+                    "collision" -> {
+                        collision = CollisionConfig.read(`in`)
+                    }
+                    "debug" -> {
+                        debug = DebugConfig.read(`in`)
+                    }
+                    "sat" -> {
+                        sat = SATConfig.read(`in`)
+                    }
+                    else -> `in`.skipValue()
+                }
+            }
+
+            `in`.endObject()
+
+            return Config(enabled, timestep, gravity, collision, sat, debug)
+        }
+    }
 
     class CollisionConfig(
         val bias: Double = DEFAULT_BIAS,
@@ -122,6 +182,47 @@ class Config(
         }
     }
 
+    class SATConfig(
+        val fudge: Double = DEFAULT_FUDGE
+    ) {
+        companion object : TypeAdapter<SATConfig>() {
+            private const val DEFAULT_FUDGE = 4.0
+            override fun write(
+                out: JsonWriter,
+                value: SATConfig?
+            ) {
+                if (value == null) {
+                    out.nullValue()
+                    return
+                }
+
+                out.beginObject()
+
+                out.name("fudge").value(value.fudge)
+
+                out.endObject()
+            }
+
+            override fun read(`in`: JsonReader): SATConfig {
+                `in`.beginObject()
+
+                var fudge = DEFAULT_FUDGE
+
+                while (`in`.hasNext()) {
+                    val name = `in`.nextName()
+                    when (name) {
+                        "fudge" -> fudge = `in`.nextDouble()
+                        else -> `in`.skipValue()
+                    }
+                }
+
+                `in`.endObject()
+
+                return SATConfig(fudge)
+            }
+        }
+    }
+
     class DebugConfig(
         val frequency: Int = 2,
         val mesh: Int = 0,
@@ -169,57 +270,6 @@ class Config(
 
                 return DebugConfig(frequency, mesh)
             }
-        }
-    }
-
-    companion object : TypeAdapter<Config>() {
-        private var DEFAULT_GRAVITY = Vector3d(0.0, -5.0, 0.0)
-        override fun write(out: JsonWriter, value: Config?) {
-            if (value == null) {
-                out.nullValue()
-                return
-            }
-
-            out.beginObject()
-
-            out.name("enabled").value(value.enabled)
-            out.name("gravity"); Vector3dTypeAdapter.write(out, value.gravity)
-            out.name("collision"); CollisionConfig.write(out, value.collision)
-            out.name("debug"); DebugConfig.write(out, value.debug)
-
-            out.endObject()
-        }
-
-        override fun read(`in`: JsonReader): Config? {
-            `in`.beginObject()
-
-            var enabled = false
-            var gravity = DEFAULT_GRAVITY
-            var collision = CollisionConfig()
-            var debug = DebugConfig()
-
-            while (`in`.hasNext()) {
-                val name = `in`.nextName()
-                when (name) {
-                    "enabled" -> {
-                        enabled = `in`.nextBoolean()
-                    }
-                    "gravity" -> {
-                        gravity = Vector3dTypeAdapter.read(`in`)
-                    }
-                    "collision" -> {
-                        collision = CollisionConfig.read(`in`)
-                    }
-                    "debug" -> {
-                        debug = DebugConfig.read(`in`)
-                    }
-                    else -> `in`.skipValue()
-                }
-            }
-
-            `in`.endObject()
-
-            return Config(enabled, gravity, collision, debug)
         }
     }
 }

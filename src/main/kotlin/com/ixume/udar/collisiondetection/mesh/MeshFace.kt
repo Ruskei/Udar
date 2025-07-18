@@ -1,4 +1,4 @@
-package com.ixume.udar.physics.mesh
+package com.ixume.udar.collisiondetection.mesh
 
 import org.joml.Vector2d
 import org.joml.Vector3d

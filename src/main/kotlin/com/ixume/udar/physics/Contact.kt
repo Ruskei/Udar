@@ -1,11 +1,11 @@
 package com.ixume.udar.physics
 
-import com.ixume.udar.body.ActiveBody
+import com.ixume.udar.body.Body
 import org.joml.Vector3d
 
 data class Contact(
-    val first: ActiveBody,
-    val second: ActiveBody,
+    val first: Body,
+    val second: Body,
     val result: CollisionResult,
     var lambdaSum: Double = 0.0
 ) {

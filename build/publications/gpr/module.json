@@ -3,7 +3,7 @@
   "component": {
     "group": "com.ixume",
     "module": "udar",
-    "version": "0.0.0",
+    "version": "0.0.1",
     "attributes": {
       "org.gradle.status": "release"
     }
@@ -27,13 +27,13 @@
       },
       "files": [
         {
-          "name": "udar-0.0.0.jar",
-          "url": "udar-0.0.0.jar",
-          "size": 124970,
-          "sha512": "e0303881e6f8d0f3939d2296f5958e8eb08d06552bd7ed1a8f131106405c37ac31fee84225967e0f357d9315d538b9b27319ce4c7b466f4c12691661f6a8fb6c",
-          "sha256": "44d56d61ca1838b0d0de0a107660c3b8c3e639ad59861ef5baa2a01e0052badd",
-          "sha1": "6531b5512055e02f11c087c23281978ebfa407ab",
-          "md5": "430f18e686ec1478258c00414b200391"
+          "name": "udar-0.0.1.jar",
+          "url": "udar-0.0.1.jar",
+          "size": 125121,
+          "sha512": "14cd21643b709c7ed4af6c35205b2d253a09b4923a55162516bbecb7038aa7d7c81eb66a880f11f7dc987da4edb11e0a8073dcb89b273a85799a7769f36322c7",
+          "sha256": "9fd8945967755e259d63203b028cf1041cac4b0b0a7a877b7b012042d9bcae1e",
+          "sha1": "8c9b06aeb873edd083212a6c3e6fe313cb23051d",
+          "md5": "f864cfead9882d105044a4d14801eb79"
         }
       ]
     },
@@ -59,13 +59,13 @@
       ],
       "files": [
         {
-          "name": "udar-0.0.0.jar",
-          "url": "udar-0.0.0.jar",
-          "size": 124970,
-          "sha512": "e0303881e6f8d0f3939d2296f5958e8eb08d06552bd7ed1a8f131106405c37ac31fee84225967e0f357d9315d538b9b27319ce4c7b466f4c12691661f6a8fb6c",
-          "sha256": "44d56d61ca1838b0d0de0a107660c3b8c3e639ad59861ef5baa2a01e0052badd",
-          "sha1": "6531b5512055e02f11c087c23281978ebfa407ab",
-          "md5": "430f18e686ec1478258c00414b200391"
+          "name": "udar-0.0.1.jar",
+          "url": "udar-0.0.1.jar",
+          "size": 125121,
+          "sha512": "14cd21643b709c7ed4af6c35205b2d253a09b4923a55162516bbecb7038aa7d7c81eb66a880f11f7dc987da4edb11e0a8073dcb89b273a85799a7769f36322c7",
+          "sha256": "9fd8945967755e259d63203b028cf1041cac4b0b0a7a877b7b012042d9bcae1e",
+          "sha1": "8c9b06aeb873edd083212a6c3e6fe313cb23051d",
+          "md5": "f864cfead9882d105044a4d14801eb79"
         }
       ]
     },
@@ -79,13 +79,13 @@
       },
       "files": [
         {
-          "name": "udar-0.0.0-all.jar",
-          "url": "udar-0.0.0-all.jar",
-          "size": 1871148,
-          "sha512": "844a28c502afed93fe76733bfe1cf95566e951132b8373a1ecc43b870d72b0364cb4c2da293615a1334c14a266165ae2179332f66ee7fe2e7e968d08a86c35a7",
-          "sha256": "14db301238cc4c24b2568bcd06a046baa5037910b11acdaa8124b67bcfa607eb",
-          "sha1": "e9a5f41000cea09457ecfa73fd3f79d82e42eafd",
-          "md5": "681723fe5fb54b39fa216711589937e4"
+          "name": "udar-0.0.1-all.jar",
+          "url": "udar-0.0.1-all.jar",
+          "size": 1871299,
+          "sha512": "53cd191797a389c6641f2b5922b42ae255e1538e19078bce2bff03c458f252d1d9a10a732b6f0ceb39df5222673f7976a887d11cf1c1b77e2358ce8a91d3c596",
+          "sha256": "00aebc41e1ad737bd45d12f74d2da347d88a4a65fb17c73a86133dcb73ca10e9",
+          "sha1": "52ca7832f8a24c4d16e0579f9d48ebdf12c2cfa4",
+          "md5": "f7a909f1fc26be993b203bc7ad8ae20b"
         }
       ]
     }

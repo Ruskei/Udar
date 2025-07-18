@@ -3,10 +3,10 @@ package com.ixume.udar
 import com.ixume.udar.body.ActiveBody
 import com.ixume.udar.body.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.body.BodyType
+import com.ixume.udar.body.ImmovableBody
 import com.ixume.udar.physics.Contact
 import com.ixume.udar.physics.ContactsSolver
-import com.ixume.udar.physics.mesh.Mesh
-import com.ixume.udar.physics.mesh.MeshBody
+import com.ixume.udar.collisiondetection.mesh.Mesh
 import com.ixume.udar.testing.debugConnect
 import org.bukkit.*
 import org.joml.Vector3d
@@ -68,7 +68,7 @@ class PhysicsWorld(
                         }
                     }
 
-                    val mesh = MeshBody(world)
+                    val mesh = ImmovableBody(world)
                     val result = first.collidesEnvironment()
 
                     for (r in result) {

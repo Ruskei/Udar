@@ -1,4 +1,4 @@
-package com.ixume.udar.physics.mesh
+package com.ixume.udar.collisiondetection.mesh
 
 enum class EdgeMount(
     val a: Double,
