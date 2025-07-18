@@ -7,7 +7,6 @@ import java.util.UUID
 
 interface Body {
     val id: UUID
-    val type: BodyType
     val world: World
 
     val pos: Vector3d
@@ -18,4 +17,6 @@ interface Body {
 
     val inverseMass: Double
     val inverseInertia: Vector3d
+
+    val isConvex: Boolean
 }

@@ -1,8 +1,8 @@
 package com.ixume.udar.physics
 
 import com.ixume.udar.Udar
+import com.ixume.udar.body.ActiveBody
 import com.ixume.udar.body.ActiveBody.Companion.TIME_STEP
-import com.ixume.udar.body.BodyType
 import org.joml.Quaterniond
 import org.joml.Vector3d
 import kotlin.math.abs
@@ -184,7 +184,7 @@ object ContactsSolver {
         val depth = contact.result.depth
 
         val slop =
-            if (contact.first.type == BodyType.ACTIVE && contact.second.type == BodyType.ACTIVE) Udar.CONFIG.collision.activeSlop else Udar.CONFIG.collision.passiveSlop
+            if (contact.first is ActiveBody && contact.second is ActiveBody) Udar.CONFIG.collision.activeSlop else Udar.CONFIG.collision.passiveSlop
 
         val bias = if (type == DeltaType.NORMAL) Udar.CONFIG.collision.bias / TIME_STEP * (abs(depth) - slop).coerceAtLeast(0.0) else 0.0
 

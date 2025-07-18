@@ -1,21 +1,14 @@
 package com.ixume.udar.collisiondetection.mesh
 
-import com.ixume.udar.body.ActiveBody
-import com.ixume.udar.body.Body
-import com.ixume.udar.body.BodyType
-import com.ixume.udar.physics.CollisionResult
-import com.ixume.udar.physics.Contact
 import com.ixume.udar.testing.debugConnect
 import org.bukkit.Color.*
 import org.bukkit.Particle.DustOptions
 import org.bukkit.World
 import org.bukkit.util.BoundingBox
 import org.bukkit.util.Vector
-import org.joml.Quaterniond
 import org.joml.Vector2d
 import org.joml.Vector3d
 import org.joml.Vector3i
-import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.max

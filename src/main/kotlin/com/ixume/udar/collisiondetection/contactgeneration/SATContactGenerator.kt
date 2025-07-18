@@ -3,14 +3,18 @@ package com.ixume.udar.collisiondetection.contactgeneration
 import com.ixume.udar.Udar
 import com.ixume.udar.applyIf
 import com.ixume.udar.body.ActiveBody
-import com.ixume.udar.body.Cuboid
-import com.ixume.udar.collisiondetection.contactgeneration.ContactGenerator
+import com.ixume.udar.body.Body
+import com.ixume.udar.body.Collidable
+import com.ixume.udar.body.EnvironmentBody
+import com.ixume.udar.collisiondetection.capability.Capability
+import com.ixume.udar.collisiondetection.contactgeneration.GJKEPAContactGenerator.Companion.closestPointsBetweenSegments
 import com.ixume.udar.collisiondetection.edgeCrosses
 import com.ixume.udar.collisiondetection.mesh.Axis
 import com.ixume.udar.collisiondetection.mesh.Edge
 import com.ixume.udar.collisiondetection.mesh.Mesh
 import com.ixume.udar.collisiondetection.mesh.MeshFace
 import com.ixume.udar.physics.CollisionResult
+import com.ixume.udar.physics.Contact
 import com.ixume.udar.testing.debugConnect
 import org.bukkit.Color
 import org.bukkit.Location
@@ -25,10 +29,12 @@ import kotlin.math.min
 
 class SATContactGenerator(
     val activeBody: ActiveBody
-) : ContactGenerator {
+) : Collidable {
+    override fun capableCollision(other: Body): Capability {
+        return Capability(other is EnvironmentBody, 0)
+    }
 
     private var cachedMesh: Mesh = Mesh.Companion.mesh(world = activeBody.world, boundingBox = activeBody.boundingBox)
-
     private fun getMesh(): Mesh {
         val bb = activeBody.boundingBox
 
@@ -74,9 +80,10 @@ class SATContactGenerator(
     }
 
     private var prevMaxDepth = Udar.Companion.CONFIG.collision.passiveSlop
-    override fun collidesEnvironment(): List<CollisionResult> {
-        val mesh = getMesh()
+    override fun collides(other: Body): List<Contact> {
+        require(capableCollision(other).capable)
 
+        val mesh = getMesh()
 //        if (PhysicsCommand.DEBUG_SAT_LEVEL > 0) println("COLLIDES MESH!")
 
         val collisions = mutableListOf<CollisionResult>()
@@ -210,7 +217,7 @@ class SATContactGenerator(
             collisions += r
         }
 
-        return collisions
+        return collisions.map { Contact(activeBody, other, it) }
     }
 
     private fun collidesFace(
@@ -466,7 +473,7 @@ class SATContactGenerator(
                 var closestResult = Triple(Vector3d(), Vector3d(), Double.MAX_VALUE)
                 for (i in 0..<myDeepestVertices.size step 2) {
                     for (j in 0..<otherDeepestVertices.size step 2) {
-                        val r = Cuboid.Companion.closestPointsBetweenSegments(
+                        val r = closestPointsBetweenSegments(
                             myDeepestVertices[i],
                             myDeepestVertices[i + 1],
                             otherDeepestVertices[j],
@@ -482,7 +489,7 @@ class SATContactGenerator(
                 check(closestResult.third != Double.MAX_VALUE)
                 closestResult
             } else {
-                Cuboid.Companion.closestPointsBetweenSegments(
+                closestPointsBetweenSegments(
                     myDeepestVertices[0],
                     myDeepestVertices[1],
                     otherDeepestVertices[0],

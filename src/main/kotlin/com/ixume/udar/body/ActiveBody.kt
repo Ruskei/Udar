@@ -1,12 +1,10 @@
 package com.ixume.udar.body
 
-import com.ixume.udar.physics.CollisionResult
-import com.ixume.udar.physics.Contact
 import org.bukkit.util.BoundingBox
 import org.joml.Quaterniond
 import org.joml.Vector3d
 
-interface ActiveBody : Body {
+interface ActiveBody : CollidableBody {
     val vertices: List<Vector3d>
     val edges: List<Pair<Vector3d, Vector3d>>
     val boundingBox: BoundingBox
@@ -14,8 +12,6 @@ interface ActiveBody : Body {
     val prevQ: Quaterniond
 
     val hasGravity: Boolean
-
-    fun support(dir: Vector3d): Vector3d
 
     fun globalToLocal(vec: Vector3d): Vector3d
 
@@ -28,13 +24,7 @@ interface ActiveBody : Body {
 
     fun ensureNonAligned() {}
 
-    fun collidesBody(other: ActiveBody): CollisionResult?
-    fun collidesEnvironment(): List<CollisionResult>
-
     fun visualize() {}
-
-    val contacts: MutableList<Contact>
-    val previousContacts: List<Contact>
 
     fun kill()
 
@@ -47,8 +37,4 @@ interface ActiveBody : Body {
     companion object {
         const val TIME_STEP = 0.005
     }
-}
-
-enum class BodyType {
-    ACTIVE, PASSIVE
 }
