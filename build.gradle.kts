@@ -1,10 +1,11 @@
 plugins {
-    kotlin("jvm") version "2.2.20-Beta1"
+    `maven-publish`
+    kotlin("jvm") version "2.0.0"
     id("com.gradleup.shadow") version "8.3.0"
 }
 
 group = "com.ixume"
-version = "0.0.0"
+version = "0.0.1"
 
 repositories {
     mavenCentral()
@@ -40,5 +41,24 @@ tasks.processResources {
     filteringCharset = "UTF-8"
     filesMatching("plugin.yml") {
         expand(props)
+    }
+}
+
+publishing {
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/Ruskei/Udar")
+            credentials {
+                username = System.getenv("GITHUB_USERNAME")
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
+
+    publications {
+        register<MavenPublication>("gpr") {
+            from(components["java"])
+        }
     }
 }

@@ -1,0 +1,93 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "com.ixume",
+    "module": "udar",
+    "version": "0.0.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.8"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "files": [
+        {
+          "name": "udar-0.0.0.jar",
+          "url": "udar-0.0.0.jar",
+          "size": 124970,
+          "sha512": "e0303881e6f8d0f3939d2296f5958e8eb08d06552bd7ed1a8f131106405c37ac31fee84225967e0f357d9315d538b9b27319ce4c7b466f4c12691661f6a8fb6c",
+          "sha256": "44d56d61ca1838b0d0de0a107660c3b8c3e639ad59861ef5baa2a01e0052badd",
+          "sha1": "6531b5512055e02f11c087c23281978ebfa407ab",
+          "md5": "430f18e686ec1478258c00414b200391"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-jdk8",
+          "version": {
+            "requires": "2.0.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "udar-0.0.0.jar",
+          "url": "udar-0.0.0.jar",
+          "size": 124970,
+          "sha512": "e0303881e6f8d0f3939d2296f5958e8eb08d06552bd7ed1a8f131106405c37ac31fee84225967e0f357d9315d538b9b27319ce4c7b466f4c12691661f6a8fb6c",
+          "sha256": "44d56d61ca1838b0d0de0a107660c3b8c3e639ad59861ef5baa2a01e0052badd",
+          "sha1": "6531b5512055e02f11c087c23281978ebfa407ab",
+          "md5": "430f18e686ec1478258c00414b200391"
+        }
+      ]
+    },
+    {
+      "name": "shadowRuntimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "shadowed",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "udar-0.0.0-all.jar",
+          "url": "udar-0.0.0-all.jar",
+          "size": 1871148,
+          "sha512": "844a28c502afed93fe76733bfe1cf95566e951132b8373a1ecc43b870d72b0364cb4c2da293615a1334c14a266165ae2179332f66ee7fe2e7e968d08a86c35a7",
+          "sha256": "14db301238cc4c24b2568bcd06a046baa5037910b11acdaa8124b67bcfa607eb",
+          "sha1": "e9a5f41000cea09457ecfa73fd3f79d82e42eafd",
+          "md5": "681723fe5fb54b39fa216711589937e4"
+        }
+      ]
+    }
+  ]
+}

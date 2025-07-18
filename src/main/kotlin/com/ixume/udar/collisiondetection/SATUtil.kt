@@ -20,7 +20,7 @@ fun collidesBlocks(
     edges: List<Vector3d>,
 ): Boolean {
     val bb = boundingBox(vertices)
-    val bbs = bb.overlappingBlocks(world)
+    val bbs = bb?.overlappingBlocks(world) ?: return false
 
     val epsilon = 1e-11
 

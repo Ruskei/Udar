@@ -9,7 +9,8 @@ import kotlin.math.min
 
 fun boundingBox(
     vertices: List<Vector3d>
-): BoundingBox {
+): BoundingBox? {
+    if (vertices.isEmpty()) return null
     val min = Vector3d(Double.MAX_VALUE)
     val max = Vector3d(-Double.MAX_VALUE)
 
@@ -40,6 +41,8 @@ fun BoundingBox.overlappingBlocks(
     world: World
 ): List<BoundingBox> {
     val bbs = mutableListOf<BoundingBox>()
+
+    println(this)
 
     var x = minX
     while (x < maxX + 1.0) {
