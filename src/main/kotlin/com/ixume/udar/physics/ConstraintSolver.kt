@@ -12,7 +12,7 @@ object ContactsSolver {
     private const val FRICTION_ITERATIONS = 4
     private const val SIGNIFICANT_LAMBDA = 1e-6
 
-    fun solve(contacts: List<Contact>) {
+    fun solve(contacts: List<IContact>) {
         var itr = 1
         while (itr <= NORMAL_ITERATIONS) {
             var itrSignificant = false
@@ -176,7 +176,7 @@ object ContactsSolver {
     }
 
     private fun deltaV(
-        contact: Contact, type: DeltaType,
+        contact: IContact, type: DeltaType,
         j0: Vector3d, j1: Vector3d, j2: Vector3d, j3: Vector3d,
         iMA: Vector3d, iIA: Vector3d, iMB: Vector3d, iIB: Vector3d,
         vA: Vector3d, wA: Vector3d, vB: Vector3d, wB: Vector3d,

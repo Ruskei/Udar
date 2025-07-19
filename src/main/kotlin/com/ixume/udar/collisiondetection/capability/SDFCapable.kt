@@ -4,4 +4,7 @@ import org.joml.Vector3d
 
 interface SDFCapable {
     fun distance(p: Vector3d): Double
+    fun gradient(p: Vector3d): Vector3d
+
+    val startPoints: List<Vector3d>
 }

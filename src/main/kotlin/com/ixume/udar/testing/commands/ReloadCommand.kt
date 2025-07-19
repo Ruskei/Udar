@@ -25,6 +25,9 @@ object ReloadCommand : TabExecutor, Command {
     ): Boolean {
         TestingConfigLoader.load()
         TestCommand.load()
+
+        sender.sendMessage("Reloaded!")
+
         return true
     }
 }

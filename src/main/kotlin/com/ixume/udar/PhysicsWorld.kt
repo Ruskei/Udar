@@ -3,29 +3,33 @@ package com.ixume.udar
 import com.ixume.udar.body.ActiveBody
 import com.ixume.udar.body.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.body.EnvironmentBody
-import com.ixume.udar.physics.Contact
+import com.ixume.udar.collisiondetection.contactgeneration.SDFContact
+import com.ixume.udar.collisiondetection.contactgeneration.SDFDebugDatabase
 import com.ixume.udar.physics.ContactsSolver
 import com.ixume.udar.collisiondetection.mesh.Mesh
+import com.ixume.udar.physics.IContact
 import com.ixume.udar.testing.debugConnect
 import org.bukkit.*
 import org.joml.Vector3d
 import kotlin.math.roundToInt
+import kotlin.system.measureNanoTime
 
 class PhysicsWorld(
     val world: World
 ) {
     val activeBodies: MutableList<ActiveBody> = mutableListOf()
-    var contacts: MutableList<Contact> = mutableListOf()
+    var contacts: MutableList<IContact> = mutableListOf()
     var meshes: MutableList<Mesh> = mutableListOf()
 
     private var time = 0
-    private var frozen = false
-    private var untilCollision = false
-    private var steps = 0
+    var frozen = false
+    var untilCollision = false
+    var steps = 0
 
     private val task = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { tick() }, 1, 1)
 
     private fun tick() {
+        time++
         repeat((0.05 / TIME_STEP).roundToInt()) {
             var doTick = true
             if (frozen) {
@@ -35,6 +39,7 @@ class PhysicsWorld(
             if (doTick) {
                 contacts.clear()
                 meshes.clear()
+                SDFDebugDatabase.ls.clear()
 
                 for (i in 0..<activeBodies.size) {
                     val first = activeBodies[i]
@@ -64,7 +69,15 @@ class PhysicsWorld(
 
                             if (!firstBoundingBox.overlaps(second.boundingBox)) continue
 
-                            val result = if (choice == 1) first.collides(second) else second.collides(first)
+                            val result: List<IContact>
+
+                            val t = measureNanoTime {
+                                result = if (choice == 1) first.collides(second) else second.collides(first)
+                            }
+
+                            if (Udar.CONFIG.debug.collisionTimes > 0) {
+                                println("B-B COLLISION TOOK: ${t.toDouble() / 1_000_000.0} ms")
+                            }
 
                             for (contact in result) {
                                 val ourContacts =
@@ -131,24 +144,33 @@ class PhysicsWorld(
                 }
 
                 for (contact in contacts) {
-                    val (point,
-                        norm,
-                        _) = contact.result
+                    if (Udar.CONFIG.debug.normals > 0) {
+                        val (point,
+                            norm,
+                            _) = contact.result
 
-                    world.debugConnect(
-                        point,
-                        Vector3d(point).add(Vector3d(norm).mul(0.5)),
-                        Particle.DustOptions(Color.BLUE, 0.15f)
-                    )
+                        world.debugConnect(
+                            point,
+                            Vector3d(point).add(Vector3d(norm).mul(0.5)),
+                            Particle.DustOptions(Color.BLUE, 0.15f)
+                        )
 
-                    world.spawnParticle(
-                        Particle.REDSTONE,
-                        Location(
-                            world,
-                            point.x, point.y, point.z,
-                        ),
-                        1, Particle.DustOptions(Color.RED, 0.3f)
-                    )
+                        world.spawnParticle(
+                            Particle.REDSTONE,
+                            Location(
+                                world,
+                                point.x, point.y, point.z,
+                            ),
+                            1, Particle.DustOptions(Color.RED, 0.3f)
+                        )
+                    }
+
+                }
+
+                if (Udar.CONFIG.debug.SDFContact > 0) {
+                    for (d in SDFDebugDatabase.ls) {
+                        d.visualize()
+                    }
                 }
             }
         }

@@ -14,7 +14,7 @@ import kotlin.math.min
 import kotlin.math.sign
 
 class GJKEPAContactGenerator <T> (
-    val body: T
+    val activeBody: T
 ) : Collidable where T : Body, T: GJKCapable {
     override fun capableCollision(other: Body): Capability {
         return Capability(other.isConvex && other is GJKCapable, 0)
@@ -27,7 +27,7 @@ class GJKEPAContactGenerator <T> (
         val originals = mutableMapOf<Vector3d, Pair<Vector3d, Vector3d>>()
 
         fun minkowski(dir: Vector3d): Vector3d {
-            val a = body.support(dir)
+            val a = activeBody.support(dir)
             val b = other.support(Vector3d(dir).negate())
             val diff = Vector3d(a).sub(b)
             originals[diff] = a to b
@@ -37,7 +37,7 @@ class GJKEPAContactGenerator <T> (
             return diff
         }
 
-        val initialAxis = Vector3d(other.pos).sub(body.pos)
+        val initialAxis = Vector3d(other.pos).sub(activeBody.pos)
         var a = minkowski(initialAxis)
         val s = mutableListOf(a)
         val d = Vector3d(a).negate()
@@ -146,7 +146,7 @@ class GJKEPAContactGenerator <T> (
                                 )
                             }
 
-                            return listOf(Contact(other, body, CollisionResult(
+                            return listOf(Contact(other, activeBody, CollisionResult(
                                 myInt,
                                 norm,
                                 dis2,
@@ -201,7 +201,7 @@ class GJKEPAContactGenerator <T> (
                         if (dNorm == Vector3d() || !dNorm.isFinite) return emptyList()
                         val (closestMine, _) = originals[vertexClosest!!]!!
 
-                        return listOf(Contact(other, body, CollisionResult(
+                        return listOf(Contact(other, activeBody, CollisionResult(
                             closestMine,
                             dNorm,
                             dClosest,

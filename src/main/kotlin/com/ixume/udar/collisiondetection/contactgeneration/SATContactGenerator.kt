@@ -87,7 +87,7 @@ class SATContactGenerator(
 //        if (PhysicsCommand.DEBUG_SAT_LEVEL > 0) println("COLLIDES MESH!")
 
         val collisions = mutableListOf<CollisionResult>()
-        val maxDepth = prevMaxDepth + maxChange() * Udar.Companion.CONFIG.satConfig.fudge
+        val maxDepth = prevMaxDepth + maxChange() * Udar.Companion.CONFIG.sat.fudge
 //        println("prevMaxDepth: $prevMaxDepth v: $velocity maxChange: ${maxChange()} maxDepth: $maxDepth")
         prevMaxDepth = 0.0
 

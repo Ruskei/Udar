@@ -1,11 +1,15 @@
 package com.ixume.udar.body
 
+import com.ixume.udar.applyIf
 import com.ixume.udar.body.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.collisiondetection.capability.Capability
 import com.ixume.udar.collisiondetection.capability.GJKCapable
+import com.ixume.udar.collisiondetection.capability.SDFCapable
 import com.ixume.udar.collisiondetection.contactgeneration.GJKEPAContactGenerator
 import com.ixume.udar.collisiondetection.contactgeneration.SATContactGenerator
+import com.ixume.udar.collisiondetection.contactgeneration.SDFContactGenerator
 import com.ixume.udar.physics.Contact
+import com.ixume.udar.physics.IContact
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.World
@@ -19,8 +23,7 @@ import org.joml.Quaternionf
 import org.joml.Vector3d
 import org.joml.Vector3f
 import java.util.*
-import kotlin.math.max
-import kotlin.math.min
+import kotlin.math.*
 
 class Cuboid(
     override val world: World,
@@ -36,8 +39,8 @@ class Cuboid(
     val length: Double,
     val density: Double,
     override val hasGravity: Boolean,
-) : ActiveBody, GJKCapable {
-    override val id = UUID.randomUUID()
+) : ActiveBody, GJKCapable, SDFCapable {
+    override val id = UUID.randomUUID()!!
 
     val scale = Vector3d(width, height, length)
 
@@ -140,12 +143,13 @@ class Cuboid(
 
     override val isConvex: Boolean = true
 
-    override var contacts: MutableList<Contact> = mutableListOf()
+    override var contacts: MutableList<IContact> = mutableListOf()
     override val previousContacts: List<Contact> = mutableListOf()
 
     private val contactGenerators = listOf(
         SATContactGenerator(this),
         GJKEPAContactGenerator(this),
+        SDFContactGenerator(this),
     )
 
     init {
@@ -346,7 +350,7 @@ class Cuboid(
             ?: Capability(false, 0)
     }
 
-    override fun collides(other: Body): List<Contact> {
+    override fun collides(other: Body): List<IContact> {
         val (contactGenerator, _) =
             contactGenerators
                 .zip(contactGenerators.map { it.capableCollision(other) })
@@ -372,6 +376,76 @@ class Cuboid(
 
         return maxVertex
     }
+
+    override fun distance(p: Vector3d): Double {
+        val ed = globalToLocal(p).let {
+            Vector3d(
+                abs(it.x),
+                abs(it.y),
+                abs(it.z),
+            ).mul(scale)
+        }.sub(width * 0.5, height * 0.5, length * 0.5)
+        return Vector3d(ed).max(Vector3d(0.0, 0.0, 0.0)).length() + min(max(max(ed.x, ed.y), ed.z), 0.0)
+    }
+
+    override fun gradient(p: Vector3d): Vector3d {
+        val lp = globalToLocal(p).mul(scale)
+        val ed = Vector3d(lp).let {
+            Vector3d(
+                abs(it.x),
+                abs(it.y),
+                abs(it.z),
+            )
+        }.sub(width * 0.5, height * 0.5, length * 0.5)
+
+        return (if (distance(p) > 0.0) Vector3d(
+            max(ed.x, 0.0) * sign(lp.x),
+            max(ed.y, 0.0) * sign(lp.y),
+            max(ed.z, 0.0) * sign(lp.z),
+        ) else {
+            if (ed.x.absoluteValue < ed.y.absoluteValue) {
+                //x < y
+                if (ed.z.absoluteValue < ed.x.absoluteValue) {
+                    //z < x < y
+                    Vector3d(
+                        0.0,
+                        0.0,
+                        ed.z.absoluteValue * sign(lp.z),
+                    )
+                } else {
+                    //x < y, z
+                    Vector3d(
+                        ed.x.absoluteValue * sign(lp.x),
+                        0.0,
+                        0.0,
+                    )
+                }
+            } else {
+                //y < x
+                if (ed.z.absoluteValue < ed.y.absoluteValue) {
+                    //z < y < x
+                    Vector3d(
+                        0.0,
+                        0.0,
+                        ed.z.absoluteValue * sign(lp.z),
+                    )
+                } else {
+                    //y < x, z
+                    Vector3d(
+                        0.0,
+                        ed.y.absoluteValue * sign(lp.y),
+                        0.0,
+                    )
+                }
+            }
+        }).rotate(q).apply { normalize(); if (!isFinite) set(0.0)
+        }
+    }
+
+    override val startPoints: List<Vector3d>
+        get() {
+            return vertices.map { Vector3d(it) }
+        }
 
     override fun ensureNonAligned() {
         val tiny = 1e-14
@@ -403,7 +477,7 @@ class Cuboid(
 
     companion object {
         private val VALID_MATERIALS = listOf(
-            Material.SEA_LANTERN,
+            Material.GLASS,
         )
     }
 }

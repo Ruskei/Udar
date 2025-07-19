@@ -1,19 +1,27 @@
 package com.ixume.udar.testing
 
-import com.google.gson.*
+import com.google.gson.Gson
+import com.google.gson.GsonBuilder
+import com.google.gson.InstanceCreator
+import com.google.gson.TypeAdapter
 import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonWriter
 import com.ixume.udar.Udar
 import org.joml.Vector3d
 import java.io.File
 import java.io.FileReader
+import java.lang.reflect.Type
+
+private val gson: Gson = GsonBuilder()
+    .registerTypeAdapter(Vector3d::class.java, Vector3dTypeAdapter)
+    .registerTypeAdapter(Config::class.java, Config)
+    .registerTypeAdapter(Config.SDFConfig::class.java, Config.SDFConfig)
+    .registerTypeAdapter(Config.SATConfig::class.java, Config.SATConfig)
+    .registerTypeAdapter(Config.DebugConfig::class.java, Config.DebugConfig)
+    .setPrettyPrinting()
+    .create()
 
 object TestingConfigLoader {
-    private val gson: Gson = GsonBuilder()
-        .registerTypeAdapter(Config::class.java, Config)
-        .setPrettyPrinting()
-        .create()
-
     fun load() {
         val dataFolder = Udar.INSTANCE.dataFolder
         dataFolder.mkdirs()
@@ -21,7 +29,7 @@ object TestingConfigLoader {
         val configFile = File(dataFolder, "testing.json")
         if (!configFile.exists()) {
             Udar.CONFIG = Config()
-            configFile.writeText(gson.toJson(Udar.CONFIG))
+            configFile.writeText(gson.toJson(Config()))
 
             Udar.LOGGER.info("Created config!")
 
@@ -54,171 +62,54 @@ object TestingConfigLoader {
 }
 
 class Config(
-    val enabled: Boolean = false,
-    val timeStep: Double = DEFAULT_TIMESTEP,
+    val enabled: Boolean = true,
+    val timeStep: Double = 0.005,
     val gravity: Vector3d = Vector3d(0.0, -5.0, 0.0),
     val collision: CollisionConfig = CollisionConfig(),
-    val satConfig: SATConfig = SATConfig(),
+    val sat: SATConfig = SATConfig(),
+    val sdf: SDFConfig = SDFConfig(),
     val debug: DebugConfig = DebugConfig(),
 ) {
-    companion object : TypeAdapter<Config>() {
-        private var DEFAULT_GRAVITY = Vector3d(0.0, -5.0, 0.0)
-        private var DEFAULT_TIMESTEP = 0.005
-
-        override fun write(out: JsonWriter, value: Config?) {
-            if (value == null) {
-                out.nullValue()
-                return
-            }
-
-            out.beginObject()
-
-            out.name("enabled").value(value.enabled)
-            out.name("gravity"); Vector3dTypeAdapter.write(out, value.gravity)
-            out.name("collision"); CollisionConfig.write(out, value.collision)
-            out.name("debug"); DebugConfig.write(out, value.debug)
-
-            out.endObject()
-        }
-
-        override fun read(`in`: JsonReader): Config? {
-            `in`.beginObject()
-
-            var enabled = false
-            var timestep = DEFAULT_TIMESTEP
-            var gravity = DEFAULT_GRAVITY
-            var collision = CollisionConfig()
-            var debug = DebugConfig()
-            var sat = SATConfig()
-
-            while (`in`.hasNext()) {
-                val name = `in`.nextName()
-                when (name) {
-                    "enabled" -> {
-                        enabled = `in`.nextBoolean()
-                    }
-                    "timestep" -> timestep = `in`.nextDouble()
-                    "gravity" -> {
-                        gravity = Vector3dTypeAdapter.read(`in`)
-                    }
-                    "collision" -> {
-                        collision = CollisionConfig.read(`in`)
-                    }
-                    "debug" -> {
-                        debug = DebugConfig.read(`in`)
-                    }
-                    "sat" -> {
-                        sat = SATConfig.read(`in`)
-                    }
-                    else -> `in`.skipValue()
-                }
-            }
-
-            `in`.endObject()
-
-            return Config(enabled, timestep, gravity, collision, sat, debug)
+    companion object : com.google.gson.InstanceCreator<Config> {
+        override fun createInstance(type: Type?): Config? {
+            return Config()
         }
     }
 
     class CollisionConfig(
-        val bias: Double = DEFAULT_BIAS,
-        val passiveSlop: Double = DEFAULT_PASSIVE_SLOP,
-        val activeSlop: Double = DEFAULT_ACTIVE_SLOP,
-        val friction: Double = DEFAULT_FRICTION,
-        val lambdaCarryover: Double = DEFAULT_CARRYOVER,
+        val bias: Double = 0.15,
+        val passiveSlop: Double = 0.0001,
+        val activeSlop: Double = 0.001,
+        val friction: Double = 0.3,
+        val lambdaCarryover: Double = 0.3,
     ) {
-        companion object : TypeAdapter<CollisionConfig>() {
-            private const val DEFAULT_BIAS = 0.15
-            private const val DEFAULT_PASSIVE_SLOP = 0.0001
-            private const val DEFAULT_ACTIVE_SLOP = 0.001
-            private const val DEFAULT_FRICTION = 0.3
-            private const val DEFAULT_CARRYOVER = 0.3
-
-            override fun write(
-                out: JsonWriter,
-                value: CollisionConfig?
-            ) {
-                if (value == null) {
-                    out.nullValue()
-                    return
-                }
-
-                out.beginObject()
-
-                out.name("bias").value(value.bias)
-                out.name("passiveSlop").value(value.passiveSlop)
-                out.name("activeSlop").value(value.activeSlop)
-                out.name("friction").value(value.friction)
-                out.name("lambdaCarryover").value(value.lambdaCarryover)
-
-                out.endObject()
-            }
-
-            override fun read(`in`: JsonReader): CollisionConfig {
-                `in`.beginObject()
-
-                var bias = DEFAULT_BIAS
-                var passiveSlop = DEFAULT_PASSIVE_SLOP
-                var activeSlop = DEFAULT_ACTIVE_SLOP
-                var friction = DEFAULT_FRICTION
-                var lambdaCarryover = DEFAULT_CARRYOVER
-
-                while (`in`.hasNext()) {
-                    val name = `in`.nextName()
-                    when (name) {
-                        "bias" -> { bias = `in`.nextDouble() }
-                        "passiveSlop" -> { passiveSlop = `in`.nextDouble() }
-                        "activeSlop" -> { activeSlop = `in`.nextDouble() }
-                        "friction" -> { friction = `in`.nextDouble() }
-                        "lambdaCarryover" -> { lambdaCarryover = `in`.nextDouble() }
-                        else -> `in`.skipValue()
-                    }
-                }
-
-                `in`.endObject()
-
-                return CollisionConfig(bias, passiveSlop, activeSlop, friction, lambdaCarryover)
-            }
+        companion object : InstanceCreator<CollisionConfig> {
+            override fun createInstance(type: Type?): CollisionConfig? { return CollisionConfig() }
         }
     }
 
     class SATConfig(
-        val fudge: Double = DEFAULT_FUDGE
+        val fudge: Double = 4.0,
     ) {
-        companion object : TypeAdapter<SATConfig>() {
-            private const val DEFAULT_FUDGE = 4.0
-            override fun write(
-                out: JsonWriter,
-                value: SATConfig?
-            ) {
-                if (value == null) {
-                    out.nullValue()
-                    return
-                }
-
-                out.beginObject()
-
-                out.name("fudge").value(value.fudge)
-
-                out.endObject()
+        companion object : InstanceCreator<SATConfig> {
+            override fun createInstance(type: Type?): SATConfig? {
+                return SATConfig()
             }
+        }
+    }
 
-            override fun read(`in`: JsonReader): SATConfig {
-                `in`.beginObject()
-
-                var fudge = DEFAULT_FUDGE
-
-                while (`in`.hasNext()) {
-                    val name = `in`.nextName()
-                    when (name) {
-                        "fudge" -> fudge = `in`.nextDouble()
-                        else -> `in`.skipValue()
-                    }
-                }
-
-                `in`.endObject()
-
-                return SATConfig(fudge)
+    class SDFConfig(
+        val endFast: Boolean = false,
+        val maxSteps: Int = 50,
+        val maxNormalSteps: Int = 5,
+        val stepSize: Double = 0.01,
+        val epsilon: Double = 1e-7,
+        val priority: Int = 1,
+        val errorEpsilon: Double = 1e-14,
+    ) {
+        companion object : InstanceCreator<SDFConfig> {
+            override fun createInstance(type: Type?): SDFConfig? {
+                return SDFConfig()
             }
         }
     }
@@ -226,49 +117,21 @@ class Config(
     class DebugConfig(
         val frequency: Int = 2,
         val mesh: Int = 0,
+        val normals: Int = 0,
+        val collisionTimes: Int = 0,
+
+        val SDFContact: Int = 0,
+        val SDFParticleCount: Int = 5,
+        val SDFStartSize: Float = 0.1f,
+        val SDFNodeSize: Float = 0.05f,
+        val SDFDetection: Boolean = false,
+        val SDFMy: Boolean = false,
+        val SDFOther: Boolean = false,
+        val SDFNode: Int = -1,
     ) {
-        companion object : TypeAdapter<DebugConfig>() {
-            override fun write(
-                out: JsonWriter,
-                value: DebugConfig?
-            ) {
-                if (value == null) {
-                    out.nullValue()
-                    return
-                }
-
-                out.beginObject()
-
-                out.name("frequency").value(value.frequency)
-                out.name("mesh").value(value.mesh)
-
-                out.endObject()
-            }
-
-            override fun read(`in`: JsonReader): DebugConfig {
-                `in`.beginObject()
-
-                var frequency = 2
-                var mesh = 0
-
-                while (`in`.hasNext()) {
-                    val name = `in`.nextName()
-                    when (name) {
-                        "frequency" -> {
-                            frequency = `in`.nextInt()
-                        }
-                        "mesh" -> {
-                            mesh = `in`.nextInt()
-                        }
-                        else -> {
-                            `in`.skipValue()
-                        }
-                    }
-                }
-
-                `in`.endObject()
-
-                return DebugConfig(frequency, mesh)
+        companion object : InstanceCreator<DebugConfig> {
+            override fun createInstance(type: Type?): DebugConfig? {
+                return DebugConfig()
             }
         }
     }

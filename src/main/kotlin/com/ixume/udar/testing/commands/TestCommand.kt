@@ -10,13 +10,16 @@ class TestCommand : BukkitCommand("udar") {
         CuboidCommand.arg to CuboidCommand,
         ReloadCommand.arg to ReloadCommand,
         ClearCommand.arg to ClearCommand,
+        SDFProjectionCommand.arg to SDFProjectionCommand,
+        FreezeCommand.arg to FreezeCommand,
+        StepCommand.arg to StepCommand,
     )
 
     private fun sendHelp(sender: CommandSender) {
         val builder = StringBuilder()
         builder.append("Usage:\n")
         for ((a, v) in commandMap) {
-            builder.append("  $a: ${v.description}\n")
+            builder.append(" - $a: ${v.description}\n")
         }
 
         sender.sendMessage(builder.toString())
