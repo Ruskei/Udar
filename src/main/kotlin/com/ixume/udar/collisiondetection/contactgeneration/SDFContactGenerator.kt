@@ -60,6 +60,7 @@ class SDFContactGenerator<T>(
         ): SDFContact? {
             my as SDFCapable
             other as SDFCapable
+            val stepSize = Udar.CONFIG.sdf.stepSize
             val maxSteps = Udar.CONFIG.sdf.maxSteps
             val maxNormalSteps = Udar.CONFIG.sdf.maxNormalSteps
             val epsilon = Udar.CONFIG.sdf.epsilon
@@ -80,7 +81,8 @@ class SDFContactGenerator<T>(
 
             val pp = Vector3d(p)
 
-            var otherDistance: Double
+            var otherDistance: Double = other.distance(p)
+            if (otherDistance > maxSteps * stepSize) return null
 
             var itr = 0
 
