@@ -7,7 +7,7 @@ import org.joml.Quaterniond
 import org.joml.Vector3d
 import kotlin.math.abs
 
-object ContactsSolver {
+object ContactSolver {
     private const val NORMAL_ITERATIONS = 4
     private const val FRICTION_ITERATIONS = 4
     private const val SIGNIFICANT_LAMBDA = 1e-6

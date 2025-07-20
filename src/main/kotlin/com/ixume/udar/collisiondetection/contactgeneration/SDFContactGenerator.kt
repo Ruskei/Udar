@@ -8,6 +8,7 @@ import com.ixume.udar.collisiondetection.capability.SDFCapable
 import com.ixume.udar.physics.CollisionResult
 import com.ixume.udar.physics.Contact
 import com.ixume.udar.physics.IContact
+import com.ixume.udar.testing.debugConnect
 import org.bukkit.Color
 import org.bukkit.Location
 import org.bukkit.Particle
@@ -26,7 +27,7 @@ class SDFContactGenerator<T>(
         other as SDFCapable
 
         val myStartPoints = activeBody.startPoints
-        val otherStartPoints = activeBody.startPoints
+        val otherStartPoints = other.startPoints
 
         val contacts = mutableListOf<IContact>()
 
@@ -120,8 +121,7 @@ class SDFContactGenerator<T>(
                 SDFDebugDatabase.ls += SDFDebugDatabase.SDFDebugInfo(
                     my.world,
                     Vector3d(start) to detectionPath,
-                    null,
-                    null,
+                    null, null, null, null, null, null
                 )
 
                 return null
@@ -199,17 +199,23 @@ class SDFContactGenerator<T>(
                 println(" - depth: $depth")
             }
 
+            val myNorm = my.gradient(myPoint)
+            val otherNorm = other.gradient(otherPoint)
+
             SDFDebugDatabase.ls += SDFDebugDatabase.SDFDebugInfo(
                 my.world,
                 Vector3d(start) to detectionPath,
                 Vector3d(collision) to myPath,
-                Vector3d(collision) to otherPath
+                Vector3d(collision) to otherPath,
+                myPoint, otherPoint, myNorm, otherNorm,
             )
+
+            val point = Vector3d(myPoint).mul(0.5).add(Vector3d(otherPoint).mul(0.5))
 
             return SDFContact(
                 other, my,
                 CollisionResult(
-                    point = Vector3d(myPoint).mul(0.5).add(Vector3d(otherPoint).mul(0.5)),
+                    point = point,
                     norm = norm,
                     depth = depth,
                 ),
@@ -244,6 +250,10 @@ object SDFDebugDatabase {
         val detectionPath: Pair<Vector3d, List<Vector3d>>,
         val myPath: Pair<Vector3d, List<Vector3d>>?,
         val otherPath: Pair<Vector3d, List<Vector3d>>?,
+        val myPoint: Vector3d?,
+        val otherPoint: Vector3d?,
+        val myNormal: Vector3d?,
+        val otherNormal: Vector3d?,
     ) {
         fun visualize() {
             val w = world
@@ -294,12 +304,15 @@ object SDFDebugDatabase {
 
             if (Udar.CONFIG.debug.SDFMy && myPath != null) {
                 w.spawnParticle(
-                    Particle.REDSTONE, Location(
+                    Particle.REDSTONE,
+                    Location(
                         w,
                         myPath.first.x,
                         myPath.first.y,
                         myPath.first.z,
-                    ), Udar.CONFIG.debug.SDFParticleCount, Particle.DustOptions(Color.LIME, Udar.CONFIG.debug.SDFStartSize)
+                    ),
+                    Udar.CONFIG.debug.SDFParticleCount,
+                    Particle.DustOptions(Color.LIME, Udar.CONFIG.debug.SDFStartSize)
                 )
 
                 if (nc <= -1) {
@@ -372,6 +385,44 @@ object SDFDebugDatabase {
                         Udar.CONFIG.debug.SDFParticleCount,
                         Particle.DustOptions(Color.BLACK, Udar.CONFIG.debug.SDFNodeSize)
                     )
+                }
+            }
+
+            if (Udar.CONFIG.debug.SDFContact > 1) {
+                if (myPoint != null) {
+                    w.spawnParticle(
+                        Particle.REDSTONE,
+                        Location(
+                            w,
+                            myPoint.x,
+                            myPoint.y,
+                            myPoint.z,
+                        ),
+                        Udar.CONFIG.debug.SDFParticleCount,
+                        Particle.DustOptions(Color.AQUA, Udar.CONFIG.debug.SDFNodeSize)
+                    )
+
+                    if (myNormal != null) {
+                        w.debugConnect(myPoint, Vector3d(myPoint).add(Vector3d(myNormal).mul(0.5)), Particle.DustOptions(Color.SILVER, Udar.CONFIG.debug.SDFNodeSize))
+                    }
+                }
+
+                if (otherPoint != null) {
+                    w.spawnParticle(
+                        Particle.REDSTONE,
+                        Location(
+                            w,
+                            otherPoint.x,
+                            otherPoint.y,
+                            otherPoint.z,
+                        ),
+                        Udar.CONFIG.debug.SDFParticleCount,
+                        Particle.DustOptions(Color.PURPLE, Udar.CONFIG.debug.SDFNodeSize)
+                    )
+
+                    if (otherNormal != null) {
+                        w.debugConnect(otherPoint, Vector3d(otherPoint).add(Vector3d(otherNormal).mul(0.5)), Particle.DustOptions(Color.PURPLE, Udar.CONFIG.debug.SDFNodeSize))
+                    }
                 }
             }
         }

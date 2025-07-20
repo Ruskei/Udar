@@ -3,9 +3,8 @@ package com.ixume.udar
 import com.ixume.udar.body.ActiveBody
 import com.ixume.udar.body.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.body.EnvironmentBody
-import com.ixume.udar.collisiondetection.contactgeneration.SDFContact
 import com.ixume.udar.collisiondetection.contactgeneration.SDFDebugDatabase
-import com.ixume.udar.physics.ContactsSolver
+import com.ixume.udar.physics.ContactSolver
 import com.ixume.udar.collisiondetection.mesh.Mesh
 import com.ixume.udar.physics.IContact
 import com.ixume.udar.testing.debugConnect
@@ -126,7 +125,7 @@ class PhysicsWorld(
                     if (body.hasGravity) body.velocity.add(Vector3d(Udar.CONFIG.gravity).mul(TIME_STEP))
                 }
 
-                ContactsSolver.solve(contacts)
+                ContactSolver.solve(contacts)
 
                 for (body in activeBodies) {
                     body.step()

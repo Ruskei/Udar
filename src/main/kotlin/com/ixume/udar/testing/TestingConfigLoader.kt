@@ -100,9 +100,9 @@ class Config(
 
     class SDFConfig(
         val endFast: Boolean = false,
-        val maxSteps: Int = 50,
+        val maxSteps: Int = 20,
         val maxNormalSteps: Int = 5,
-        val stepSize: Double = 0.01,
+        val stepSize: Double = 0.02,
         val epsilon: Double = 1e-7,
         val priority: Int = 1,
         val errorEpsilon: Double = 1e-14,
@@ -115,7 +115,7 @@ class Config(
     }
 
     class DebugConfig(
-        val frequency: Int = 2,
+        val frequency: Int = 3,
         val mesh: Int = 0,
         val normals: Int = 0,
         val collisionTimes: Int = 0,
