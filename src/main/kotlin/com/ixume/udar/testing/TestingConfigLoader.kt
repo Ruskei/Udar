@@ -106,7 +106,7 @@ data class Config(
         val stepSize: Double = 0.02,
         val fineStepSize: Double = 0.001,
         val epsilon: Double = 1e-7,
-        val priority: Int = 1,
+        val priority: Int = -1,
         val errorEpsilon: Double = 1e-14,
     ) {
         companion object : InstanceCreator<SDFConfig> {
