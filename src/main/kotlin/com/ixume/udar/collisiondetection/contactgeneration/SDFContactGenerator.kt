@@ -151,23 +151,19 @@ class SDFContactGenerator<T>(
                     pp = pp,
                     on = my,
                     toward = other,
-                    fine = false,
+                    fine = true,
                 )
 
-                myDistance = my.distance(p)
-                otherDistance = other.distance(p)
-
                 myPath += Vector3d(p)
-            } while (myDistance <= errorEpsilon && otherDistance <= errorEpsilon && pp.distance(p) > epsilon && itr < maxNormalSteps)
+            } while (pp.distance(p) > epsilon && itr < maxNormalSteps)
             if (Udar.CONFIG.debug.SDFContact > 0) {
                 println("  * MY TOOK $itr ITERATIONS")
             }
+
             val myPoint = Vector3d(p)
 
             p.set(collision)
             pp.set(p)
-
-            myPath += Vector3d(p)
 
             itr = 0
 
@@ -182,15 +178,8 @@ class SDFContactGenerator<T>(
                     fine = true,
                 )
 
-                otherDistance = other.distance(p)
-                myDistance = my.distance(p)
-
                 otherPath += Vector3d(p)
-                if (pp.distance(p) <= Udar.CONFIG.sdf.epsilon) {
-                    println("below!")
-                }
-
-            } while (myDistance <= errorEpsilon && otherDistance <= errorEpsilon && pp.distance(p) > epsilon && itr < maxNormalSteps)
+            } while (pp.distance(p) > epsilon && itr < maxNormalSteps)
             if (Udar.CONFIG.debug.SDFContact > 0) {
                 println("  * OTHER TOOK $itr ITERATIONS")
             }
@@ -251,14 +240,6 @@ class SDFContactGenerator<T>(
             if (d > 0.0) {
                 val g = on.gradient(p)
                 p.sub(g.mul(d))
-
-                if (pp.distance(p) <= Udar.CONFIG.sdf.epsilon) {
-                    println("below!")
-                }
-            }
-
-            if (pp.distance(p) <= Udar.CONFIG.sdf.epsilon) {
-                println("below!")
             }
 
             check(p.isFinite)
@@ -301,12 +282,12 @@ object SDFDebugDatabase {
                             detectionPath.first.y,
                             detectionPath.first.z,
                         ),
-                        text = pointText(TextColor.color(Color.ORANGE.asRGB()))
+                        text = pointText(TextColor.color(Color.ORANGE.asRGB())),
                     )
                 )
 
                 if (nc == -1) {
-                    for (p in detectionPath.second) {
+                    for ((i, p) in detectionPath.second.withIndex()) {
                         register(
                             PointTextDisplay(
                                 Location(
@@ -315,7 +296,8 @@ object SDFDebugDatabase {
                                     p.y,
                                     p.z,
                                 ),
-                                text = pointText(TextColor.color(Color.RED.asRGB()))
+                                text = pointText(TextColor.color(Color.RED.asRGB())),
+                                scale = 0.1f * (1.0f / (i + 1)) + 0.1f
                             )
                         )
                     }
@@ -329,7 +311,8 @@ object SDFDebugDatabase {
                                 p.y,
                                 p.z,
                             ),
-                            text = pointText(TextColor.color(Color.RED.asRGB()))
+                            text = pointText(TextColor.color(Color.RED.asRGB())),
+                            scale = 0.1f * (1.0f / (nc + 1)) + 0.1f,
                         )
                     )
                 }
@@ -344,12 +327,12 @@ object SDFDebugDatabase {
                             myPath.first.y,
                             myPath.first.z,
                         ),
-                        text = pointText(TextColor.color(Color.LIME.asRGB()))
+                        text = pointText(TextColor.color(Color.LIME.asRGB())),
                     )
                 )
 
                 if (nc == -1) {
-                    for (p in myPath.second) {
+                    for ((i, p) in myPath.second.withIndex()) {
                         register(
                             PointTextDisplay(
                                 Location(
@@ -358,7 +341,8 @@ object SDFDebugDatabase {
                                     p.y,
                                     p.z,
                                 ),
-                                text = pointText(TextColor.color(Color.WHITE.asRGB()))
+                                text = pointText(TextColor.color(Color.WHITE.asRGB())),
+                                scale = 0.1f * (1.0f / (i + 1)) + 0.1f,
                             )
                         )
                     }
@@ -372,7 +356,8 @@ object SDFDebugDatabase {
                                 p.y,
                                 p.z,
                             ),
-                            text = pointText(TextColor.color(Color.WHITE.asRGB()))
+                            text = pointText(TextColor.color(Color.WHITE.asRGB())),
+                            scale = 0.1f * (1.0f / (nc + 1)) + 0.1f,
                         )
                     )
                 }
@@ -393,7 +378,7 @@ object SDFDebugDatabase {
 
 
                 if (nc == -1) {
-                    for (p in otherPath.second) {
+                    for ((i, p) in otherPath.second.withIndex()) {
                         register(
                             PointTextDisplay(
                                 Location(
@@ -402,7 +387,8 @@ object SDFDebugDatabase {
                                     p.y,
                                     p.z,
                                 ),
-                                text = pointText(TextColor.color(Color.BLACK.asRGB()))
+                                text = pointText(TextColor.color(Color.BLACK.asRGB())),
+                                scale = 0.1f * (1.0f / (i + 1)) + 0.1f,
                             )
                         )
                     }
@@ -416,7 +402,8 @@ object SDFDebugDatabase {
                                 p.y,
                                 p.z,
                             ),
-                            text = pointText(TextColor.color(Color.BLACK.asRGB()))
+                            text = pointText(TextColor.color(Color.BLACK.asRGB())),
+                            scale = 0.1f * (1.0f / (nc + 1)) + 0.1f,
                         )
                     )
                 }

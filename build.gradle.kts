@@ -28,7 +28,7 @@ dependencies {
     compileOnly("io.papermc.paper:paper-api:1.20.4-R0.1-SNAPSHOT")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 
-    compileOnly("com.ixume:proverka:0.2.0")
+    compileOnly("com.ixume:proverka:0.3.1")
 }
 
 val targetJavaVersion = 17
