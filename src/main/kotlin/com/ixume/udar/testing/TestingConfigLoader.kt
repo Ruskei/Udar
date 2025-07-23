@@ -48,6 +48,7 @@ object TestingConfigLoader {
             }
 
             Udar.LOGGER.info("Successfully loaded config!")
+            println(cfg)
             Udar.CONFIG = cfg
         } catch (e: Exception) {
             Udar.LOGGER.warning("Failed to load configuration:")
@@ -61,7 +62,7 @@ object TestingConfigLoader {
     }
 }
 
-class Config(
+data class Config(
     val enabled: Boolean = true,
     val timeStep: Double = 0.005,
     val gravity: Vector3d = Vector3d(0.0, -5.0, 0.0),
@@ -76,7 +77,7 @@ class Config(
         }
     }
 
-    class CollisionConfig(
+    data class CollisionConfig(
         val bias: Double = 0.15,
         val passiveSlop: Double = 0.0001,
         val activeSlop: Double = 0.001,
@@ -88,7 +89,7 @@ class Config(
         }
     }
 
-    class SATConfig(
+    data class SATConfig(
         val fudge: Double = 4.0,
     ) {
         companion object : InstanceCreator<SATConfig> {
@@ -98,11 +99,12 @@ class Config(
         }
     }
 
-    class SDFConfig(
+    data class SDFConfig(
         val endFast: Boolean = false,
         val maxSteps: Int = 20,
         val maxNormalSteps: Int = 5,
         val stepSize: Double = 0.02,
+        val fineStepSize: Double = 0.001,
         val epsilon: Double = 1e-7,
         val priority: Int = 1,
         val errorEpsilon: Double = 1e-14,
@@ -114,7 +116,7 @@ class Config(
         }
     }
 
-    class DebugConfig(
+    data class DebugConfig(
         val frequency: Int = 3,
         val mesh: Int = 0,
         val normals: Int = 0,

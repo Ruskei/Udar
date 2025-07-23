@@ -9,7 +9,7 @@ import org.bukkit.entity.Player
 import org.joml.Quaterniond
 import org.joml.Vector3d
 
-object CuboidCommand : TabExecutor, com.ixume.udar.testing.commands.Command {
+object CuboidCommand : com.ixume.udar.testing.commands.Command {
     override val arg: String = "cube"
     override val description: String = "--velocity|-v <x> <y> <z> --dims|-d <x> <y> <z> --omega|-o <x> <y> <z> --rot|-r <x> <y> <z> --density <d> --gravity|-g --no-gravity|-ng --true-omega|-to; Spawns cuboid"
 

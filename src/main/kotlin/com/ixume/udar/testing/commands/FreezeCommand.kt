@@ -2,10 +2,9 @@ package com.ixume.udar.testing.commands
 
 import com.ixume.udar.physicsWorld
 import org.bukkit.command.CommandSender
-import org.bukkit.command.TabExecutor
 import org.bukkit.entity.Player
 
-object FreezeCommand : TabExecutor, Command {
+object FreezeCommand : Command {
     override fun onTabComplete(
         sender: CommandSender,
         command: org.bukkit.command.Command,

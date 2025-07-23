@@ -1,10 +1,10 @@
 package com.ixume.udar.testing.commands
 
+import com.ixume.udar.collisiondetection.contactgeneration.SDFDebugDatabase
 import com.ixume.udar.testing.TestingConfigLoader
 import org.bukkit.command.CommandSender
-import org.bukkit.command.TabExecutor
 
-object ReloadCommand : TabExecutor, Command {
+object ReloadCommand : Command {
     override val arg: String = "reload"
     override val description: String = "Reload config"
 
@@ -25,6 +25,8 @@ object ReloadCommand : TabExecutor, Command {
     ): Boolean {
         TestingConfigLoader.load()
         TestCommand.load()
+
+        SDFDebugDatabase.ls.forEach { it.kill(); it.step() }
 
         sender.sendMessage("Reloaded!")
 

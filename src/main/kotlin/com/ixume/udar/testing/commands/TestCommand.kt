@@ -13,6 +13,7 @@ class TestCommand : BukkitCommand("udar") {
         SDFProjectionCommand.arg to SDFProjectionCommand,
         FreezeCommand.arg to FreezeCommand,
         StepCommand.arg to StepCommand,
+        MarkPointCommand.arg to MarkPointCommand,
     )
 
     private fun sendHelp(sender: CommandSender) {

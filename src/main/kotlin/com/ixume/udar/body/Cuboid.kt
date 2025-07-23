@@ -1,6 +1,5 @@
 package com.ixume.udar.body
 
-import com.ixume.udar.applyIf
 import com.ixume.udar.body.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.collisiondetection.capability.Capability
 import com.ixume.udar.collisiondetection.capability.GJKCapable
@@ -398,11 +397,22 @@ class Cuboid(
             )
         }.sub(width * 0.5, height * 0.5, length * 0.5)
 
-        return (if (distance(p) > 0.0) Vector3d(
-            max(ed.x, 0.0) * sign(lp.x),
-            max(ed.y, 0.0) * sign(lp.y),
-            max(ed.z, 0.0) * sign(lp.z),
-        ) else {
+        val d = distance(p)
+        check(!d.isNaN())
+
+        val l = (if (d > 0.0) {
+            Vector3d(
+                max(ed.x, 0.0) * sign(lp.x),
+                max(ed.y, 0.0) * sign(lp.y),
+                max(ed.z, 0.0) * sign(lp.z),
+            )
+        } else if (d == 0.0) {
+            Vector3d(
+                if (ed.x == 0.0) sign(lp.x) else 0.0,
+                if (ed.y == 0.0) sign(lp.y) else 0.0,
+                if (ed.z == 0.0) sign(lp.z) else 0.0,
+            )
+        } else {
             if (ed.x.absoluteValue < ed.y.absoluteValue) {
                 //x < y
                 if (ed.z.absoluteValue < ed.x.absoluteValue) {
@@ -438,7 +448,12 @@ class Cuboid(
                     )
                 }
             }
-        }).rotate(q).apply { normalize(); if (!isFinite) set(0.0)
+        })
+
+        return l.rotate(q).apply {
+            normalize();
+            if (!isFinite)
+                set(0.0)
         }
     }
 

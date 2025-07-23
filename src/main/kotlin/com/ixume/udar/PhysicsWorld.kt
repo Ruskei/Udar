@@ -4,8 +4,8 @@ import com.ixume.udar.body.ActiveBody
 import com.ixume.udar.body.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.collisiondetection.contactgeneration.SDFDebugDatabase
-import com.ixume.udar.physics.ContactSolver
 import com.ixume.udar.collisiondetection.mesh.Mesh
+import com.ixume.udar.physics.ContactSolver
 import com.ixume.udar.physics.IContact
 import com.ixume.udar.testing.debugConnect
 import org.bukkit.*
@@ -38,6 +38,7 @@ class PhysicsWorld(
             if (doTick) {
                 contacts.clear()
                 meshes.clear()
+                SDFDebugDatabase.ls.forEach { it.kill() }
                 SDFDebugDatabase.ls.clear()
 
                 for (i in 0..<activeBodies.size) {
@@ -135,18 +136,22 @@ class PhysicsWorld(
                     untilCollision = false
                     frozen = true
                 }
+
+                if (Udar.CONFIG.debug.SDFContact > 0) {
+                    for (d in SDFDebugDatabase.ls) {
+                        d.step()
+                    }
+                }
             }
 
             if (time % Udar.CONFIG.debug.frequency == 0) {
-                for (body in activeBodies) {
-                    body.visualize()
-                }
+//                for (body in activeBodies) {
+//                    body.visualize()
+//                }
 
                 for (contact in contacts) {
                     if (Udar.CONFIG.debug.normals > 0) {
-                        val (point,
-                            norm,
-                            _) = contact.result
+                        val (point, norm, _) = contact.result
 
                         world.debugConnect(
                             point,
@@ -164,12 +169,6 @@ class PhysicsWorld(
                         )
                     }
 
-                }
-
-                if (Udar.CONFIG.debug.SDFContact > 0) {
-                    for (d in SDFDebugDatabase.ls) {
-                        d.visualize()
-                    }
                 }
             }
         }

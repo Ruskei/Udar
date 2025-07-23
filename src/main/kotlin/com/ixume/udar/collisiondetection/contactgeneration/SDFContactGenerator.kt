@@ -1,5 +1,9 @@
 package com.ixume.udar.collisiondetection.contactgeneration
 
+import com.ixume.proverka.Proverka
+import com.ixume.proverka.feature.Feature
+import com.ixume.proverka.feature.impl.PointTextDisplay
+import com.ixume.proverka.feature.impl.PointTextDisplay.Companion.pointText
 import com.ixume.udar.Udar
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.Collidable
@@ -8,12 +12,14 @@ import com.ixume.udar.collisiondetection.capability.SDFCapable
 import com.ixume.udar.physics.CollisionResult
 import com.ixume.udar.physics.Contact
 import com.ixume.udar.physics.IContact
-import com.ixume.udar.testing.debugConnect
+import com.ixume.udar.testing.debugConnectProverka
+import net.kyori.adventure.text.format.TextColor
 import org.bukkit.Color
 import org.bukkit.Location
 import org.bukkit.Particle
 import org.bukkit.World
 import org.joml.Vector3d
+import java.util.*
 import kotlin.math.min
 
 class SDFContactGenerator<T>(
@@ -95,6 +101,7 @@ class SDFContactGenerator<T>(
                     pp = pp,
                     on = my,
                     toward = other,
+                    fine = false,
                 )
 
                 myDistance = my.distance(p)
@@ -144,6 +151,7 @@ class SDFContactGenerator<T>(
                     pp = pp,
                     on = my,
                     toward = other,
+                    fine = false,
                 )
 
                 myDistance = my.distance(p)
@@ -171,12 +179,17 @@ class SDFContactGenerator<T>(
                     pp = pp,
                     on = other,
                     toward = my,
+                    fine = true,
                 )
 
                 otherDistance = other.distance(p)
                 myDistance = my.distance(p)
 
                 otherPath += Vector3d(p)
+                if (pp.distance(p) <= Udar.CONFIG.sdf.epsilon) {
+                    println("below!")
+                }
+
             } while (myDistance <= errorEpsilon && otherDistance <= errorEpsilon && pp.distance(p) > epsilon && itr < maxNormalSteps)
             if (Udar.CONFIG.debug.SDFContact > 0) {
                 println("  * OTHER TOOK $itr ITERATIONS")
@@ -205,8 +218,8 @@ class SDFContactGenerator<T>(
             SDFDebugDatabase.ls += SDFDebugDatabase.SDFDebugInfo(
                 my.world,
                 Vector3d(start) to detectionPath,
-                Vector3d(collision) to myPath,
-                Vector3d(collision) to otherPath,
+                Vector3d(myPoint) to myPath,
+                Vector3d(otherPoint) to otherPath,
                 myPoint, otherPoint, myNorm, otherNorm,
             )
 
@@ -226,15 +239,26 @@ class SDFContactGenerator<T>(
             p: Vector3d,
             pp: Vector3d,
             on: SDFCapable,
-            toward: SDFCapable
+            toward: SDFCapable,
+            fine: Boolean,
         ) {
-            val stepSize = Udar.CONFIG.sdf.stepSize
+            val stepSize = if (fine) Udar.CONFIG.sdf.fineStepSize else Udar.CONFIG.sdf.stepSize
             pp.set(p)
 
-            p.sub(toward.gradient(p).mul(stepSize))
+            val g0 = toward.gradient(p)
+            p.sub(g0.mul(stepSize))
             val d = on.distance(p)
-            if (d > 0) {
-                p.sub(on.gradient(p).mul(d))
+            if (d > 0.0) {
+                val g = on.gradient(p)
+                p.sub(g.mul(d))
+
+                if (pp.distance(p) <= Udar.CONFIG.sdf.epsilon) {
+                    println("below!")
+                }
+            }
+
+            if (pp.distance(p) <= Udar.CONFIG.sdf.epsilon) {
+                println("below!")
             }
 
             check(p.isFinite)
@@ -255,155 +279,169 @@ object SDFDebugDatabase {
         val myNormal: Vector3d?,
         val otherNormal: Vector3d?,
     ) {
-        fun visualize() {
+        private val mine = mutableListOf<UUID>()
+        val wm = Proverka.INSTANCE.getWorldManager(world)
+
+        private fun register(feature: Feature) {
+            mine += feature.id
+            wm.features[feature.id] = feature
+        }
+
+        fun step() {
             val w = world
+
             val nc = Udar.CONFIG.debug.SDFNode
 
             if (Udar.CONFIG.debug.SDFDetection) {
-                w.spawnParticle(
-                    Particle.REDSTONE,
-                    Location(
-                        w,
-                        detectionPath.first.x,
-                        detectionPath.first.y,
-                        detectionPath.first.z,
-                    ),
-                    Udar.CONFIG.debug.SDFParticleCount,
-                    Particle.DustOptions(Color.ORANGE, Udar.CONFIG.debug.SDFStartSize)
+                register(
+                    PointTextDisplay(
+                        Location(
+                            w,
+                            detectionPath.first.x,
+                            detectionPath.first.y,
+                            detectionPath.first.z,
+                        ),
+                        text = pointText(TextColor.color(Color.ORANGE.asRGB()))
+                    )
                 )
 
-                if (nc <= -1) {
+                if (nc == -1) {
                     for (p in detectionPath.second) {
-                        w.spawnParticle(
-                            Particle.REDSTONE,
+                        register(
+                            PointTextDisplay(
+                                Location(
+                                    w,
+                                    p.x,
+                                    p.y,
+                                    p.z,
+                                ),
+                                text = pointText(TextColor.color(Color.RED.asRGB()))
+                            )
+                        )
+                    }
+                } else if (nc > 0) {
+                    val p = detectionPath.second[min(nc, detectionPath.second.size - 1)]
+                    register(
+                        PointTextDisplay(
                             Location(
                                 w,
                                 p.x,
                                 p.y,
                                 p.z,
                             ),
-                            Udar.CONFIG.debug.SDFParticleCount,
-                            Particle.DustOptions(Color.RED, Udar.CONFIG.debug.SDFNodeSize)
+                            text = pointText(TextColor.color(Color.RED.asRGB()))
                         )
-                    }
-                } else {
-                    val p = detectionPath.second[min(nc, detectionPath.second.size - 1)]
-                    w.spawnParticle(
-                        Particle.REDSTONE,
-                        Location(
-                            w,
-                            p.x,
-                            p.y,
-                            p.z,
-                        ),
-                        Udar.CONFIG.debug.SDFParticleCount,
-                        Particle.DustOptions(Color.RED, Udar.CONFIG.debug.SDFNodeSize)
                     )
                 }
             }
 
             if (Udar.CONFIG.debug.SDFMy && myPath != null) {
-                w.spawnParticle(
-                    Particle.REDSTONE,
-                    Location(
-                        w,
-                        myPath.first.x,
-                        myPath.first.y,
-                        myPath.first.z,
-                    ),
-                    Udar.CONFIG.debug.SDFParticleCount,
-                    Particle.DustOptions(Color.LIME, Udar.CONFIG.debug.SDFStartSize)
+                register(
+                    PointTextDisplay(
+                        Location(
+                            w,
+                            myPath.first.x,
+                            myPath.first.y,
+                            myPath.first.z,
+                        ),
+                        text = pointText(TextColor.color(Color.LIME.asRGB()))
+                    )
                 )
 
-                if (nc <= -1) {
+                if (nc == -1) {
                     for (p in myPath.second) {
-                        w.spawnParticle(
-                            Particle.REDSTONE,
+                        register(
+                            PointTextDisplay(
+                                Location(
+                                    w,
+                                    p.x,
+                                    p.y,
+                                    p.z,
+                                ),
+                                text = pointText(TextColor.color(Color.WHITE.asRGB()))
+                            )
+                        )
+                    }
+                } else if (nc > 0) {
+                    val p = myPath.second[min(nc, myPath.second.size - 1)]
+                    register(
+                        PointTextDisplay(
                             Location(
                                 w,
                                 p.x,
                                 p.y,
                                 p.z,
                             ),
-                            Udar.CONFIG.debug.SDFParticleCount,
-                            Particle.DustOptions(Color.WHITE, Udar.CONFIG.debug.SDFNodeSize)
+                            text = pointText(TextColor.color(Color.WHITE.asRGB()))
                         )
-                    }
-                } else {
-                    val p = myPath.second[min(nc, myPath.second.size - 1)]
-                    w.spawnParticle(
-                        Particle.REDSTONE,
-                        Location(
-                            w,
-                            p.x,
-                            p.y,
-                            p.z,
-                        ),
-                        Udar.CONFIG.debug.SDFParticleCount,
-                        Particle.DustOptions(Color.WHITE, Udar.CONFIG.debug.SDFNodeSize)
                     )
                 }
             }
 
             if (Udar.CONFIG.debug.SDFOther && otherPath != null) {
-                w.spawnParticle(
-                    Particle.REDSTONE,
-                    Location(
-                        w,
-                        otherPath.first.x,
-                        otherPath.first.y,
-                        otherPath.first.z,
-                    ),
-                    Udar.CONFIG.debug.SDFParticleCount,
-                    Particle.DustOptions(Color.FUCHSIA, Udar.CONFIG.debug.SDFStartSize)
+                register(
+                    PointTextDisplay(
+                        Location(
+                            w,
+                            otherPath.first.x,
+                            otherPath.first.y,
+                            otherPath.first.z,
+                        ),
+                        text = pointText(TextColor.color(Color.FUCHSIA.asRGB()))
+                    )
                 )
 
-                if (nc <= -1) {
+
+                if (nc == -1) {
                     for (p in otherPath.second) {
-                        w.spawnParticle(
-                            Particle.REDSTONE,
+                        register(
+                            PointTextDisplay(
+                                Location(
+                                    w,
+                                    p.x,
+                                    p.y,
+                                    p.z,
+                                ),
+                                text = pointText(TextColor.color(Color.BLACK.asRGB()))
+                            )
+                        )
+                    }
+                } else if (nc > 0) {
+                    val p = otherPath.second[min(nc, otherPath.second.size - 1)]
+                    register(
+                        PointTextDisplay(
                             Location(
                                 w,
                                 p.x,
                                 p.y,
                                 p.z,
                             ),
-                            Udar.CONFIG.debug.SDFParticleCount,
-                            Particle.DustOptions(Color.BLACK, Udar.CONFIG.debug.SDFNodeSize)
+                            text = pointText(TextColor.color(Color.BLACK.asRGB()))
                         )
-                    }
-                } else {
-                    val p = otherPath.second[min(nc, otherPath.second.size - 1)]
-                    w.spawnParticle(
-                        Particle.REDSTONE,
-                        Location(
-                            w,
-                            p.x,
-                            p.y,
-                            p.z,
-                        ),
-                        Udar.CONFIG.debug.SDFParticleCount,
-                        Particle.DustOptions(Color.BLACK, Udar.CONFIG.debug.SDFNodeSize)
                     )
                 }
             }
 
             if (Udar.CONFIG.debug.SDFContact > 1) {
                 if (myPoint != null) {
-                    w.spawnParticle(
-                        Particle.REDSTONE,
-                        Location(
-                            w,
-                            myPoint.x,
-                            myPoint.y,
-                            myPoint.z,
-                        ),
-                        Udar.CONFIG.debug.SDFParticleCount,
-                        Particle.DustOptions(Color.AQUA, Udar.CONFIG.debug.SDFNodeSize)
+                    register(
+                        PointTextDisplay(
+                            Location(
+                                w,
+                                myPoint.x,
+                                myPoint.y,
+                                myPoint.z,
+                            ),
+                            text = pointText(TextColor.color(Color.SILVER.asRGB()))
+                        )
                     )
 
                     if (myNormal != null) {
-                        w.debugConnect(myPoint, Vector3d(myPoint).add(Vector3d(myNormal).mul(0.5)), Particle.DustOptions(Color.SILVER, Udar.CONFIG.debug.SDFNodeSize))
+                        w.debugConnectProverka(
+                            myPoint,
+                            Vector3d(myPoint).add(Vector3d(myNormal).mul(0.5)),
+                            Color.SILVER,
+                        ) { mine += it.id }
                     }
                 }
 
@@ -421,10 +459,23 @@ object SDFDebugDatabase {
                     )
 
                     if (otherNormal != null) {
-                        w.debugConnect(otherPoint, Vector3d(otherPoint).add(Vector3d(otherNormal).mul(0.5)), Particle.DustOptions(Color.PURPLE, Udar.CONFIG.debug.SDFNodeSize))
+                        w.debugConnectProverka(
+                            otherPoint,
+                            Vector3d(otherPoint).add(Vector3d(otherNormal).mul(0.5)),
+                            Color.PURPLE,
+                        ) { mine += it.id }
                     }
                 }
             }
+        }
+
+        fun kill() {
+            for (id in mine) {
+                wm.features[id]?.kill()
+                wm.features -= id
+            }
+
+            mine.clear()
         }
     }
 }

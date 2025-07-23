@@ -13,7 +13,7 @@ import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitTask
 import org.joml.Vector3d
 
-object SDFProjectionCommand : TabExecutor, Command {
+object SDFProjectionCommand : Command {
     override fun onTabComplete(
         sender: CommandSender,
         command: org.bukkit.command.Command,

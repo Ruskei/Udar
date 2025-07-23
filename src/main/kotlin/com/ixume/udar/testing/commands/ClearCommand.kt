@@ -6,7 +6,7 @@ import org.bukkit.command.CommandSender
 import org.bukkit.command.TabExecutor
 import org.bukkit.entity.Player
 
-object ClearCommand : TabExecutor, Command {
+object ClearCommand : Command {
     override fun onTabComplete(
         sender: CommandSender,
         command: org.bukkit.command.Command,
