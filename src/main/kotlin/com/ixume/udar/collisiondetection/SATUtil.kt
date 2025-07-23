@@ -1,5 +1,6 @@
 package com.ixume.udar.collisiondetection
 
+import com.ixume.udar.collisiondetection.capability.Projectable
 import org.bukkit.World
 import org.joml.Vector3d
 import kotlin.math.abs
@@ -128,4 +129,61 @@ fun edgeCrosses(
     }
 
     return ls
+}
+data class SATCycle(
+    val overlap: Double,
+    val order: Boolean,
+)
+
+fun cycleSAT(
+    axis: Vector3d,
+    my: Projectable,
+    other: Projectable,
+): SATCycle? {
+    val (myMin, myMax) = my.project(axis)
+    val (otherMin, otherMax) = other.project(axis)
+
+    var order: Boolean? = null
+    val overlap = if (myMin < otherMax && myMax > otherMin) {
+        //overlapping
+        order = (otherMax - myMin) < (myMax - otherMin)
+
+        //check if contained or overlapping; if contained then choose smallest distance as overlap
+        if (myMin < otherMin && myMax > otherMax) {
+            //i contain other
+            min(myMax - otherMin, otherMax - myMin)
+        } else if (otherMin < myMin && otherMax > myMax) {
+            //other contains me
+            min(otherMax - myMin, myMax - otherMin)
+        } else {
+            //just overlapping
+            if (myMax > otherMax) otherMax - myMin
+            else myMax - otherMin
+        }
+    } else 0.0
+
+    if (overlap <= 0.0) {
+        return null
+    }
+
+    return SATCycle(overlap, order!!)
+}
+
+fun List<Vector3d>.projectable(): Projectable {
+    return object : Projectable {
+        override fun project(axis: Vector3d): Pair<Double, Double> {
+            var min = Double.MAX_VALUE
+            var max = -Double.MAX_VALUE
+
+            if (isEmpty()) return 0.0 to 0.0
+
+            for (v in this@projectable) {
+                val s = v.dot(axis)
+                min = min(min, s)
+                max = max(max, s)
+            }
+
+            return min to max
+        }
+    }
 }

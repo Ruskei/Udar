@@ -8,11 +8,13 @@ import com.ixume.udar.body.Collidable
 import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.collisiondetection.capability.Capability
 import com.ixume.udar.collisiondetection.contactgeneration.GJKEPAContactGenerator.Companion.closestPointsBetweenSegments
+import com.ixume.udar.collisiondetection.cycleSAT
 import com.ixume.udar.collisiondetection.edgeCrosses
 import com.ixume.udar.collisiondetection.mesh.Axis
 import com.ixume.udar.collisiondetection.mesh.Edge
 import com.ixume.udar.collisiondetection.mesh.Mesh
 import com.ixume.udar.collisiondetection.mesh.MeshFace
+import com.ixume.udar.collisiondetection.projectable
 import com.ixume.udar.physics.CollisionResult
 import com.ixume.udar.physics.Contact
 import com.ixume.udar.testing.debugConnect
@@ -398,8 +400,7 @@ class SATContactGenerator(
         for (axis in axiss) {
             val (overlap, order) = cycleSAT(
                 axis = axis,
-                myVertices = myVertices,
-                otherVertices = otherVertices
+                activeBody, otherVertices.projectable()
             ) ?: return null
 
             if (overlap < minOverlap) {
@@ -607,67 +608,5 @@ class SATContactGenerator(
             }
         }
 
-    }
-
-    private data class SATCycle(
-        val overlap: Double,
-        val order: Boolean,
-    )
-
-    private fun cycleSAT(
-        axis: Vector3d,
-        myVertices: List<Vector3d>,
-        otherVertices: List<Vector3d>,
-    ): SATCycle? {
-        var otherMin = Double.MAX_VALUE
-        var otherMax = -Double.MAX_VALUE
-
-        var myMin = Double.MAX_VALUE
-        var myMax = -Double.MAX_VALUE
-
-        for (vertex in myVertices) {
-            val s = vertex.dot(axis)
-            myMin = min(myMin, s)
-            myMax = max(myMax, s)
-        }
-
-        for (vertex in otherVertices) {
-            val s = vertex.dot(axis)
-            otherMin = min(otherMin, s)
-            otherMax = max(otherMax, s)
-        }
-
-        var order: Boolean? = null
-        val overlap = if (myMin < otherMax && myMax > otherMin) {
-            //overlapping
-            order = (otherMax - myMin) < (myMax - otherMin)
-
-            //check if contained or overlapping; if contained then choose smallest distance as overlap
-            if (myMin < otherMin && myMax > otherMax) {
-                //i contain other
-                min(myMax - otherMin, otherMax - myMin)
-            } else if (otherMin < myMin && otherMax > myMax) {
-                //other contains me
-                min(otherMax - myMin, myMax - otherMin)
-            } else {
-                //just overlapping
-                if (myMax > otherMax) otherMax - myMin
-                else myMax - otherMin
-            }
-        } else 0.0
-
-//        if (PhysicsCommand.DEBUG_SAT_LEVEL > 2) {
-//            println("TEST!")
-//            println("  - axis: $axis")
-//            println("  - overlap: $overlap")
-//            println("  - myMin: $myMin myMax: $myMax")
-//            println("  - otherMin: $otherMin otherMax: $otherMax")
-//        }
-
-        if (overlap <= 0.0) {
-            return null
-        }
-
-        return SATCycle(overlap, order!!)
     }
 }

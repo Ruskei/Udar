@@ -8,7 +8,9 @@ import com.ixume.udar.Udar
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.Collidable
 import com.ixume.udar.collisiondetection.capability.Capability
+import com.ixume.udar.collisiondetection.capability.Projectable
 import com.ixume.udar.collisiondetection.capability.SDFCapable
+import com.ixume.udar.collisiondetection.cycleSAT
 import com.ixume.udar.physics.CollisionResult
 import com.ixume.udar.physics.Contact
 import com.ixume.udar.physics.IContact
@@ -55,7 +57,11 @@ class SDFContactGenerator<T>(
             }
         }
 
-        return contacts
+        if (contacts.isEmpty()) return contacts
+
+        val deepest = contacts.minBy { it.result.depth }
+
+        return listOf(deepest)
     }
 
 
@@ -64,7 +70,7 @@ class SDFContactGenerator<T>(
             start: Vector3d,
             my: Body,
             other: Body
-        ): SDFContact? {
+        ): IContact? {
             my as SDFCapable
             other as SDFCapable
             val stepSize = Udar.CONFIG.sdf.stepSize
@@ -212,16 +218,51 @@ class SDFContactGenerator<T>(
                 myPoint, otherPoint, myNorm, otherNorm,
             )
 
-            val point = Vector3d(myPoint).mul(0.5).add(Vector3d(otherPoint).mul(0.5))
-
-            return SDFContact(
-                other, my,
-                CollisionResult(
-                    point = point,
-                    norm = norm,
-                    depth = depth,
-                ),
+            return contactFromSDF(
+                my = my, myPoint = myPoint, myNorm = myNorm,
+                other = other, otherPoint = otherPoint, otherNorm = otherNorm,
             )
+
+//            val point = Vector3d(myPoint).mul(0.5).add(Vector3d(otherPoint).mul(0.5))
+//
+//            return SDFContact(
+//                other, my,
+//                CollisionResult(
+//                    point = point,
+//                    norm = norm,
+//                    depth = depth,
+//                ),
+//            )
+        }
+
+        private fun <T> contactFromSDF(
+            my: T, myPoint: Vector3d, myNorm: Vector3d,
+            other: T, otherPoint: Vector3d, otherNorm: Vector3d,
+        ): IContact where T : Body, T : Projectable {
+            val (myOverlap, _) = cycleSAT(myNorm, my, other)!!
+            val (otherOverlap, _) = cycleSAT(otherNorm, my, other)!!
+
+            return if (myOverlap < otherOverlap) {
+                Contact(
+                    first = other,
+                    second = my,
+                    result = CollisionResult(
+                        point = otherPoint,
+                        norm = myNorm,
+                        depth = myOverlap,
+                    ),
+                )
+            } else {
+                Contact(
+                    second = other,
+                    first = my,
+                    result = CollisionResult(
+                        point = myPoint,
+                        norm = otherNorm,
+                        depth = otherOverlap,
+                    ),
+                )
+            }
         }
 
         private fun move(
