@@ -1,10 +1,9 @@
 package com.ixume.udar.testing.commands
 
-import com.ixume.udar.body.Cuboid
+import com.ixume.udar.body.active.Cuboid
 import com.ixume.udar.physicsWorld
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
-import org.bukkit.command.TabExecutor
 import org.bukkit.entity.Player
 import org.joml.Quaterniond
 import org.joml.Vector3d

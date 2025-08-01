@@ -1,8 +1,9 @@
 package com.ixume.udar.physics
 
 import com.ixume.udar.Udar
-import com.ixume.udar.body.ActiveBody
-import com.ixume.udar.body.ActiveBody.Companion.TIME_STEP
+import com.ixume.udar.body.active.ActiveBody
+import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
+import org.joml.Matrix3d
 import org.joml.Quaterniond
 import org.joml.Vector3d
 import kotlin.math.abs
@@ -178,7 +179,7 @@ object ContactSolver {
     private fun deltaV(
         contact: IContact, type: DeltaType,
         j0: Vector3d, j1: Vector3d, j2: Vector3d, j3: Vector3d,
-        iMA: Vector3d, iIA: Vector3d, iMB: Vector3d, iIB: Vector3d,
+        iMA: Vector3d, iIA: Matrix3d, iMB: Vector3d, iIB: Matrix3d,
         vA: Vector3d, wA: Vector3d, vB: Vector3d, wB: Vector3d,
     ): DeltaV {
         val depth = contact.result.depth
@@ -189,8 +190,8 @@ object ContactSolver {
         val bias = if (type == DeltaType.NORMAL) Udar.CONFIG.collision.bias / TIME_STEP * (abs(depth) - slop).coerceAtLeast(0.0) else 0.0
 
         val den =
-            Vector3d(j0).mul(j0).dot(iMA) + Vector3d(j1).mul(j1).dot(iIA) + Vector3d(j2).mul(j2)
-                .dot(iMB) + Vector3d(j3).mul(j3).dot(iIB)
+            Vector3d(j0).mul(j0).dot(iMA) + Vector3d(j1).mul(iIA).dot(j1) + Vector3d(j2).mul(j2)
+                .dot(iMB) + Vector3d(j3).mul(iIB).dot(j3)
 
         var lambda = (j0.dot(vA) + j1.dot(wA) + j2.dot(vB) + j3.dot(wB) + bias) / den
 
@@ -218,9 +219,9 @@ object ContactSolver {
 
         //delta-V = M^(-1)J^T * lambda
         val dVA = Vector3d(iMA).mul(j0).mul(lambda)
-        val dOA = Vector3d(iIA).mul(j1).mul(lambda).rotate(Quaterniond(contact.first.q).conjugate())
+        val dOA = Vector3d(j1).mul(iIA).mul(lambda).rotate(Quaterniond(contact.first.q).conjugate())
         val dVB = Vector3d(iMB).mul(j2).mul(lambda)
-        val dOB = Vector3d(iIB).mul(j3).mul(lambda).rotate(Quaterniond(contact.second.q).conjugate())
+        val dOB = Vector3d(j3).mul(iIB).mul(lambda).rotate(Quaterniond(contact.second.q).conjugate())
 
         return DeltaV(
             dVA,

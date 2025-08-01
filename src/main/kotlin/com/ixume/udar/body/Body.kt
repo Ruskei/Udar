@@ -1,6 +1,7 @@
 package com.ixume.udar.body
 
 import org.bukkit.World
+import org.joml.Matrix3d
 import org.joml.Quaterniond
 import org.joml.Vector3d
 import java.util.UUID
@@ -14,9 +15,10 @@ interface Body {
 
     val velocity: Vector3d
     val omega: Vector3d
+    val torque: Vector3d
 
     val inverseMass: Double
-    val inverseInertia: Vector3d
+    val inverseInertia: Matrix3d
 
     val isConvex: Boolean
 }

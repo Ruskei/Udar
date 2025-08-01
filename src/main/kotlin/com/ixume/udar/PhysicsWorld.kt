@@ -1,7 +1,7 @@
 package com.ixume.udar
 
-import com.ixume.udar.body.ActiveBody
-import com.ixume.udar.body.ActiveBody.Companion.TIME_STEP
+import com.ixume.udar.body.active.ActiveBody
+import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.collisiondetection.contactgeneration.SDFDebugDatabase
 import com.ixume.udar.collisiondetection.mesh.Mesh

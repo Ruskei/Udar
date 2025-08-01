@@ -2,8 +2,9 @@ package com.ixume.udar
 
 import com.ixume.proverka.Proverka
 import com.ixume.udar.testing.Config
-import com.ixume.udar.testing.TestingConfigLoader
+import com.ixume.udar.testing.ConfigLoader
 import com.ixume.udar.testing.commands.TestCommand
+import com.ixume.udar.testing.listener.PlayerInteractListener
 import org.bukkit.Bukkit
 import org.bukkit.plugin.java.JavaPlugin
 import java.util.logging.Logger
@@ -13,10 +14,12 @@ class Udar : JavaPlugin() {
         INSTANCE = this
         LOGGER = logger
 
-        TestingConfigLoader.load()
+        ConfigLoader.load()
+        PhysicsWorldsManager.init()
+
         TestCommand.load()
 
-        PhysicsWorldsManager.init()
+        PlayerInteractListener.init()
     }
 
     override fun onDisable() {

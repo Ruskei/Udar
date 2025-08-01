@@ -14,6 +14,7 @@ class TestCommand : BukkitCommand("udar") {
         FreezeCommand.arg to FreezeCommand,
         StepCommand.arg to StepCommand,
         MarkPointCommand.arg to MarkPointCommand,
+        CompositeCommand.arg to CompositeCommand,
     )
 
     private fun sendHelp(sender: CommandSender) {

@@ -1,6 +1,7 @@
-package com.ixume.udar.body
+package com.ixume.udar.body.active
 
-import com.ixume.udar.body.ActiveBody.Companion.TIME_STEP
+import com.ixume.udar.body.Body
+import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.collisiondetection.capability.Capability
 import com.ixume.udar.collisiondetection.capability.GJKCapable
 import com.ixume.udar.collisiondetection.capability.SDFCapable
@@ -17,10 +18,7 @@ import org.bukkit.entity.EntityType
 import org.bukkit.entity.TextDisplay
 import org.bukkit.util.BoundingBox
 import org.bukkit.util.Transformation
-import org.joml.Quaterniond
-import org.joml.Quaternionf
-import org.joml.Vector3d
-import org.joml.Vector3f
+import org.joml.*
 import java.util.*
 import kotlin.math.*
 
@@ -69,7 +67,7 @@ class Cuboid(
 
     override var vertices: List<Vector3d> = calcVertices()
 
-    override val edges: List<Pair<Vector3d, Vector3d>>
+    private val edges: List<Pair<Vector3d, Vector3d>>
         get() {
             return listOf(
                 //bottom face
@@ -166,103 +164,58 @@ class Cuboid(
     }
 
     private val volume = width * height * length
+    override val mass: Double = volume * density
     override val inverseMass = 1.0 / (volume * density)
-    private var torque = Vector3d()
+    override var torque = Vector3d()
 
-    private val inertia: Vector3d = Vector3d(
-        height * height + length * length,
-        width * width + length * length,
-        width * width + height * height,
-    ).mul(density * volume / 12.0)
+    private fun calcInertia(): Vector3d {
+        val f = density * volume / 12.0
+        return Vector3d(
+            (height * height + length * length) * f,
+            (width * width + length * length) * f,
+            (width * width + height * height) * f,
+        )
+    }
 
-    override val inverseInertia: Vector3d = Vector3d(
-        1.0 / (height * height + length * length),
-        1.0 / (width * width + length * length),
-        1.0 / (width * width + height * height),
-    ).div(density * volume / 12.0)
+    override val localInertia: Vector3d = calcInertia()
+
+    private fun calcInverseInertia(): Matrix3d {
+        val f = 12.0 / (density * volume)
+        val r = Matrix3d().rotation(q)
+        return Matrix3d(r).transpose().mul(
+            Matrix3d(
+                1.0 / (height * height + length * length) * f, 0.0, 0.0,
+                0.0, 1.0 / (width * width + length * length) * f, 0.0,
+                0.0, 0.0, 1.0 / (width * width + height * height) * f,
+            )
+        ).mul(r)
+    }
+
+    override val inverseInertia: Matrix3d = calcInverseInertia()
+
+    private val rotationIntegrator = RigidbodyRotationIntegrator(this)
 
     override var prevQ = Quaterniond(q)
     override fun step() {
         prevQ = Quaterniond(q)
 
         pos.add(Vector3d(velocity).mul(TIME_STEP))
-
-        val h2 = TIME_STEP / 2.0
-
-        val (dK1Q, dK1O) = calcDerivatives(q, omega)
-
-        val k2Q = Quaterniond(q).add(Quaterniond(dK1Q).scale(h2)).normalize()
-        val k2O = Vector3d(omega).add(Vector3d(dK1O).mul(h2))
-        val (dK2Q, dK2O) = calcDerivatives(k2Q, k2O)
-
-        val k3Q = Quaterniond(q).add(Quaterniond(dK2Q).scale(h2)).normalize()
-        val k3O = Vector3d(omega).add(Vector3d(dK2O).mul(h2))
-        val (dK3Q, dK3O) = calcDerivatives(k3Q, k3O)
-
-        val k4Q = Quaterniond(q).add(Quaterniond(dK3Q).scale(TIME_STEP)).normalize()
-        val k4O = Vector3d(omega).add(Vector3d(dK3O).mul(TIME_STEP))
-        val (dK4Q, dK4O) = calcDerivatives(k4Q, k4O)
-
-        val fDO = Vector3d(dK1O)
-            .add(Vector3d(dK2O).mul(2.0))
-            .add(Vector3d(dK3O).mul(2.0))
-            .add(dK4O)
-            .mul(TIME_STEP / 6.0)
-
-        val fDQ = Quaterniond(dK1Q)
-            .add(Quaterniond(dK2Q).scale(2.0))
-            .add(Quaterniond(dK3Q).scale(2.0))
-            .add(dK4Q)
-            .mul(TIME_STEP / 6.0)
-
-        omega.add(fDO)
-
-        q.add(fDQ)
-        q.normalize()
+        rotationIntegrator.process()
 
         torque = Vector3d()
+
+        localInertia.set(calcInertia())
+        inverseInertia.set(calcInverseInertia())
 
         vertices = calcVertices()
         boundingBox = calcBoundingBox()
 
+        visualize()
+    }
+
+    override fun visualize() {
         display.transformation = createTransformation()
         display.teleport(Location(world, pos.x, pos.y, pos.z))
-
-        handleDebug()
-    }
-
-    private var previousDebugLevel = 0
-    private fun handleDebug() {
-//        if (PhysicsCommand.DEBUG_LEVEL > 0 && previousDebugLevel == 0) {
-//            debugDisplay = world.spawnEntity(display.location, EntityType.TEXT_DISPLAY) as TextDisplay
-//            debugDisplay!!.text = "V: $velocity"
-//            debugDisplay!!.billboard = Display.Billboard.CENTER
-//        } else if (PhysicsCommand.DEBUG_LEVEL == 0 && previousDebugLevel > 0) {
-//            debugDisplay?.remove()
-//            debugDisplay = null
-//        }
-//
-//        if (debugDisplay != null) {
-//            debugDisplay!!.teleport(display.location)
-//            debugDisplay!!.text = "V: $velocity"
-//        }
-//
-//        previousDebugLevel = PhysicsCommand.DEBUG_LEVEL
-    }
-
-    private fun calcDerivatives(
-        q: Quaterniond,
-        o: Vector3d
-    ): Pair<Quaterniond, Vector3d> {
-        val dO = Vector3d(
-            (inertia.y - inertia.z) / inertia.x * o.y * o.z + torque.x / inertia.x,
-            (inertia.z - inertia.x) / inertia.y * o.z * o.x + torque.y / inertia.y,
-            (inertia.x - inertia.y) / inertia.z * o.x * o.y + torque.z / inertia.z,
-        )
-
-        val dQ = Quaterniond(q).mul(Quaterniond(o.x, o.y, o.z, 0.0)).mul(0.5)
-
-        return dQ to dO
     }
 
     override fun intersect(origin: Vector3d, end: Vector3d): List<Pair<Vector3d, Vector3d>> {
@@ -324,21 +277,22 @@ class Cuboid(
         normal: Vector3d,
         impulse: Vector3d,
     ) {
-        val localNormal = normal.rotate(Quaterniond(q).conjugate()).normalize()!!
-        val localPoint = globalToLocal(point)
-
-        val j = Vector3d(normal).dot(impulse) / (inverseMass + (Vector3d(localPoint).cross(localNormal).mul(
-            inverseInertia
-        ).cross(localPoint).dot(localNormal)))
-
-        val effectiveImpulse = Vector3d(localNormal).mul(j)
-
-        val t = Vector3d(localPoint).cross(effectiveImpulse)
-
-        omega.add(Vector3d(inverseInertia).mul(t))
-
-        val linear = Vector3d(normal).mul(j * inverseMass)
-        velocity.add(linear)
+        //TODO: Adjust to local inverse inertia
+//        val localNormal = normal.rotate(Quaterniond(q).conjugate()).normalize()!!
+//        val localPoint = globalToLocal(point)
+//
+//        val j = Vector3d(normal).dot(impulse) / (inverseMass + (Vector3d(localPoint).cross(localNormal).mul(
+//            inverseInertia
+//        ).cross(localPoint).dot(localNormal)))
+//
+//        val effectiveImpulse = Vector3d(localNormal).mul(j)
+//
+//        val t = Vector3d(localPoint).cross(effectiveImpulse)
+//
+//        omega.add(Vector3d(inverseInertia).mul(t))
+//
+//        val linear = Vector3d(normal).mul(j * inverseMass)
+//        velocity.add(linear)
     }
 
     override fun capableCollision(other: Body): Capability {
@@ -484,11 +438,6 @@ class Cuboid(
 
 //    private val contactGenerator: ContactGenerator = SATContactGenerator(this)
 
-    override fun visualize() {
-//        if (PhysicsCommand.DEBUG_MESH_LEVEL > 0) {
-//            cachedMesh.visualize(world, visualizeFaces = false, visualizeEdges = true)
-//        }
-    }
 
     companion object {
         private val VALID_MATERIALS = listOf(

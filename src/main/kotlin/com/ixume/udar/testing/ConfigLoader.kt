@@ -21,7 +21,7 @@ private val gson: Gson = GsonBuilder()
     .setPrettyPrinting()
     .create()
 
-object TestingConfigLoader {
+object ConfigLoader {
     fun load() {
         val dataFolder = Udar.INSTANCE.dataFolder
         dataFolder.mkdirs()

@@ -1,7 +1,7 @@
 package com.ixume.udar.testing.commands
 
 import com.ixume.udar.collisiondetection.contactgeneration.SDFDebugDatabase
-import com.ixume.udar.testing.TestingConfigLoader
+import com.ixume.udar.testing.ConfigLoader
 import org.bukkit.command.CommandSender
 
 object ReloadCommand : Command {
@@ -23,7 +23,7 @@ object ReloadCommand : Command {
         label: String,
         args: Array<out String>?
     ): Boolean {
-        TestingConfigLoader.load()
+        ConfigLoader.load()
         TestCommand.load()
 
         SDFDebugDatabase.ls.forEach { it.kill(); it.step() }

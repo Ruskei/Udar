@@ -1,7 +1,9 @@
-package com.ixume.udar.body
+package com.ixume.udar.body.active
 
+import com.ixume.udar.body.CollidableBody
 import com.ixume.udar.collisiondetection.capability.Projectable
 import org.bukkit.util.BoundingBox
+import org.joml.Matrix3d
 import org.joml.Quaterniond
 import org.joml.Vector3d
 import kotlin.math.max
@@ -9,9 +11,10 @@ import kotlin.math.min
 
 interface ActiveBody : CollidableBody, Projectable {
     val vertices: List<Vector3d>
-    val edges: List<Pair<Vector3d, Vector3d>>
     val boundingBox: BoundingBox
 
+    val mass: Double
+    val localInertia: Vector3d
     val prevQ: Quaterniond
 
     val hasGravity: Boolean
@@ -19,14 +22,12 @@ interface ActiveBody : CollidableBody, Projectable {
     fun globalToLocal(vec: Vector3d): Vector3d
 
     fun step() {}
+    fun ensureNonAligned() {}
 
     /**
      * @return List of intersection positions and normals
      */
     fun intersect(origin: Vector3d, end: Vector3d): List<Pair<Vector3d, Vector3d>>
-
-    fun ensureNonAligned() {}
-
     fun visualize() {}
 
     fun kill()

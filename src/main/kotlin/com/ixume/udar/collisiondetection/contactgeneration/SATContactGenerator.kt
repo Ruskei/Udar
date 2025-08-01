@@ -2,7 +2,7 @@ package com.ixume.udar.collisiondetection.contactgeneration
 
 import com.ixume.udar.Udar
 import com.ixume.udar.applyIf
-import com.ixume.udar.body.ActiveBody
+import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.Collidable
 import com.ixume.udar.body.EnvironmentBody
