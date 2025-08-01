@@ -116,6 +116,10 @@ class Composite(
 
         inverseInertia.set(calcInverseInertia())
 
+        previousContacts.clear()
+        previousContacts += contacts
+        contacts.clear()
+
         vertices = calcVertices()
         boundingBox = calcBoundingBox()
     }
@@ -155,7 +159,7 @@ class Composite(
     }
 
     override val contacts: MutableList<IContact> = mutableListOf()
-    override val previousContacts: List<IContact> = mutableListOf()
+    override val previousContacts: MutableList<IContact> = mutableListOf()
 
     override val torque: Vector3d = Vector3d()
 

@@ -7,7 +7,6 @@ import com.ixume.udar.collisiondetection.capability.GJKCapable
 import com.ixume.udar.collisiondetection.capability.SDFCapable
 import com.ixume.udar.collisiondetection.contactgeneration.GJKEPAContactGenerator
 import com.ixume.udar.collisiondetection.contactgeneration.SATContactGenerator
-import com.ixume.udar.collisiondetection.contactgeneration.SDFContactGenerator
 import com.ixume.udar.physics.Contact
 import com.ixume.udar.physics.IContact
 import org.bukkit.Location
@@ -132,13 +131,12 @@ class Cuboid(
 
     override val isConvex: Boolean = true
 
-    override var contacts: MutableList<IContact> = mutableListOf()
-    override val previousContacts: List<Contact> = mutableListOf()
+    override val contacts: MutableList<IContact> = mutableListOf()
+    override val previousContacts: MutableList<IContact> = mutableListOf()
 
     private val contactGenerators = listOf(
         SATContactGenerator(this),
         GJKEPAContactGenerator(this),
-        SDFContactGenerator(this),
     )
 
     init {
@@ -203,6 +201,10 @@ class Cuboid(
     }
 
     override fun update() {
+        previousContacts.clear()
+        previousContacts += contacts
+        contacts.clear()
+
         vertices = calcVertices()
         boundingBox = calcBoundingBox()
     }

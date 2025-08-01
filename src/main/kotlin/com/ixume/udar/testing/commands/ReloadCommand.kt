@@ -1,6 +1,5 @@
 package com.ixume.udar.testing.commands
 
-import com.ixume.udar.collisiondetection.contactgeneration.SDFDebugDatabase
 import com.ixume.udar.testing.ConfigLoader
 import org.bukkit.command.CommandSender
 
@@ -25,8 +24,6 @@ object ReloadCommand : Command {
     ): Boolean {
         ConfigLoader.load()
         TestCommand.load()
-
-        SDFDebugDatabase.ls.forEach { it.kill(); it.step() }
 
         sender.sendMessage("Reloaded!")
 

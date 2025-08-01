@@ -13,6 +13,24 @@ object ContactSolver {
     private const val FRICTION_ITERATIONS = 4
     private const val SIGNIFICANT_LAMBDA = 1e-6
 
+    private val vA = Vector3d()
+    private val wA = Vector3d()
+    private val vB = Vector3d()
+    private val wB = Vector3d()
+
+    private val iMA = Vector3d()
+    private val iIA = Matrix3d()
+    private val iMB = Vector3d()
+    private val iIB = Matrix3d()
+
+    private val n = Vector3d()
+    private val nn = Vector3d()
+
+    private val j0 = Vector3d()
+    private val j1 = Vector3d()
+    private val j2 = Vector3d()
+    private val j3 = Vector3d()
+
     fun solve(contacts: List<IContact>) {
         var itr = 1
         while (itr <= NORMAL_ITERATIONS) {
@@ -22,31 +40,27 @@ object ContactSolver {
                 val second = contact.second
 
                 val point = contact.result.point
-                val n = contact.result.norm
-
+                n.set(contact.result.norm)
 //                                //V = [ vA, wA, vB, wB ]
 //                                // vA and vB are given, wA and wB are js rotated w
-                val vA = first.velocity
-                val wA = Vector3d(first.omega).rotate(first.q)
-                val vB = second.velocity
-                val wB = Vector3d(second.omega).rotate(second.q)
+                vA.set(first.velocity)
+                wA.set(first.omega).rotate(first.q)
+                vB.set(second.velocity)
+                wB.set(second.omega).rotate(second.q)
 //
 //                                //M^(-1) = [ iMA, iIA, iMB, iAB ]
-                val iMA = Vector3d(first.inverseMass)
-                val iIA = first.inverseInertia
-                val iMB = Vector3d(second.inverseMass)
-                val iIB = second.inverseInertia
-
-                val rA = Vector3d(point).sub(first.pos)
-                val rB = Vector3d(point).sub(second.pos)
+                iMA.set(first.inverseMass)
+                iIA.set(first.inverseInertia)
+                iMB.set(second.inverseMass)
+                iIB.set(second.inverseInertia)
 
                 //lambda = -(JV - b) / (JM^(-1)J^(T))
 
                 //J = [ -n, (-rA x n), n, (rB x n) ]
                 // n is given, rA is point - center
-                val nn = Vector3d(n).mul(-1.0)
-                val j1 = Vector3d(rA).negate().cross(n)
-                val j3 = Vector3d(rB).cross(n)
+                nn.set(n).negate()
+                j1.set(first.pos).sub(point).cross(n)
+                j3.set(point).sub(second.pos).cross(n)
 
                 val (dVA, dOA, dVB, dOB, significant) = deltaV(
                     contact = contact,
@@ -95,29 +109,25 @@ object ContactSolver {
                 val second = contact.second
 
                 val point = contact.result.point
-                val n = contact.result.norm
-
+                n.set(contact.result.norm)
 //                                //V = [ vA, wA, vB, wB ]
 //                                // vA and vB are given, wA and wB are js rotated w
-                val vA = first.velocity
-                val wA = Vector3d(first.omega).rotate(first.q)
-                val vB = second.velocity
-                val wB = Vector3d(second.omega).rotate(second.q)
+                vA.set(first.velocity)
+                wA.set(first.omega).rotate(first.q)
+                vB.set(second.velocity)
+                wB.set(second.omega).rotate(second.q)
 //
 //                                //M^(-1) = [ iMA, iIA, iMB, iAB ]
-                val iMA = Vector3d(first.inverseMass)
-                val iIA = first.inverseInertia
-                val iMB = Vector3d(second.inverseMass)
-                val iIB = second.inverseInertia
-
-                val rA = Vector3d(point).sub(first.pos)
-                val rB = Vector3d(point).sub(second.pos)
+                iMA.set(first.inverseMass)
+                iIA.set(first.inverseInertia)
+                iMB.set(second.inverseMass)
+                iIB.set(second.inverseInertia)
 
                 run t1@{
-                    val j0 = Vector3d(contact.t1).negate()
-                    val j1 = Vector3d(rA).negate().cross(contact.t1)
-                    val j2 = Vector3d(contact.t1)
-                    val j3 = Vector3d(rB).cross(contact.t1)
+                    j0.set(contact.t1).negate()
+                    j1.set(first.pos).sub(point).cross(contact.t1)
+                    j2.set(contact.t1)
+                    j3.set(point).sub(second.pos).cross(contact.t1)
 
                     val (dVA, dOA, dVB, dOB, significant) = deltaV(
                         contact = contact,
@@ -136,10 +146,10 @@ object ContactSolver {
                 }
 
                 run t2@{
-                    val j0 = Vector3d(contact.t2).negate()
-                    val j1 = Vector3d(rA).negate().cross(contact.t2)
-                    val j2 = Vector3d(contact.t2)
-                    val j3 = Vector3d(rB).cross(contact.t2)
+                    j0.set(contact.t2).negate()
+                    j1.set(first.pos).sub(point).cross(contact.t2)
+                    j2.set(contact.t2)
+                    j3.set(point).sub(second.pos).cross(contact.t2)
 
                     val (dVA, dOA, dVB, dOB, significant) = deltaV(
                         contact = contact,
@@ -176,6 +186,17 @@ object ContactSolver {
         NORMAL, T1, T2
     }
 
+    private val tempIMA = Vector3d()
+    private val tempIMB = Vector3d()
+
+    private val j1Temp = Vector3d()
+    private val j2Temp = Vector3d()
+    private val j3Temp = Vector3d()
+    private val j0Temp = Vector3d()
+
+    private val firstQ = Quaterniond()
+    private val secondQ = Quaterniond()
+
     private fun deltaV(
         contact: IContact, type: DeltaType,
         j0: Vector3d, j1: Vector3d, j2: Vector3d, j3: Vector3d,
@@ -189,9 +210,14 @@ object ContactSolver {
 
         val bias = if (type == DeltaType.NORMAL) Udar.CONFIG.collision.bias / TIME_STEP * (abs(depth) - slop).coerceAtLeast(0.0) else 0.0
 
+        j0Temp.set(j0)
+        j1Temp.set(j1)
+        j2Temp.set(j2)
+        j3Temp.set(j3)
+
         val den =
-            Vector3d(j0).mul(j0).dot(iMA) + Vector3d(j1).mul(iIA).dot(j1) + Vector3d(j2).mul(j2)
-                .dot(iMB) + Vector3d(j3).mul(iIB).dot(j3)
+            j0Temp.mul(j0).dot(iMA) + j1Temp.mul(iIA).dot(j1) + j2Temp.mul(j2)
+                .dot(iMB) + j3Temp.mul(iIB).dot(j3)
 
         var lambda = (j0.dot(vA) + j1.dot(wA) + j2.dot(vB) + j3.dot(wB) + bias) / den
 
@@ -218,10 +244,10 @@ object ContactSolver {
         }
 
         //delta-V = M^(-1)J^T * lambda
-        val dVA = Vector3d(iMA).mul(j0).mul(lambda)
-        val dOA = Vector3d(j1).mul(iIA).mul(lambda).rotate(Quaterniond(contact.first.q).conjugate())
-        val dVB = Vector3d(iMB).mul(j2).mul(lambda)
-        val dOB = Vector3d(j3).mul(iIB).mul(lambda).rotate(Quaterniond(contact.second.q).conjugate())
+        val dVA = tempIMA.set(iMA).mul(j0).mul(lambda)
+        val dOA = j1Temp.set(j1).mul(iIA).mul(lambda).rotate(firstQ.set(contact.first.q).conjugate())
+        val dVB = tempIMB.set(iMB).mul(j2).mul(lambda)
+        val dOB = j3Temp.set(j3).mul(iIB).mul(lambda).rotate(secondQ.set(contact.second.q).conjugate())
 
         return DeltaV(
             dVA,

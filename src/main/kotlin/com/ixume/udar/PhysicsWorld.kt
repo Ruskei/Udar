@@ -3,7 +3,6 @@ package com.ixume.udar
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.body.EnvironmentBody
-import com.ixume.udar.collisiondetection.contactgeneration.SDFDebugDatabase
 import com.ixume.udar.collisiondetection.mesh.Mesh
 import com.ixume.udar.physics.ContactSolver
 import com.ixume.udar.physics.IContact
@@ -17,8 +16,8 @@ class PhysicsWorld(
     val world: World
 ) {
     val activeBodies: MutableList<ActiveBody> = mutableListOf()
-    var contacts: MutableList<IContact> = mutableListOf()
-    var meshes: MutableList<Mesh> = mutableListOf()
+    val contacts: MutableList<IContact> = mutableListOf()
+    val meshes: MutableList<Mesh> = mutableListOf()
 
     private var time = 0
     var frozen = false
@@ -38,8 +37,6 @@ class PhysicsWorld(
             if (doTick) {
                 contacts.clear()
                 meshes.clear()
-                SDFDebugDatabase.ls.forEach { it.kill() }
-                SDFDebugDatabase.ls.clear()
 
                 for (i in 0..<activeBodies.size) {
                     val first = activeBodies[i]
@@ -135,12 +132,6 @@ class PhysicsWorld(
                 if (untilCollision && contacts.isNotEmpty()) {
                     untilCollision = false
                     frozen = true
-                }
-
-                if (Udar.CONFIG.debug.SDFContact > 0) {
-                    for (d in SDFDebugDatabase.ls) {
-                        d.step()
-                    }
                 }
             }
 

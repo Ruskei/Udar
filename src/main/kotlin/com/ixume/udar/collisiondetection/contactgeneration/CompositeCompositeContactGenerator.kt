@@ -22,6 +22,7 @@ class CompositeCompositeContactGenerator(
             for (otherPart in other.parts) {
                 val can = myPart.capableCollision(otherPart)
                 if (!can.capable) continue
+                if (!myPart.boundingBox.overlaps(otherPart.boundingBox)) continue
 
                 val result = myPart.collides(otherPart)
 
