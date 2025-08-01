@@ -7,15 +7,11 @@ import com.ixume.udar.collisiondetection.capability.GJKCapable
 import com.ixume.udar.physics.CollisionResult
 import com.ixume.udar.physics.Contact
 import org.joml.Vector3d
-import kotlin.math.abs
-import kotlin.math.absoluteValue
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.sign
+import kotlin.math.*
 
-class GJKEPAContactGenerator <T> (
+class GJKEPAContactGenerator<T>(
     val activeBody: T
-) : Collidable where T : Body, T: GJKCapable {
+) : Collidable where T : Body, T : GJKCapable {
     override fun capableCollision(other: Body): Capability {
         return Capability(other.isConvex && other is GJKCapable, 0)
     }
@@ -146,15 +142,18 @@ class GJKEPAContactGenerator <T> (
                                 )
                             }
 
-                            return listOf(Contact(other, activeBody, CollisionResult(
-                                myInt,
-                                norm,
-                                dis2,
+                            return listOf(
+                                Contact(
+                                    activeBody, other, CollisionResult(
+                                        myInt,
+                                        Vector3d(norm).negate(),
+                                        dis2,
 //                                shape,
 //                                closestFace,
 //                                originals,
+                                    )
+                                )
                             )
-                            ))
                         } else {
                             addPoint(shape, sup)
                         }
@@ -201,14 +200,18 @@ class GJKEPAContactGenerator <T> (
                         if (dNorm == Vector3d() || !dNorm.isFinite) return emptyList()
                         val (closestMine, _) = originals[vertexClosest!!]!!
 
-                        return listOf(Contact(other, activeBody, CollisionResult(
-                            closestMine,
-                            dNorm,
-                            dClosest,
+                        return listOf(
+                            Contact(
+                                activeBody, other, CollisionResult(
+                                    closestMine,
+                                    Vector3d(dNorm).negate(),
+                                    dClosest,
 //                            shape,
 //                            Triple(vertexClosest, vertexClosest, vertexClosest),
 //                            originals,
-                        )))
+                                )
+                            )
+                        )
                     }
                 }
 

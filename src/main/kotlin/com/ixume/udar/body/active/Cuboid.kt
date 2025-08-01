@@ -106,17 +106,9 @@ class Cuboid(
             zMin = min(zMin, vertex.z)
             zMax = max(zMax, vertex.z)
         }
-//
-//            xMin += (velocity.x * TIME_STEP).coerceAtMost(0.0)
-//            xMax += (velocity.x * TIME_STEP).coerceAtLeast(0.0)
-//            yMin += (velocity.y * TIME_STEP).coerceAtMost(0.0)
-//            yMax += (velocity.y * TIME_STEP).coerceAtLeast(0.0)
-//            zMin += (velocity.z * TIME_STEP).coerceAtMost(0.0)
-//            zMax += (velocity.z * TIME_STEP).coerceAtLeast(0.0)
 
         return BoundingBox(xMin, yMin, zMin, xMax, yMax, zMax)
     }
-
 
     override var boundingBox: BoundingBox = calcBoundingBox()
 
@@ -181,15 +173,12 @@ class Cuboid(
     val localInverseInertia: Vector3d = Vector3d(1.0 / localInertia.x, 1.0 / localInertia.y, 1.0 / localInertia.z)
 
     private fun calcInverseInertia(): Matrix3d {
-        val f = 12.0 / (density * volume)
-        val r = Matrix3d().rotation(q)
-        return Matrix3d(r).transpose().mul(
-            Matrix3d(
-                1.0 / (height * height + length * length) * f, 0.0, 0.0,
-                0.0, 1.0 / (width * width + length * length) * f, 0.0,
-                0.0, 0.0, 1.0 / (width * width + height * height) * f,
-            )
-        ).mul(r)
+        val rm = Matrix3d().rotation(q)
+        return Matrix3d(rm).transpose().mul(Matrix3d(
+            1.0 / localInertia.x, 0.0, 0.0,
+            0.0, 1.0 / localInertia.y, 0.0,
+            0.0, 0.0, 1.0 / localInertia.z,
+        )).mul(rm)
     }
 
     override val inverseInertia: Matrix3d = calcInverseInertia()
@@ -205,14 +194,17 @@ class Cuboid(
 
         torque = Vector3d()
 
+        update()
+        visualize()
+
         localInertia.set(calcInertia())
         localInverseInertia.set(1.0 / localInertia.x, 1.0 / localInertia.y, 1.0 / localInertia.z)
         inverseInertia.set(calcInverseInertia())
+    }
 
+    override fun update() {
         vertices = calcVertices()
         boundingBox = calcBoundingBox()
-
-        visualize()
     }
 
     override fun visualize() {

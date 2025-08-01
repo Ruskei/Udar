@@ -167,9 +167,6 @@ class PhysicsWorld(
                             ),
                             1, Particle.DustOptions(Color.RED, 0.3f)
                         )
-
-                        world.debugConnect(point, contact.first.pos, Particle.DustOptions(Color.BLACK, 0.2f))
-                        world.debugConnect(point, contact.second.pos, Particle.DustOptions(Color.WHITE, 0.2f))
                     }
                 }
             }

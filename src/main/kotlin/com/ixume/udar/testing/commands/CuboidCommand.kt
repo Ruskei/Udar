@@ -20,163 +20,22 @@ object CuboidCommand : com.ixume.udar.testing.commands.Command {
     ): Boolean {
         if (sender !is Player) return true
 
-        var v0 = Vector3d(0.0)
-        var dims = Vector3d(0.99)
-        var l = Vector3d(0.0)
-        var rot0 = Vector3d(0.0)
-
-        var density = 1.0
-        var hasGravity = true
-        var SAT = false
-        var trueOmega = false
-
-        var i = 0
-        while (i < args.size) {
-            val arg = args[i]
-
-            if (arg == "--velocity" || arg == "-v") {
-                val buf = mutableListOf<Double>()
-                i++
-                while (i < args.size) {
-                    val arg2 = args[i]
-                    val d = arg2.toDoubleOrNull()
-                    if (d == null) {
-                        i--;
-                        break
-                    }
-
-                    buf += d
-
-                    if (buf.size == 3) {
-                        v0 = Vector3d(buf[0], buf[1], buf[2])
-                        break
-                    }
-
-                    i++
-                }
-            }
-
-            if (arg == "--dims" || arg == "-d") {
-                val buf = mutableListOf<Double>()
-                i++
-                while (i < args.size) {
-                    val arg2 = args[i]
-                    val d = arg2.toDoubleOrNull()
-                    if (d == null) {
-                        i--;
-                        break
-                    }
-
-                    buf += d
-
-                    if (buf.size == 3) {
-                        dims = Vector3d(buf[0], buf[1], buf[2])
-                        break
-                    }
-
-                    i++
-                }
-            }
-
-            if (arg == "--omega" || arg == "-o") {
-                val buf = mutableListOf<Double>()
-                i++
-                while (i < args.size) {
-                    val arg2 = args[i]
-                    val d = arg2.toDoubleOrNull()
-                    if (d == null) {
-                        i--;
-                        break
-                    }
-
-                    buf += d
-
-                    if (buf.size == 3) {
-                        l = Vector3d(buf[0], buf[1], buf[2])
-                        break
-                    }
-
-                    i++
-                }
-            }
-
-            if (arg == "--rot" || arg == "-r") {
-                val buf = mutableListOf<Double>()
-                i++
-                while (i < args.size) {
-                    val arg2 = args[i]
-                    val d = arg2.toDoubleOrNull()
-                    if (d == null) {
-                        i--;
-                        break
-                    }
-
-                    buf += d
-
-                    if (buf.size == 3) {
-                        rot0 = Vector3d(buf[0], buf[1], buf[2])
-                        break
-                    }
-
-                    i++
-                }
-            }
-
-            if (arg == "--density") {
-                i++
-                val arg2 = args[i]
-                val d = arg2.toDoubleOrNull()
-                if (d == null) {
-                    i--
-                } else {
-                    density = d
-                }
-            }
-
-            if (arg == "--gravity" || arg == "-g") {
-                hasGravity = true
-            }
-
-            if (arg == "--no-gravity" || arg == "-ng") {
-                hasGravity = false
-            }
-
-            if (arg == "--sat") {
-                SAT = true
-            }
-
-            if (arg == "--true-omega" || arg == "-to") {
-                trueOmega = true
-            }
-
-            i++
-        }
+        val opts = BodyOptions.fromArgs(args)
 
         val origin = sender.location.toVector().toVector3d()
-        val q = Quaterniond().rotateXYZ(rot0.x, rot0.y, rot0.z)
-        val o = if (trueOmega) l.rotate(Quaterniond(q).conjugate()) else l
-        val rb = if (SAT) Cuboid(
+        val q = Quaterniond().rotateXYZ(opts.rot0.x, opts.rot0.y, opts.rot0.z)
+        val o = if (opts.trueOmega) opts.l.rotate(Quaterniond(q).conjugate()) else opts.l
+        val rb = Cuboid(
             world = sender.world,
             pos = Vector3d(origin),
-            velocity = Vector3d(),
-            width = dims.x,
-            height = dims.y,
-            length = dims.z,
-            q = Quaterniond(),
-            omega = Vector3d(),
-            density = density,
-            hasGravity = hasGravity,
-        ) else Cuboid(
-            world = sender.world,
-            pos = Vector3d(origin),
-            velocity = Vector3d(v0),
-            width = dims.x,
-            height = dims.y,
-            length = dims.z,
+            velocity = Vector3d(opts.v0),
+            width = opts.dims.x,
+            height = opts.dims.y,
+            length = opts.dims.z,
             q = q,
             omega = o,
-            density = density,
-            hasGravity = hasGravity,
+            density = opts.density,
+            hasGravity = opts.hasGravity,
         )
 
         sender.world.physicsWorld?.activeBodies += rb

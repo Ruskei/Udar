@@ -126,6 +126,8 @@ hs_err_pid*
 # Note that you may need to exclude by hand other folders
 # named build if necessary (e.g., in src/)
 **/build/
+build/*
+build
 
 # Avoid ignoring Gradle wrapper jar file (.jar files are usually ignored)
 !gradle/wrapper/gradle-wrapper.jar

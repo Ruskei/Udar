@@ -16,7 +16,11 @@ class EnvironmentBody(
     override val omega: Vector3d = Vector3d()
     override val torque: Vector3d = Vector3d()
     override val inverseMass: Double = 0.0
-    override val inverseInertia: Matrix3d = Matrix3d()
+    override val inverseInertia: Matrix3d = Matrix3d(
+        0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0,
+    )
 
     override val isConvex: Boolean = false
 }

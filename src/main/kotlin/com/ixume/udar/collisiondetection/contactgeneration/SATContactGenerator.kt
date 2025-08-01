@@ -27,7 +27,6 @@ import kotlin.collections.plusAssign
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.max
-import kotlin.math.min
 
 class SATContactGenerator(
     val activeBody: ActiveBody
@@ -86,11 +85,11 @@ class SATContactGenerator(
         require(capableCollision(other).capable)
 
         val mesh = getMesh()
-        mesh.visualize(
-            world = activeBody.world,
-            visualizeFaces = false,
-            visualizeEdges = true,
-        )
+//        mesh.visualize(
+//            world = activeBody.world,
+//            visualizeFaces = false,
+//            visualizeEdges = true,
+//        )
 //        if (PhysicsCommand.DEBUG_SAT_LEVEL > 0) println("COLLIDES MESH!")
 
         val collisions = mutableListOf<CollisionResult>()
@@ -196,7 +195,7 @@ class SATContactGenerator(
                             1, Particle.DustOptions(Color.BLACK, 0.4f)
                         )
 
-                        continue
+//                        continue
                     }
 
                     if (p.depth > prevMaxDepth) {
@@ -214,7 +213,7 @@ class SATContactGenerator(
             if (r.depth > maxDepth) {
 //                println("OVERSHOT, ${r.depth / maxDepth}x MAX DEPTH with ${r.depth}")
 //                println("r: $r")
-                continue
+//                continue
             }
 
             if (r.depth > prevMaxDepth) {

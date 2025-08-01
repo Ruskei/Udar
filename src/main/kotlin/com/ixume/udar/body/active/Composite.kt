@@ -3,8 +3,9 @@ package com.ixume.udar.body.active
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.collisiondetection.capability.Capability
-import com.ixume.udar.collisiondetection.contactgeneration.SATContactGenerator
+import com.ixume.udar.collisiondetection.contactgeneration.CompositeCompositeContactGenerator
 import com.ixume.udar.jacobiEigenDecomposition
+import com.ixume.udar.physics.Contact
 import com.ixume.udar.physics.IContact
 import org.bukkit.World
 import org.bukkit.util.BoundingBox
@@ -103,9 +104,13 @@ class Composite(
 
         for (part in parts) {
             val pose = relativePoses[part.id]!!
-            part.pos.set(Vector3d(pos).add(Vector3d(pose.pos).rotate(q)))
+            val np = Vector3d(pos).add(Vector3d(pose.pos).rotate(q))
+            val v = Vector3d(np).sub(part.pos).div(TIME_STEP)
+            part.pos.set(np)
+            part.velocity.set(v)
             part.q.set(Quaterniond(q).mul(pose.rot))
 
+            part.update()
             part.visualize()
         }
 
@@ -127,7 +132,8 @@ class Composite(
     }
 
     override fun applyImpulse(point: Vector3d, normal: Vector3d, impulse: Vector3d) {
-        val localNormal = Vector3d(normal).rotate(Quaterniond(q).conjugate()).normalize()!!.mul(inertialPrincipleRotation)
+        val localNormal =
+            Vector3d(normal).rotate(Quaterniond(q).conjugate()).normalize()!!.mul(inertialPrincipleRotation)
         val localPoint = globalToLocal(point).mul(inertialPrincipleRotation)
 
         val angularMass = Vector3d(localPoint)
@@ -200,7 +206,8 @@ class Composite(
     }
 
     private fun calcInverseInertia(): Matrix3d {
-        return Matrix3d(localInverseInertia).rotate(q)
+        val rm = Matrix3d().rotation(q)
+        return Matrix3d(rm).transpose().mul(Matrix3d(localInverseInertia)).mul(rm)
     }
 
     override val mass: Double = totalMass()
@@ -221,7 +228,13 @@ class Composite(
 
     override val isConvex: Boolean = false
 
+    private val compositeContactGenerator = CompositeCompositeContactGenerator(this)
+
     override fun capableCollision(other: Body): Capability {
+        if (other is Composite) {
+            return Capability(true, 0)
+        }
+
         var highestPriority: Int? = null
         for (part in parts) {
             val (capable, priority) = part.capableCollision(other)
@@ -240,7 +253,27 @@ class Composite(
     }
 
     override fun collides(other: Body): List<IContact> {
-        val contacts = parts.flatMap { it.collides(other) }
+        if (other is Composite) {
+            return compositeContactGenerator.collides(other)
+                .map {
+                    Contact(
+                        first = this,
+                        second = other,
+                        result = it.result,
+                    )
+                }
+        }
+
+        val contacts = parts
+            .flatMap { it.collides(other) }
+            .map {
+                Contact(
+                    first = this,
+                    second = other,
+                    result = it.result,
+                )
+            }
+
         return contacts
     }
 }

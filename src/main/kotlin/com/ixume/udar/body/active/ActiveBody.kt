@@ -22,6 +22,7 @@ interface ActiveBody : CollidableBody, Projectable {
     fun globalToLocal(vec: Vector3d): Vector3d
 
     fun step() {}
+    fun update() {}
     fun ensureNonAligned() {}
 
     /**
