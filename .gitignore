@@ -129,3 +129,5 @@ hs_err_pid*
 
 # Cache of project
 .gradletasknamecache
+.gradle
+.gradle

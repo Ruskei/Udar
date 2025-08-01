@@ -15,7 +15,7 @@ import org.bukkit.event.player.PlayerInteractEvent
 import org.joml.Vector3d
 
 object PlayerInteractListener : Listener {
-    private const val PUSH_STRENGTH = 2.5
+    private const val PUSH_STRENGTH = 0.5
     fun init() {
         Bukkit.getPluginManager().registerEvents(this, Udar.INSTANCE)
     }
@@ -60,7 +60,7 @@ object PlayerInteractListener : Listener {
 
         val type = event.player.inventory.itemInMainHand.type
         if (type == Material.END_ROD) {
-            body.applyImpulse(intersection, normal, Vector3d(dir).normalize(PUSH_STRENGTH))
+            body.applyImpulse(intersection, normal, Vector3d(dir).normalize(PUSH_STRENGTH * event.player.inventory.itemInMainHand.amount))
         }
     }
 }

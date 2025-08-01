@@ -3,6 +3,7 @@ package com.ixume.udar.body.active
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.collisiondetection.capability.Capability
+import com.ixume.udar.collisiondetection.contactgeneration.SATContactGenerator
 import com.ixume.udar.jacobiEigenDecomposition
 import com.ixume.udar.physics.IContact
 import org.bukkit.World
@@ -125,7 +126,27 @@ class Composite(
         parts.forEach { it.kill() }
     }
 
-    override fun applyImpulse(point: Vector3d, normal: Vector3d, impulse: Vector3d) {}
+    override fun applyImpulse(point: Vector3d, normal: Vector3d, impulse: Vector3d) {
+        val localNormal = Vector3d(normal).rotate(Quaterniond(q).conjugate()).normalize()!!.mul(inertialPrincipleRotation)
+        val localPoint = globalToLocal(point).mul(inertialPrincipleRotation)
+
+        val angularMass = Vector3d(localPoint)
+            .cross(localNormal)
+            .mul(localInverseInertia)
+            .cross(localPoint)
+            .dot(localNormal)
+
+        val j = Vector3d(normal).dot(impulse) / (inverseMass + angularMass)
+
+        val effectiveImpulse = Vector3d(localNormal).mul(j)
+
+        val t = Vector3d(localPoint).cross(effectiveImpulse)
+
+        omega.add(Vector3d(1.0 / localInertia.x, 1.0 / localInertia.y, 1.0 / localInertia.z).mul(t))
+
+        val linear = Vector3d(normal).mul(j * inverseMass)
+        velocity.add(linear)
+    }
 
     override val contacts: MutableList<IContact> = mutableListOf()
     override val previousContacts: List<IContact> = mutableListOf()
@@ -138,7 +159,8 @@ class Composite(
 
     data class InertialData(
         val localInertia: Vector3d,
-        val inverseInertia: Matrix3d
+        val inverseInertia: Matrix3d,
+        val principleRotation: Matrix3d
     )
 
     private fun calcInitialInertialData(): InertialData {
@@ -171,10 +193,10 @@ class Composite(
             matrix.add(gI).add(addon)
         }
 
-        val (ev, _) = jacobiEigenDecomposition(Matrix3d(matrix))
-        val iI = (matrix).invert()
+        val (ev, eV) = jacobiEigenDecomposition(Matrix3d(matrix))
+        val iI = matrix.invert()
 
-        return InertialData(ev, iI)
+        return InertialData(ev, iI, eV)
     }
 
     private fun calcInverseInertia(): Matrix3d {
@@ -185,12 +207,14 @@ class Composite(
     override val inverseMass: Double = 1.0 / mass
     override val localInertia: Vector3d
     override val inverseInertia: Matrix3d
-    private val localInverseInertia: Matrix3d
+    val inertialPrincipleRotation: Matrix3d
+    val localInverseInertia: Matrix3d
 
     init {
-        val (lI, iI) = calcInitialInertialData()
+        val (lI, iI, eV) = calcInitialInertialData()
         localInertia = lI
         localInverseInertia = iI
+        inertialPrincipleRotation = eV.transpose()
 
         inverseInertia = calcInverseInertia()
     }
@@ -198,10 +222,25 @@ class Composite(
     override val isConvex: Boolean = false
 
     override fun capableCollision(other: Body): Capability {
-        return Capability()
+        var highestPriority: Int? = null
+        for (part in parts) {
+            val (capable, priority) = part.capableCollision(other)
+            if (!capable) return Capability(false, 0)
+
+            highestPriority = if (highestPriority == null) {
+                priority
+            } else {
+                max(highestPriority, priority)
+            }
+        }
+
+        if (highestPriority == null) return Capability(false, 0)
+
+        return Capability(true, highestPriority)
     }
 
     override fun collides(other: Body): List<IContact> {
-        return emptyList()
+        val contacts = parts.flatMap { it.collides(other) }
+        return contacts
     }
 }

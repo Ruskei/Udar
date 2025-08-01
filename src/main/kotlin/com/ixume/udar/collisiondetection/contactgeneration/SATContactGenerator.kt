@@ -33,7 +33,7 @@ class SATContactGenerator(
     val activeBody: ActiveBody
 ) : Collidable {
     override fun capableCollision(other: Body): Capability {
-        return Capability(other is EnvironmentBody, 0)
+        return Capability(activeBody.isConvex && other is EnvironmentBody, 0)
     }
 
     private var cachedMesh: Mesh = Mesh.Companion.mesh(world = activeBody.world, boundingBox = activeBody.boundingBox)
@@ -86,6 +86,11 @@ class SATContactGenerator(
         require(capableCollision(other).capable)
 
         val mesh = getMesh()
+        mesh.visualize(
+            world = activeBody.world,
+            visualizeFaces = false,
+            visualizeEdges = true,
+        )
 //        if (PhysicsCommand.DEBUG_SAT_LEVEL > 0) println("COLLIDES MESH!")
 
         val collisions = mutableListOf<CollisionResult>()

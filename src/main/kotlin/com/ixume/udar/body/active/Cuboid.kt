@@ -178,6 +178,7 @@ class Cuboid(
     }
 
     override val localInertia: Vector3d = calcInertia()
+    val localInverseInertia: Vector3d = Vector3d(1.0 / localInertia.x, 1.0 / localInertia.y, 1.0 / localInertia.z)
 
     private fun calcInverseInertia(): Matrix3d {
         val f = 12.0 / (density * volume)
@@ -205,6 +206,7 @@ class Cuboid(
         torque = Vector3d()
 
         localInertia.set(calcInertia())
+        localInverseInertia.set(1.0 / localInertia.x, 1.0 / localInertia.y, 1.0 / localInertia.z)
         inverseInertia.set(calcInverseInertia())
 
         vertices = calcVertices()
@@ -277,22 +279,25 @@ class Cuboid(
         normal: Vector3d,
         impulse: Vector3d,
     ) {
-        //TODO: Adjust to local inverse inertia
-//        val localNormal = normal.rotate(Quaterniond(q).conjugate()).normalize()!!
-//        val localPoint = globalToLocal(point)
-//
-//        val j = Vector3d(normal).dot(impulse) / (inverseMass + (Vector3d(localPoint).cross(localNormal).mul(
-//            inverseInertia
-//        ).cross(localPoint).dot(localNormal)))
-//
-//        val effectiveImpulse = Vector3d(localNormal).mul(j)
-//
-//        val t = Vector3d(localPoint).cross(effectiveImpulse)
-//
-//        omega.add(Vector3d(inverseInertia).mul(t))
-//
-//        val linear = Vector3d(normal).mul(j * inverseMass)
-//        velocity.add(linear)
+        val localNormal = Vector3d(normal).rotate(Quaterniond(q).conjugate()).normalize()!!
+        val localPoint = globalToLocal(point)
+
+        val angularMass = Vector3d(localPoint)
+            .cross(localNormal)
+            .mul(localInverseInertia)
+            .cross(localPoint)
+            .dot(localNormal)
+
+        val j = Vector3d(normal).dot(impulse) / (inverseMass + angularMass)
+
+        val effectiveImpulse = Vector3d(localNormal).mul(j)
+
+        val t = Vector3d(localPoint).cross(effectiveImpulse)
+
+        omega.add(Vector3d(localInverseInertia).mul(t))
+
+        val linear = Vector3d(normal).mul(j * inverseMass)
+        velocity.add(linear)
     }
 
     override fun capableCollision(other: Body): Capability {
