@@ -5,8 +5,12 @@ import com.google.gson.GsonBuilder
 import com.google.gson.InstanceCreator
 import com.google.gson.TypeAdapter
 import com.google.gson.stream.JsonReader
+import com.google.gson.stream.JsonToken
 import com.google.gson.stream.JsonWriter
 import com.ixume.udar.Udar
+import org.bukkit.Bukkit
+import org.bukkit.entity.Player
+import org.bukkit.scheduler.BukkitTask
 import org.joml.Vector3d
 import java.io.File
 import java.io.FileReader
@@ -18,6 +22,7 @@ private val gson: Gson = GsonBuilder()
     .registerTypeAdapter(Config.SDFConfig::class.java, Config.SDFConfig)
     .registerTypeAdapter(Config.SATConfig::class.java, Config.SATConfig)
     .registerTypeAdapter(Config.DebugConfig::class.java, Config.DebugConfig)
+    .registerTypeAdapter(Config.DebugConfig.Tests::class.java, TestsAdapter)
     .setPrettyPrinting()
     .create()
 
@@ -71,7 +76,7 @@ data class Config(
     val sdf: SDFConfig = SDFConfig(),
     val debug: DebugConfig = DebugConfig(),
 ) {
-    companion object : com.google.gson.InstanceCreator<Config> {
+    companion object : InstanceCreator<Config> {
         override fun createInstance(type: Type?): Config? {
             return Config()
         }
@@ -85,7 +90,9 @@ data class Config(
         val lambdaCarryover: Double = 0.3,
     ) {
         companion object : InstanceCreator<CollisionConfig> {
-            override fun createInstance(type: Type?): CollisionConfig? { return CollisionConfig() }
+            override fun createInstance(type: Type?): CollisionConfig? {
+                return CollisionConfig()
+            }
         }
     }
 
@@ -130,10 +137,42 @@ data class Config(
         val SDFMy: Boolean = false,
         val SDFOther: Boolean = false,
         val SDFNode: Int = -1,
+        val tests: Tests = Tests(mapOf()),
     ) {
         companion object : InstanceCreator<DebugConfig> {
             override fun createInstance(type: Type?): DebugConfig? {
                 return DebugConfig()
+            }
+        }
+
+        data class Tests(
+            val tests: Map<String, Test>,
+        ) {
+            data class Test(val timedCommands: Map<Int, List<String>>) {
+                private var task: BukkitTask? = null
+
+                fun run(player: Player) {
+                    task?.cancel()
+                    var t = 0
+
+                    if (timedCommands.isEmpty()) return
+
+                    task = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable {
+                        if (t > timedCommands.maxOf { it.key }) {
+                            task!!.cancel()
+                            return@Runnable
+                        }
+
+                        timedCommands[t]?.forEach { Bukkit.dispatchCommand(player, it) }
+
+                        ++t
+                    }, 1, 1)
+                }
+
+                fun kill() {
+                    task?.cancel()
+                    task = null
+                }
             }
         }
     }
@@ -165,5 +204,90 @@ object Vector3dTypeAdapter : TypeAdapter<Vector3d>() {
         `in`.endArray()
 
         return Vector3d(x, y, z)
+    }
+}
+
+object TestsAdapter : TypeAdapter<Config.DebugConfig.Tests>() {
+    override fun write(out: JsonWriter, value: Config.DebugConfig.Tests?) {
+        if (value == null) {
+            out.nullValue()
+            return
+        }
+
+        out.beginObject()
+
+        for ((name, test) in value.tests) {
+            out.name(name)
+            out.beginObject()
+            out.name("commands")
+            out.beginObject()
+
+            for ((time, commands) in test.timedCommands) {
+                out.name(time.toString())
+                if (commands.size == 1) {
+                    out.value(commands[0])
+                } else {
+                    out.beginArray()
+                    for (command in commands) {
+                        out.value(command)
+                    }
+                    out.endArray()
+                }
+            }
+
+            out.endObject()
+            out.endObject()
+        }
+
+        out.endObject()
+    }
+
+    override fun read(`in`: JsonReader): Config.DebugConfig.Tests {
+        val testsMap = mutableMapOf<String, Config.DebugConfig.Tests.Test>()
+
+        `in`.beginObject()
+
+        while (`in`.hasNext()) {
+            val name = `in`.nextName()
+            `in`.beginObject()
+
+            val timedCommandsMap = mutableMapOf<Int, List<String>>()
+
+            while (`in`.hasNext()) {
+                val fieldName = `in`.nextName()
+                if (fieldName == "commands") {
+                    `in`.beginObject()
+
+                    while (`in`.hasNext()) {
+                        val timeStr = `in`.nextName()
+                        val time = timeStr.toInt()
+
+                        if (`in`.peek() == JsonToken.BEGIN_ARRAY) {
+                            val commandsList = mutableListOf<String>()
+                            `in`.beginArray()
+                            while (`in`.hasNext()) {
+                                commandsList.add(`in`.nextString())
+                            }
+                            `in`.endArray()
+                            timedCommandsMap[time] = commandsList
+                        } else {
+                            val command = `in`.nextString()
+                            timedCommandsMap[time] = listOf(command)
+                        }
+                    }
+
+                    `in`.endObject()
+                } else {
+                    `in`.skipValue()
+                }
+            }
+
+            `in`.endObject()
+            testsMap[name] = Config.DebugConfig.Tests.Test(timedCommandsMap)
+        }
+
+        `in`.endObject()
+
+        return Config.DebugConfig.Tests(testsMap)
     }
 }

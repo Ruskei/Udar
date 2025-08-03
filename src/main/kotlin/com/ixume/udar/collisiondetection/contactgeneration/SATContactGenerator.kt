@@ -390,7 +390,7 @@ class SATContactGenerator(
 
         val edgeAxiss = edgeCrosses(otherEdges, myEdges)
 
-        val axiss = mutableListOf<Vector3d>()
+        val axiss = ArrayList<Vector3d>(otherAxiss.size + myAxiss.size + edgeAxiss.size)
         axiss += otherAxiss
         axiss += myAxiss
         axiss += edgeAxiss

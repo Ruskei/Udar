@@ -295,11 +295,20 @@ class Cuboid(
     }
 
     override fun capableCollision(other: Body): Capability {
-        return contactGenerators
-            .map { it.capableCollision(other) }
-            .filter { it.capable }
-            .maxByOrNull { it.priority }
-            ?: Capability(false, 0)
+        var highestPriority: Int? = null
+        for (contactGenerator in contactGenerators) {
+            val cap = contactGenerator.capableCollision(other)
+            if (!cap.capable) continue
+            highestPriority = if (highestPriority == null) {
+                cap.priority
+            } else {
+                max(cap.priority, highestPriority)
+            }
+        }
+
+        if (highestPriority == null) return Capability(false, 0)
+
+        return Capability(true, highestPriority)
     }
 
     override fun collides(other: Body): List<IContact> {

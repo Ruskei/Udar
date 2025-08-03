@@ -1,6 +1,7 @@
 package com.ixume.udar.testing.commands
 
 import com.ixume.udar.PhysicsWorldsManager
+import com.ixume.udar.Udar
 import org.bukkit.Bukkit
 import org.bukkit.command.CommandSender
 import org.bukkit.command.TabExecutor
@@ -27,6 +28,10 @@ object ClearCommand : Command {
         } else {
             for (world in Bukkit.getWorlds()) {
                 PhysicsWorldsManager.getPhysicsWorld(world)?.clear()
+            }
+
+            for (test in Udar.CONFIG.debug.tests.tests.values) {
+                test.kill()
             }
         }
 

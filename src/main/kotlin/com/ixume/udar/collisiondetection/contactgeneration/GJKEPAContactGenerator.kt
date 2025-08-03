@@ -321,48 +321,60 @@ class GJKEPAContactGenerator<T>(
                 var foundBC = false
                 var foundCA = false
 
-                val edgesToRemove = mutableListOf<Pair<Vector3d, Vector3d>>()
+                var abRemoved: Pair<Vector3d, Vector3d>? = null
+                var bcRemoved: Pair<Vector3d, Vector3d>? = null
+                var caRemoved: Pair<Vector3d, Vector3d>? = null
+
                 for (uniqueEdge in uniqueEdges) {
+                    if (foundAB && foundBC && foundCA) break
+
                     if (
+                        !foundAB &&
                         (uniqueEdge.first.distanceSquared(a) < epsilon && uniqueEdge.second.distanceSquared(b) < epsilon)
                         || (uniqueEdge.first.distanceSquared(b) < epsilon && uniqueEdge.second.distanceSquared(a) < epsilon)
                     ) {
                         foundAB = true
-                        edgesToRemove += uniqueEdge
+                        abRemoved = uniqueEdge
                         continue
                     }
 
                     if (
+                        !foundBC &&
                         (uniqueEdge.first.distanceSquared(b) < epsilon && uniqueEdge.second.distanceSquared(c) < epsilon)
                         || (uniqueEdge.first.distanceSquared(c) < epsilon && uniqueEdge.second.distanceSquared(b) < epsilon)
                     ) {
                         foundBC = true
-                        edgesToRemove += uniqueEdge
+                        bcRemoved = uniqueEdge
                         continue
                     }
 
                     if (
+                        !foundCA &&
                         (uniqueEdge.first.distanceSquared(c) < epsilon && uniqueEdge.second.distanceSquared(a) < epsilon)
                         || (uniqueEdge.first.distanceSquared(a) < epsilon && uniqueEdge.second.distanceSquared(c) < epsilon)
                     ) {
                         foundCA = true
-                        edgesToRemove += uniqueEdge
+                        caRemoved = uniqueEdge
                         continue
                     }
                 }
 
-                uniqueEdges.removeAll(edgesToRemove)
-
                 if (!foundAB) {
                     uniqueEdges += a to b
+                } else {
+                    uniqueEdges.remove(abRemoved)
                 }
 
                 if (!foundBC) {
                     uniqueEdges += b to c
+                } else {
+                    uniqueEdges.remove(bcRemoved)
                 }
 
                 if (!foundCA) {
                     uniqueEdges += c to a
+                } else {
+                    uniqueEdges.remove(caRemoved)
                 }
 
                 facesToRemove += face
