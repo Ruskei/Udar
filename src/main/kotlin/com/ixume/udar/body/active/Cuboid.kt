@@ -5,9 +5,8 @@ import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.collisiondetection.capability.Capability
 import com.ixume.udar.collisiondetection.capability.GJKCapable
 import com.ixume.udar.collisiondetection.capability.SDFCapable
-import com.ixume.udar.collisiondetection.contactgeneration.GJKEPAContactGenerator
+import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentSATContactGenerator
 import com.ixume.udar.collisiondetection.contactgeneration.SATContactGenerator
-import com.ixume.udar.physics.Contact
 import com.ixume.udar.physics.IContact
 import org.bukkit.Location
 import org.bukkit.Material
@@ -135,8 +134,8 @@ class Cuboid(
     override val previousContacts: MutableList<IContact> = mutableListOf()
 
     private val contactGenerators = listOf(
+        EnvironmentSATContactGenerator(this),
         SATContactGenerator(this),
-        GJKEPAContactGenerator(this),
     )
 
     init {
@@ -172,11 +171,13 @@ class Cuboid(
 
     private fun calcInverseInertia(): Matrix3d {
         val rm = Matrix3d().rotation(q)
-        return Matrix3d(rm).transpose().mul(Matrix3d(
-            1.0 / localInertia.x, 0.0, 0.0,
-            0.0, 1.0 / localInertia.y, 0.0,
-            0.0, 0.0, 1.0 / localInertia.z,
-        )).mul(rm)
+        return Matrix3d(rm).transpose().mul(
+            Matrix3d(
+                1.0 / localInertia.x, 0.0, 0.0,
+                0.0, 1.0 / localInertia.y, 0.0,
+                0.0, 0.0, 1.0 / localInertia.z,
+            )
+        ).mul(rm)
     }
 
     override val inverseInertia: Matrix3d = calcInverseInertia()
