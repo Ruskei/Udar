@@ -173,23 +173,49 @@ fun cycleSAT(
     return SATCycle(overlap, order!!)
 }
 
-fun List<Vector3d>.projectable(): Projectable {
-    return object : Projectable {
-        override fun project(axis: Vector3d): Pair<Double, Double> {
-            var min = Double.MAX_VALUE
-            var max = -Double.MAX_VALUE
+fun cycleSAT(
+    myMin: Double,
+    myMax: Double,
+    otherMin: Double,
+    otherMax: Double,
+): SATCycle? {
+    var order: Boolean? = null
+    val overlap = if (myMin < otherMax && myMax > otherMin) {
+        //overlapping
+        order = (otherMax - myMin) < (myMax - otherMin)
 
-            if (isEmpty()) return 0.0 to 0.0
-
-            for (v in this@projectable) {
-                val s = v.dot(axis)
-                min = min(min, s)
-                max = max(max, s)
-            }
-
-            return min to max
+        //check if contained or overlapping; if contained then choose smallest distance as overlap
+        if (myMin < otherMin && myMax > otherMax) {
+            //i contain other
+            min(myMax - otherMin, otherMax - myMin)
+        } else if (otherMin < myMin && otherMax > myMax) {
+            //other contains me
+            min(otherMax - myMin, myMax - otherMin)
+        } else {
+            //just overlapping
+            if (myMax > otherMax) otherMax - myMin
+            else myMax - otherMin
         }
+    } else 0.0
+
+    if (overlap <= 0.0) {
+        return null
     }
+
+    return SATCycle(overlap, order!!)
+}
+
+fun List<Vector3d>.project(axis: Vector3d): Pair<Double, Double> {
+    var min = Double.MAX_VALUE
+    var max = -Double.MAX_VALUE
+
+    for (v in this) {
+        val s = v.dot(axis)
+        min = min(min, s)
+        max = max(max, s)
+    }
+
+    return min to max
 }
 
 fun collidesSAT(
@@ -229,9 +255,12 @@ fun collidesSAT(
     var minAxis: Vector3d? = null
 
     for (axis in axiss) {
+        val my = activeBody.project(axis)
+        val other = otherVertices.project(axis)
+
         val (overlap, order) = cycleSAT(
-            axis = axis,
-            activeBody, otherVertices.projectable()
+            myMin = my.first, myMax = my.second,
+            otherMin = other.first, otherMax = other.second,
         ) ?: return null
 
         if (overlap < minOverlap) {
