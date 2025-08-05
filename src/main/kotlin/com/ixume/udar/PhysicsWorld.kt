@@ -7,6 +7,7 @@ import com.ixume.udar.collisiondetection.LocalMathUtil
 import com.ixume.udar.collisiondetection.mesh.Mesh
 import com.ixume.udar.physics.ContactSolver
 import com.ixume.udar.physics.IContact
+import com.ixume.udar.physics.StatusUpdater
 import com.ixume.udar.testing.PhysicsWorldTestDebugData
 import com.ixume.udar.testing.debugConnect
 import org.bukkit.*
@@ -26,11 +27,13 @@ class PhysicsWorld(
     var untilCollision = false
     var steps = 0
 
-    private val task = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { tick() }, 1, 1)
+    private val simTask = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { tick() }, 1, 1)
 
     val debugData = PhysicsWorldTestDebugData()
 
     val math = LocalMathUtil()
+
+    private val statusUpdater = StatusUpdater(this)
 
     private fun tick() {
         time++
@@ -46,6 +49,8 @@ class PhysicsWorld(
                 contacts.clear()
                 meshes.clear()
 
+                statusUpdater.updateBodies()
+
                 for (i in 0..<activeBodies.size) {
                     val first = activeBodies[i]
                     first.ensureNonAligned()
@@ -54,6 +59,9 @@ class PhysicsWorld(
                         for (j in (i + 1)..<activeBodies.size) {
                             debugData.totalPairs++
                             val second = activeBodies[j]
+                            if (!first.awake && !second.awake) {
+                                continue
+                            }
 
                             val canFirst = first.capableCollision(second)
                             val canSecond = second.capableCollision(first)
@@ -92,6 +100,9 @@ class PhysicsWorld(
 
                             debugData.pairCollisions++
 
+                            first.awake = true
+                            second.awake = true
+
                             if (Udar.CONFIG.debug.collisionTimes > 0) {
                                 println("B-B COLLISION TOOK: ${t.toDouble() / 1_000_000.0} ms")
                             }
@@ -114,6 +125,10 @@ class PhysicsWorld(
                                 contacts += contact
                             }
                         }
+                    }
+
+                    if (!first.awake) {
+                        continue
                     }
 
                     val environmentBody = EnvironmentBody(world)
@@ -146,13 +161,15 @@ class PhysicsWorld(
                 }
 
                 for (body in activeBodies) {
-                    if (body.hasGravity) body.velocity.add(Vector3d(Udar.CONFIG.gravity).mul(TIME_STEP))
+                    if (body.awake && body.hasGravity) body.velocity.add(Vector3d(Udar.CONFIG.gravity).mul(TIME_STEP))
                 }
 
                 ContactSolver.solve(contacts)
 
                 for (body in activeBodies) {
-                    body.step()
+                    if (body.awake) {
+                        body.step()
+                    }
                 }
 
                 if (untilCollision && contacts.isNotEmpty()) {
@@ -202,6 +219,6 @@ class PhysicsWorld(
     fun kill() {
         clear()
 
-        task.cancel()
+        simTask.cancel()
     }
 }

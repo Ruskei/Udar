@@ -41,6 +41,10 @@ class Cuboid(
     override val id = UUID.randomUUID()!!
     override val physicsWorld: PhysicsWorld = world.physicsWorld!!
 
+    override var age: Int = 0
+    override var awake = true
+    override var startled = true
+
     val scale = Vector3d(width, height, length)
 
     override val radius: Double = Vector3d(width, height, length).mul(0.5).mul(scale).length()
@@ -189,8 +193,13 @@ class Cuboid(
     private val rotationIntegrator = RigidbodyRotationIntegrator(this)
 
     override var prevQ = Quaterniond(q)
+    private val prevP = Vector3d(pos)
+    override val linearDelta: Vector3d = Vector3d()
+    override var angularDelta: Double = 0.0
+
     override fun step() {
         prevQ = Quaterniond(q)
+        prevP.set(pos)
 
         pos.add(Vector3d(velocity).mul(TIME_STEP))
         rotationIntegrator.process()
@@ -203,6 +212,13 @@ class Cuboid(
         localInertia.set(calcInertia())
         localInverseInertia.set(1.0 / localInertia.x, 1.0 / localInertia.y, 1.0 / localInertia.z)
         inverseInertia.set(calcInverseInertia())
+
+        linearDelta.set(pos).sub(prevP)
+
+        val dQ = Quaterniond(q).mul(Quaterniond(q).conjugate())
+        if (dQ.w < 0.0) dQ.mul(-1.0)
+        dQ.normalize()
+        angularDelta = 2.0 * acos(dQ.w.coerceIn(-1.0, 1.0))
     }
 
     override fun update() {
@@ -278,6 +294,8 @@ class Cuboid(
         normal: Vector3d,
         impulse: Vector3d,
     ) {
+        awake = true
+        startled = true
         val localNormal = Vector3d(normal).rotate(Quaterniond(q).conjugate()).normalize()!!
         val localPoint = globalToLocal(point)
 

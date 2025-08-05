@@ -75,6 +75,9 @@ data class Config(
     val sat: SATConfig = SATConfig(),
     val sdf: SDFConfig = SDFConfig(),
     val debug: DebugConfig = DebugConfig(),
+    val sleepLinearVelocity: Double = 1e-3,
+    val sleepAngularVelocity: Double = 1e-3,
+    val birthTime: Int = 10,
 ) {
     companion object : InstanceCreator<Config> {
         override fun createInstance(type: Type?): Config? {

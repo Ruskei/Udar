@@ -244,13 +244,10 @@ class EnvironmentSATContactGenerator(
 
         val otherAxiss = listOf(normal)
 
-        // val allowedNormals = listOf(normal)
-
         facesChecked++
         val r =
             activeBody.physicsWorld.math.collidesSAT(activeBody, otherVertices, otherAxiss, otherEdges, findAll = true, collideMyAxiss = false) ?: return null
         if (r.isEmpty()) return null
-//        if (r.size > 1) println("found: ${r.size}")
 
         return (when (face.axis) {
             Axis.X -> {

@@ -3,16 +3,22 @@ package com.ixume.udar.body.active
 import com.ixume.udar.body.CollidableBody
 import com.ixume.udar.collisiondetection.capability.Projectable
 import org.bukkit.util.BoundingBox
-import org.joml.Matrix3d
 import org.joml.Quaterniond
 import org.joml.Vector3d
 import kotlin.math.max
 import kotlin.math.min
 
 interface ActiveBody : CollidableBody, Projectable {
+    var age: Int
+
     val vertices: List<Vector3d>
     val radius: Double
     val boundingBox: BoundingBox
+
+    var awake: Boolean
+    var startled: Boolean
+    val linearDelta: Vector3d
+    val angularDelta: Double
 
     val mass: Double
     val localInertia: Vector3d
