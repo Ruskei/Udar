@@ -1,5 +1,6 @@
 package com.ixume.udar.body
 
+import com.ixume.udar.PhysicsWorld
 import org.bukkit.World
 import org.joml.Matrix3d
 import org.joml.Quaterniond
@@ -9,6 +10,7 @@ import java.util.UUID
 interface Body {
     val id: UUID
     val world: World
+    val physicsWorld: PhysicsWorld
 
     val pos: Vector3d
     val q: Quaterniond

@@ -6,7 +6,6 @@ import com.ixume.udar.body.Body
 import com.ixume.udar.body.Collidable
 import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.collisiondetection.capability.Capability
-import com.ixume.udar.collisiondetection.collidesSAT
 import com.ixume.udar.collisiondetection.mesh.Axis
 import com.ixume.udar.collisiondetection.mesh.Edge
 import com.ixume.udar.collisiondetection.mesh.Mesh
@@ -85,15 +84,11 @@ class EnvironmentSATContactGenerator(
 
         val collisions = mutableListOf<CollisionResult>()
         val maxDepth = prevMaxDepth + maxChange() * Udar.Companion.CONFIG.sat.fudge
-//        println("prevMaxDepth: $prevMaxDepth v: $velocity maxChange: ${maxChange()} maxDepth: $maxDepth")
         prevMaxDepth = 0.0
 
         for (cheesyFace in mesh.faces) {
-            val r = collidesFace(cheesyFace, existingContacts = collisions) ?: continue
+            val r = collidesFace(cheesyFace) ?: continue
             if (r.isEmpty()) continue
-
-//            println("TC! axis: ${cheesyFace.axis}")
-//            println("  * valid: ${cheesyFace.valid}")
 
             for (p in r) {
                 val valid = run validate@{
@@ -101,7 +96,6 @@ class EnvironmentSATContactGenerator(
                         Axis.X -> {
                             for (invalid in cheesyFace.invalid) {
                                 if (p.point.y in invalid.first.x..invalid.second.x && p.point.z in invalid.first.y..invalid.second.y) {
-//                                println("INVALID BY $invalid")
                                     return@validate false
                                 }
                             }
@@ -109,20 +103,17 @@ class EnvironmentSATContactGenerator(
                             val firstMatch =
                                 cheesyFace.valid.firstOrNull { p.point.y in it.start.x..it.end.x && p.point.z in it.start.y..it.end.y }
                             if (firstMatch == null) {
-//                                println("NOT IN ANY VALID")
                                 return@validate false
                             }
 
                             val m = if (firstMatch.inAxisDir) 1.0 else -1.0
                             val d = (p.norm.dot(cheesyFace.axis.vec) * m >= 0)
-//                            println("m: $m d: $d")
                             return@validate d
                         }
 
                         Axis.Y -> {
                             for (invalid in cheesyFace.invalid) {
                                 if (p.point.x in invalid.first.x..invalid.second.x && p.point.z in invalid.first.y..invalid.second.y) {
-//                                println("INVALID BY $invalid")
                                     return@validate false
                                 }
                             }
@@ -130,19 +121,16 @@ class EnvironmentSATContactGenerator(
                             val firstMatch =
                                 cheesyFace.valid.firstOrNull { p.point.x in it.start.x..it.end.x && p.point.z in it.start.y..it.end.y }
                             if (firstMatch == null) {
-//                                println("NOT IN ANY VALID")
                                 return@validate false
                             }
                             val m = if (firstMatch.inAxisDir) 1.0 else -1.0
                             val d = (p.norm.dot(cheesyFace.axis.vec) * m >= 0)
-//                            println("m: $m d: $d")
                             return@validate d
                         }
 
                         Axis.Z -> {
                             for (invalid in cheesyFace.invalid) {
                                 if (p.point.x in invalid.first.x..invalid.second.x && p.point.y in invalid.first.y..invalid.second.y) {
-//                                println("INVALID BY $invalid")
                                     return@validate false
                                 }
                             }
@@ -150,27 +138,17 @@ class EnvironmentSATContactGenerator(
                             val firstMatch =
                                 cheesyFace.valid.firstOrNull { p.point.x in it.start.x..it.end.x && p.point.y in it.start.y..it.end.y }
                             if (firstMatch == null) {
-//                                println("NOT IN ANY VALID")
                                 return@validate false
                             }
                             val m = if (firstMatch.inAxisDir) 1.0 else -1.0
                             val d = (p.norm.dot(cheesyFace.axis.vec) * m >= 0)
-//                            println("m: $m d: $d")
                             return@validate d
                         }
                     }
                 }
 
                 if (valid) {
-//                    println("FACE-VERTEX COLLISION!")
-//                    println("  - depth: ${p.depth}")
-//                    println("  - norm ${p.norm}")
-//                    println("  - point: ${p.point}")
-
                     if (p.depth > maxDepth) {
-//                        println("OVERSHOT, ${p.depth / maxDepth}x MAX DEPTH with ${p.depth}")
-//                        println("p: $p")
-
                         activeBody.world.debugConnect(
                             p.point,
                             Vector3d(p.point).add(p.norm),
@@ -198,15 +176,12 @@ class EnvironmentSATContactGenerator(
             }
         }
 
-//        println("checked faces: $facesChecked / ${mesh.faces.size}")
         facesChecked = 0
 
         for (edge in mesh.edges) {
             val r = collidesEdge(edge) ?: continue
 
             if (r.depth > maxDepth) {
-//                println("OVERSHOT, ${r.depth / maxDepth}x MAX DEPTH with ${r.depth}")
-//                println("r: $r")
                 continue
             }
 
@@ -223,7 +198,6 @@ class EnvironmentSATContactGenerator(
     private fun collidesFace(
         face: MeshFace,
         normal: Vector3d = face.axis.vec,
-        existingContacts: List<CollisionResult>,
     ): List<CollisionResult>? {
         val start = Vector3d(face.start)
         val end = Vector3d(face.end)
@@ -274,7 +248,7 @@ class EnvironmentSATContactGenerator(
 
         facesChecked++
         val r =
-            collidesSAT(activeBody, otherVertices, otherAxiss, otherEdges, findAll = true, collideMyAxiss = false) ?: return null
+            activeBody.physicsWorld.math.collidesSAT(activeBody, otherVertices, otherAxiss, otherEdges, findAll = true, collideMyAxiss = false) ?: return null
         if (r.isEmpty()) return null
 //        if (r.size > 1) println("found: ${r.size}")
 
@@ -339,7 +313,7 @@ class EnvironmentSATContactGenerator(
             }
         }
 
-        val r = collidesSAT(
+        val r = activeBody.physicsWorld.math.collidesSAT(
             activeBody,
             otherVertices = otherVertices,
             otherAxiss = listOf(),

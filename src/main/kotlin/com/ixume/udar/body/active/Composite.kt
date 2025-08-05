@@ -1,5 +1,6 @@
 package com.ixume.udar.body.active
 
+import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.collisiondetection.capability.Capability
@@ -7,6 +8,7 @@ import com.ixume.udar.collisiondetection.contactgeneration.CompositeCompositeCon
 import com.ixume.udar.jacobiEigenDecomposition
 import com.ixume.udar.physics.Contact
 import com.ixume.udar.physics.IContact
+import com.ixume.udar.physicsWorld
 import org.bukkit.World
 import org.bukkit.util.BoundingBox
 import org.joml.Matrix3d
@@ -32,6 +34,7 @@ class Composite(
     }
 
     override val id: UUID = UUID.randomUUID()
+    override val physicsWorld: PhysicsWorld = world.physicsWorld!!
 
     data class RelativePose(
         val pos: Vector3d,

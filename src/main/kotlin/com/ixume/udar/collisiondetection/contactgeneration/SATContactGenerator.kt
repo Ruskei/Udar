@@ -5,7 +5,6 @@ import com.ixume.udar.body.Collidable
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.collisiondetection.capability.Capability
 import com.ixume.udar.collisiondetection.capability.Projectable
-import com.ixume.udar.collisiondetection.collidesSAT
 import com.ixume.udar.collisiondetection.edgeCrosses
 import com.ixume.udar.physics.Contact
 import com.ixume.udar.physics.IContact
@@ -40,7 +39,7 @@ class SATContactGenerator(
         axiss += otherAxiss
         axiss += edgeAxiss
 
-        val r = collidesSAT(
+        val r = activeBody.physicsWorld.math.collidesSAT(
             activeBody = activeBody,
             otherVertices = other.vertices,
             otherAxiss = otherAxiss,

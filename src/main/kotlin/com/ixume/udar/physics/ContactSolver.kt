@@ -62,7 +62,7 @@ object ContactSolver {
                 j1.set(first.pos).sub(point).cross(n)
                 j3.set(point).sub(second.pos).cross(n)
 
-                val (dVA, dOA, dVB, dOB, significant) = deltaV(
+                val r = deltaV(
                     contact = contact,
                     type = DeltaType.NORMAL,
                     j0 = nn, j1 = j1, j2 = n, j3 = j3,
@@ -70,12 +70,12 @@ object ContactSolver {
                     vA = vA, wA = wA, vB = vB, wB = wB,
                 )
 
-                if (significant) itrSignificant = true
+                if (r.significant) itrSignificant = true
 
-                first.velocity.sub(dVA)
-                first.omega.sub(dOA)
-                second.velocity.sub(dVB)
-                second.omega.sub(dOB)
+                first.velocity.sub(r.dVA)
+                first.omega.sub(r.dOA)
+                second.velocity.sub(r.dVB)
+                second.omega.sub(r.dOB)
 
 //                                println("ITR: $itr")
 //                                println("  - FIRST IM: ${first.inverseMass}")
@@ -129,7 +129,7 @@ object ContactSolver {
                     j2.set(contact.t1)
                     j3.set(point).sub(second.pos).cross(contact.t1)
 
-                    val (dVA, dOA, dVB, dOB, significant) = deltaV(
+                    val r = deltaV(
                         contact = contact,
                         type = DeltaType.T1,
                         j0 = j0, j1 = j1, j2 = j2, j3 = j3,
@@ -137,12 +137,12 @@ object ContactSolver {
                         vA = vA, wA = wA, vB = vB, wB = wB,
                     )
 
-                    first.velocity.sub(dVA)
-                    first.omega.sub(dOA)
-                    second.velocity.sub(dVB)
-                    second.omega.sub(dOB)
+                    first.velocity.sub(r.dVA)
+                    first.omega.sub(r.dOA)
+                    second.velocity.sub(r.dVB)
+                    second.omega.sub(r.dOB)
 
-                    if (significant) itrSignificant = true
+                    if (r.significant) itrSignificant = true
                 }
 
                 run t2@{
@@ -151,7 +151,7 @@ object ContactSolver {
                     j2.set(contact.t2)
                     j3.set(point).sub(second.pos).cross(contact.t2)
 
-                    val (dVA, dOA, dVB, dOB, significant) = deltaV(
+                    val r = deltaV(
                         contact = contact,
                         type = DeltaType.T2,
                         j0 = j0, j1 = j1, j2 = j2, j3 = j3,
@@ -159,12 +159,12 @@ object ContactSolver {
                         vA = vA, wA = wA, vB = vB, wB = wB,
                     )
 
-                    first.velocity.sub(dVA)
-                    first.omega.sub(dOA)
-                    second.velocity.sub(dVB)
-                    second.omega.sub(dOB)
+                    first.velocity.sub(r.dVA)
+                    first.omega.sub(r.dOA)
+                    second.velocity.sub(r.dVB)
+                    second.omega.sub(r.dOB)
 
-                    if (significant) itrSignificant = true
+                    if (r.significant) itrSignificant = true
                 }
             }
 
@@ -174,7 +174,7 @@ object ContactSolver {
         }
     }
 
-    data class DeltaV(
+    class DeltaV(
         val dVA: Vector3d,
         val dOA: Vector3d,
         val dVB: Vector3d,

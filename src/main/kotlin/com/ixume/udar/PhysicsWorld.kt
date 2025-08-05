@@ -3,6 +3,7 @@ package com.ixume.udar
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.body.EnvironmentBody
+import com.ixume.udar.collisiondetection.LocalMathUtil
 import com.ixume.udar.collisiondetection.mesh.Mesh
 import com.ixume.udar.physics.ContactSolver
 import com.ixume.udar.physics.IContact
@@ -28,6 +29,8 @@ class PhysicsWorld(
     private val task = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { tick() }, 1, 1)
 
     val debugData = PhysicsWorldTestDebugData()
+
+    val math = LocalMathUtil()
 
     private fun tick() {
         time++

@@ -1,5 +1,6 @@
 package com.ixume.udar.body.active
 
+import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
@@ -9,6 +10,7 @@ import com.ixume.udar.collisiondetection.capability.SDFCapable
 import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentSATContactGenerator
 import com.ixume.udar.collisiondetection.contactgeneration.SATContactGenerator
 import com.ixume.udar.physics.IContact
+import com.ixume.udar.physicsWorld
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.World
@@ -37,6 +39,7 @@ class Cuboid(
     override val hasGravity: Boolean,
 ) : ActiveBody, GJKCapable, SDFCapable {
     override val id = UUID.randomUUID()!!
+    override val physicsWorld: PhysicsWorld = world.physicsWorld!!
 
     val scale = Vector3d(width, height, length)
 
