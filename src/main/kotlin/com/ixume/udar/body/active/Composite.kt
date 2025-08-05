@@ -53,6 +53,18 @@ class Composite(
 
     override var pos: Vector3d = calcCOM()
 
+    private fun calcRadius(): Double {
+        var r = -Double.MAX_VALUE
+        for (part in parts) {
+            val candidate = part.pos.distance(pos) + part.radius
+            r = max(candidate, r)
+        }
+
+        return r
+    }
+
+    override val radius: Double = calcRadius()
+
     private val relativePoses: Map<UUID, RelativePose> = parts.associateBy(
         keySelector = { it.id },
         valueTransform = { RelativePose(Vector3d(it.pos).sub(pos), Quaterniond(it.q)) }
@@ -266,18 +278,33 @@ class Composite(
                         result = it.result,
                     )
                 }
-        }
+        } else if (other is ActiveBody) {
+            val cs = mutableListOf<Contact>()
+            for (part in parts) {
+                if (!part.boundingBox.overlaps(other.boundingBox)) continue
+                val d = part.pos.distance(other.pos)
+                if (d > part.radius + other.radius) continue
 
-        val contacts = parts
-            .flatMap { it.collides(other) }
-            .map {
-                Contact(
+                val r = part.collides(other)
+                cs += r.map { Contact(
                     first = this,
                     second = other,
                     result = it.result,
-                )
+                ) }
             }
 
-        return contacts
+            return cs
+        } else {
+            return parts
+                .flatMap {
+                    it.collides(other) }
+                .map {
+                    Contact(
+                        first = this,
+                        second = other,
+                        result = it.result,
+                    )
+                }
+        }
     }
 }

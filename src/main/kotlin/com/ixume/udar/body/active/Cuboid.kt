@@ -1,6 +1,7 @@
 package com.ixume.udar.body.active
 
 import com.ixume.udar.body.Body
+import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.collisiondetection.capability.Capability
 import com.ixume.udar.collisiondetection.capability.GJKCapable
@@ -38,6 +39,8 @@ class Cuboid(
     override val id = UUID.randomUUID()!!
 
     val scale = Vector3d(width, height, length)
+
+    override val radius: Double = Vector3d(width, height, length).mul(0.5).mul(scale).length()
 
     fun localToGlobal(vec: Vector3d): Vector3d {
         return Vector3d(vec).mul(scale).rotate(q).add(pos)
@@ -133,10 +136,8 @@ class Cuboid(
     override val contacts: MutableList<IContact> = mutableListOf()
     override val previousContacts: MutableList<IContact> = mutableListOf()
 
-    private val contactGenerators = listOf(
-        EnvironmentSATContactGenerator(this),
-        SATContactGenerator(this),
-    )
+    private val envContactGen = EnvironmentSATContactGenerator(this)
+    private val SATContactGen = SATContactGenerator(this)
 
     init {
         val material = VALID_MATERIALS.random()
@@ -296,30 +297,35 @@ class Cuboid(
     }
 
     override fun capableCollision(other: Body): Capability {
-        var highestPriority: Int? = null
-        for (contactGenerator in contactGenerators) {
-            val cap = contactGenerator.capableCollision(other)
-            if (!cap.capable) continue
-            highestPriority = if (highestPriority == null) {
-                cap.priority
-            } else {
-                max(cap.priority, highestPriority)
+        return when (other) {
+            is EnvironmentBody -> {
+                envContactGen.capableCollision(other)
+            }
+
+            is Cuboid -> {
+                SATContactGen.capableCollision(other)
+            }
+
+            else -> {
+                Capability(false, 0)
             }
         }
-
-        if (highestPriority == null) return Capability(false, 0)
-
-        return Capability(true, highestPriority)
     }
 
     override fun collides(other: Body): List<IContact> {
-        val (contactGenerator, _) =
-            contactGenerators
-                .zip(contactGenerators.map { it.capableCollision(other) })
-                .filter { it.second.capable }
-                .maxByOrNull { it.second.priority } ?: return emptyList()
+        return when (other) {
+            is EnvironmentBody -> {
+                envContactGen.collides(other)
+            }
 
-        return contactGenerator.collides(other)
+            is Cuboid -> {
+                SATContactGen.collides(other)
+            }
+
+            else -> {
+                emptyList()
+            }
+        }
     }
 
     override fun support(dir: Vector3d): Vector3d {

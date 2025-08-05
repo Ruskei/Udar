@@ -88,6 +88,8 @@ data class Config(
         val activeSlop: Double = 0.001,
         val friction: Double = 0.3,
         val lambdaCarryover: Double = 0.3,
+        val normalIterations: Int = 4,
+        val frictionIterations: Int = 4,
     ) {
         companion object : InstanceCreator<CollisionConfig> {
             override fun createInstance(type: Type?): CollisionConfig? {
@@ -128,6 +130,7 @@ data class Config(
         val mesh: Int = 0,
         val normals: Int = 0,
         val collisionTimes: Int = 0,
+        val data: Int = 0,
 
         val SDFContact: Int = 0,
         val SDFParticleCount: Int = 5,

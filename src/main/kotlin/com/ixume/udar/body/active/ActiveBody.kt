@@ -11,6 +11,7 @@ import kotlin.math.min
 
 interface ActiveBody : CollidableBody, Projectable {
     val vertices: List<Vector3d>
+    val radius: Double
     val boundingBox: BoundingBox
 
     val mass: Double

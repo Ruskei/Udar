@@ -49,12 +49,6 @@ class EnvironmentSATContactGenerator(
         if (meshStart.x < cachedMesh.start.x || meshStart.y < cachedMesh.start.y || meshStart.z < cachedMesh.start.z
             || meshEnd.x > cachedMesh.end.x || meshEnd.y > cachedMesh.end.y || meshEnd.z > cachedMesh.end.z
         ) {
-//            println("NEW MESH!")
-//            println("  - meshStart: $meshStart")
-//            println("  - meshEnd: $meshEnd")
-//            println("  - cachedMesh.start: ${cachedMesh.start}")
-//            println("  - cachedMesh.end: ${cachedMesh.end}")
-
             cachedMesh = Mesh.Companion.mesh(activeBody.world, bb)
             return cachedMesh
         } else {
@@ -77,13 +71,14 @@ class EnvironmentSATContactGenerator(
     }
 
     private var prevMaxDepth = Udar.Companion.CONFIG.collision.passiveSlop
+    var facesChecked = 0
     override fun collides(other: Body): List<Contact> {
         require(capableCollision(other).capable)
 
         val mesh = getMesh()
 //        mesh.visualize(
 //            world = activeBody.world,
-//            visualizeFaces = false,
+//            visualizeFaces = true,
 //            visualizeEdges = true,
 //        )
 //        if (PhysicsCommand.DEBUG_SAT_LEVEL > 0) println("COLLIDES MESH!")
@@ -94,7 +89,7 @@ class EnvironmentSATContactGenerator(
         prevMaxDepth = 0.0
 
         for (cheesyFace in mesh.faces) {
-            val r = collidesFace(cheesyFace) ?: continue
+            val r = collidesFace(cheesyFace, existingContacts = collisions) ?: continue
             if (r.isEmpty()) continue
 
 //            println("TC! axis: ${cheesyFace.axis}")
@@ -203,13 +198,16 @@ class EnvironmentSATContactGenerator(
             }
         }
 
+//        println("checked faces: $facesChecked / ${mesh.faces.size}")
+        facesChecked = 0
+
         for (edge in mesh.edges) {
             val r = collidesEdge(edge) ?: continue
 
             if (r.depth > maxDepth) {
 //                println("OVERSHOT, ${r.depth / maxDepth}x MAX DEPTH with ${r.depth}")
 //                println("r: $r")
-//                continue
+                continue
             }
 
             if (r.depth > prevMaxDepth) {
@@ -225,6 +223,7 @@ class EnvironmentSATContactGenerator(
     private fun collidesFace(
         face: MeshFace,
         normal: Vector3d = face.axis.vec,
+        existingContacts: List<CollisionResult>,
     ): List<CollisionResult>? {
         val start = Vector3d(face.start)
         val end = Vector3d(face.end)
@@ -273,14 +272,13 @@ class EnvironmentSATContactGenerator(
 
         // val allowedNormals = listOf(normal)
 
+        facesChecked++
         val r =
             collidesSAT(activeBody, otherVertices, otherAxiss, otherEdges, findAll = true, collideMyAxiss = false) ?: return null
         if (r.isEmpty()) return null
 //        if (r.size > 1) println("found: ${r.size}")
 
-        r.sortBy { -it.depth }
-
-        return when (face.axis) {
+        return (when (face.axis) {
             Axis.X -> {
                 r.filter { it.point.y in start.y..end.y && it.point.z in start.z..end.z }
             }
@@ -292,21 +290,12 @@ class EnvironmentSATContactGenerator(
             Axis.Z -> {
                 r.filter { it.point.y in start.y..end.y && it.point.x in start.x..end.x }
             }
-        }
+        }).sortedBy { -it.depth }
     }
 
     private fun collidesEdge(
         edge: Edge
     ): CollisionResult? {
-//        if (!bb.contains(edge.start.x, edge.start.y, edge.start.z) && !bb.contains(
-//                edge.end.x,
-//                edge.end.y,
-//                edge.end.z
-//            )
-//        ) {
-//            return null
-//        }
-
         edge.axis!!
         edge.mount!!
         val otherVertices = listOf(

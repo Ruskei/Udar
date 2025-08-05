@@ -6,6 +6,7 @@ import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.collisiondetection.mesh.Mesh
 import com.ixume.udar.physics.ContactSolver
 import com.ixume.udar.physics.IContact
+import com.ixume.udar.testing.PhysicsWorldTestDebugData
 import com.ixume.udar.testing.debugConnect
 import org.bukkit.*
 import org.joml.Vector3d
@@ -26,6 +27,8 @@ class PhysicsWorld(
 
     private val task = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { tick() }, 1, 1)
 
+    val debugData = PhysicsWorldTestDebugData()
+
     private fun tick() {
         time++
         repeat((0.05 / TIME_STEP).roundToInt()) {
@@ -35,6 +38,8 @@ class PhysicsWorld(
             }
 
             if (doTick) {
+                debugData.reset()
+
                 contacts.clear()
                 meshes.clear()
 
@@ -44,6 +49,7 @@ class PhysicsWorld(
                     val firstBoundingBox = first.boundingBox
                     if (activeBodies.size > 1) {
                         for (j in (i + 1)..<activeBodies.size) {
+                            debugData.totalPairs++
                             val second = activeBodies[j]
 
                             val canFirst = first.capableCollision(second)
@@ -66,11 +72,22 @@ class PhysicsWorld(
 
                             if (!firstBoundingBox.overlaps(second.boundingBox)) continue
 
+                            val d = first.pos.distance(second.pos)
+                            if (d > first.radius + second.radius) {
+                                debugData.missedEarlies++
+                                continue
+                            }
+
                             val result: List<IContact>
 
+                            debugData.totalPairCollisionChecks++
                             val t = measureNanoTime {
                                 result = if (choice == 1) first.collides(second) else second.collides(first)
                             }
+
+                            if (result.isEmpty()) continue
+
+                            debugData.pairCollisions++
 
                             if (Udar.CONFIG.debug.collisionTimes > 0) {
                                 println("B-B COLLISION TOOK: ${t.toDouble() / 1_000_000.0} ms")
@@ -100,6 +117,12 @@ class PhysicsWorld(
                     if (!first.capableCollision(environmentBody).capable) continue
 
                     val result = first.collides(environmentBody)
+
+                    debugData.totalEnvironmentCollisionChecks++
+
+                    if (result.isEmpty()) continue
+
+                    debugData.environmentCollisions++
 
                     for (c in result) {
                         val ourContacts =
@@ -132,6 +155,10 @@ class PhysicsWorld(
                 if (untilCollision && contacts.isNotEmpty()) {
                     untilCollision = false
                     frozen = true
+                }
+
+                if (Udar.CONFIG.debug.data > 0) {
+                    debugData.print()
                 }
             }
 

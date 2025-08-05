@@ -122,9 +122,9 @@ class Mesh(
             }
 
             val meshFaces = mutableListOf<MeshFace>().apply {
-                this += createMeshFaces(Axis.X, boundingBoxes, meshStart, meshEnd)
-                this += createMeshFaces(Axis.Y, boundingBoxes, meshStart, meshEnd)
-                this += createMeshFaces(Axis.Z, boundingBoxes, meshStart, meshEnd)
+                this += createMeshFaces(Axis.X, boundingBoxes, meshStart, meshEnd).optimizeFaces()
+                this += createMeshFaces(Axis.Y, boundingBoxes, meshStart, meshEnd).optimizeFaces()
+                this += createMeshFaces(Axis.Z, boundingBoxes, meshStart, meshEnd).optimizeFaces()
             }
 
             val edges = createMeshEdges(boundingBoxes)
@@ -320,6 +320,35 @@ class Mesh(
             }
 
             return faces
+        }
+
+        private fun MutableList<MeshFace>.optimizeFaces() : MutableList<MeshFace> {
+            val epsilon = 1e-11
+            val facesToRemove = mutableListOf<MeshFace>()
+
+            for (face in this) {
+                for (invalid in face.invalid) {
+                    val validToRemove = mutableListOf<MeshFacePass>()
+                    for (valid in face.valid) {
+                        if (
+                            (invalid.first.distance(valid.start) < epsilon && invalid.second.distance(valid.end) < epsilon)
+                            || (invalid.first.distance(valid.end) < epsilon && invalid.second.distance(valid.start) < epsilon)
+                            ) {
+                            validToRemove += valid
+                        }
+                    }
+
+                    face.valid.removeAll(validToRemove)
+                }
+
+                if (face.valid.isEmpty()) {
+                    facesToRemove += face
+                }
+            }
+
+            removeAll(facesToRemove)
+
+            return this
         }
 
         private fun createMeshEdges(
