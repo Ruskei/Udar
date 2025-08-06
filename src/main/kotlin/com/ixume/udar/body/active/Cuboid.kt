@@ -21,6 +21,7 @@ import org.bukkit.util.BoundingBox
 import org.bukkit.util.Transformation
 import org.joml.*
 import java.util.*
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.*
 
 class Cuboid(
@@ -42,8 +43,8 @@ class Cuboid(
     override val physicsWorld: PhysicsWorld = world.physicsWorld!!
 
     override var age: Int = 0
-    override var awake = true
-    override var startled = true
+    override var awake = AtomicBoolean(true)
+    override var startled = AtomicBoolean(true)
 
     val scale = Vector3d(width, height, length)
 
@@ -293,8 +294,8 @@ class Cuboid(
         normal: Vector3d,
         impulse: Vector3d,
     ) {
-        awake = true
-        startled = true
+        awake.set(true)
+        startled.set(true)
         val localNormal = Vector3d(normal).rotate(Quaterniond(q).conjugate()).normalize()!!
         val localPoint = globalToLocal(point)
 

@@ -82,7 +82,7 @@ object CompositeCommand : Command {
 
                 val num = args[1].toIntOrNull() ?: return true
 
-                val ss = physicsWorld.activeBodies.sortedBy { it.pos.distance(origin) }
+                val ss = physicsWorld.activeBodies.get().sortedBy { it.pos.distance(origin) }
 
                 val bodies = ss.take(num)
 

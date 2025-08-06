@@ -28,7 +28,8 @@ object PlayerInteractListener : Listener {
         val end = Vector3d(start).add(dir)
 
         val allIntersections = mutableListOf<Triple<ActiveBody, Vector3d, Vector3d>>()
-        for (body in physicsWorld.activeBodies) {
+        val snapshot = physicsWorld.activeBodies.get()
+        for (body in snapshot) {
             allIntersections += body.intersect(start, end).map { Triple(body, it.first, it.second) }
         }
 

@@ -50,6 +50,7 @@ object SDFProjectionCommand : Command {
                 val o = sender.location.toVector().toVector3d()
 
                 val obj = physicsWorld.activeBodies
+                    .get()
                     .filter { it is SDFCapable }
                     .minByOrNull { it.pos.distance(o) }
                     ?: return@Runnable

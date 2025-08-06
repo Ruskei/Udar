@@ -5,6 +5,7 @@ import com.ixume.udar.collisiondetection.capability.Projectable
 import org.bukkit.util.BoundingBox
 import org.joml.Quaterniond
 import org.joml.Vector3d
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.max
 import kotlin.math.min
 
@@ -15,8 +16,8 @@ interface ActiveBody : CollidableBody, Projectable {
     val radius: Double
     val boundingBox: BoundingBox
 
-    var awake: Boolean
-    var startled: Boolean
+    var awake: AtomicBoolean
+    var startled: AtomicBoolean
     val linearDelta: Vector3d
     val angularDelta: Double
 

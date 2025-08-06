@@ -6,8 +6,6 @@ class EntityUpdater(
     val physicsWorld: PhysicsWorld
 ) {
     fun tick() {
-        synchronized(physicsWorld.activeBodies) {
-            physicsWorld.activeBodies.forEach { it.visualize() }
-        }
+        physicsWorld.activeBodies.get().forEach { it.visualize() }
     }
 }

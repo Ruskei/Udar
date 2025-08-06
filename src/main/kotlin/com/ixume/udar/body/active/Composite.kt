@@ -15,6 +15,7 @@ import org.joml.Matrix3d
 import org.joml.Quaterniond
 import org.joml.Vector3d
 import java.util.*
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.acos
 import kotlin.math.max
 import kotlin.math.min
@@ -38,8 +39,8 @@ class Composite(
     override val physicsWorld: PhysicsWorld = world.physicsWorld!!
 
     override var age: Int = 0
-    override var awake = true
-    override var startled = true
+    override var awake = AtomicBoolean(true)
+    override var startled = AtomicBoolean(true)
 
     data class RelativePose(
         val pos: Vector3d,
@@ -170,8 +171,8 @@ class Composite(
     }
 
     override fun applyImpulse(point: Vector3d, normal: Vector3d, impulse: Vector3d) {
-        awake = true
-        startled = true
+        awake.set(true)
+        startled.set(true)
         val localNormal =
             Vector3d(normal).rotate(Quaterniond(q).conjugate()).normalize()!!.mul(inertialPrincipleRotation)
         val localPoint = globalToLocal(point).mul(inertialPrincipleRotation)
