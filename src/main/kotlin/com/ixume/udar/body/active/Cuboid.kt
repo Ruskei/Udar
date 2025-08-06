@@ -207,7 +207,6 @@ class Cuboid(
         torque = Vector3d()
 
         update()
-        visualize()
 
         localInertia.set(calcInertia())
         localInverseInertia.set(1.0 / localInertia.x, 1.0 / localInertia.y, 1.0 / localInertia.z)

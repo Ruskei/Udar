@@ -1,15 +1,16 @@
 package com.ixume.udar.collisiondetection.contactgeneration
 
 import com.ixume.udar.Udar
-import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.Collidable
 import com.ixume.udar.body.EnvironmentBody
+import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.collisiondetection.capability.Capability
 import com.ixume.udar.collisiondetection.mesh.Axis
 import com.ixume.udar.collisiondetection.mesh.Edge
 import com.ixume.udar.collisiondetection.mesh.Mesh
 import com.ixume.udar.collisiondetection.mesh.MeshFace
+import com.ixume.udar.physics.BBRequest
 import com.ixume.udar.physics.CollisionResult
 import com.ixume.udar.physics.Contact
 import com.ixume.udar.testing.debugConnect
@@ -18,7 +19,7 @@ import org.bukkit.Location
 import org.bukkit.Particle
 import org.joml.Vector3d
 import org.joml.Vector3i
-import kotlin.collections.plusAssign
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.max
@@ -30,9 +31,19 @@ class EnvironmentSATContactGenerator(
         return Capability(other is EnvironmentBody, 0)
     }
 
-    private var cachedMesh: Mesh = Mesh.Companion.mesh(world = activeBody.world, boundingBox = activeBody.boundingBox)
+    private val cachedMesh: AtomicReference<Mesh> =
+        AtomicReference(Mesh.Companion.mesh(world = activeBody.world, boundingBox = activeBody.boundingBox))
+
+    private fun setMesh(value: Mesh) {
+        do {
+            val curr = cachedMesh.get()
+        } while (!cachedMesh.compareAndSet(curr, value))
+    }
+
     private fun getMesh(): Mesh {
         val bb = activeBody.boundingBox
+
+        val cm = cachedMesh.get()
 
         val meshStart = Vector3i(
             floor(bb.minX).toInt() - 1,
@@ -45,13 +56,14 @@ class EnvironmentSATContactGenerator(
             floor(bb.maxZ).toInt() + 1,
         )
 
-        if (meshStart.x < cachedMesh.start.x || meshStart.y < cachedMesh.start.y || meshStart.z < cachedMesh.start.z
-            || meshEnd.x > cachedMesh.end.x || meshEnd.y > cachedMesh.end.y || meshEnd.z > cachedMesh.end.z
+        if (meshStart.x < cm.start.x || meshStart.y < cm.start.y || meshStart.z < cm.start.z
+            || meshEnd.x > cm.end.x || meshEnd.y > cm.end.y || meshEnd.z > cm.end.z
         ) {
-            cachedMesh = Mesh.Companion.mesh(activeBody.world, bb)
-            return cachedMesh
+            activeBody.physicsWorld.realWorldGetter.fetchBBs(BBRequest(bb) { setMesh(it) })
+
+            return cm
         } else {
-            return cachedMesh
+            return cm
         }
     }
 
@@ -246,7 +258,14 @@ class EnvironmentSATContactGenerator(
 
         facesChecked++
         val r =
-            activeBody.physicsWorld.math.collidesSAT(activeBody, otherVertices, otherAxiss, otherEdges, findAll = true, collideMyAxiss = false) ?: return null
+            activeBody.physicsWorld.math.collidesSAT(
+                activeBody,
+                otherVertices,
+                otherAxiss,
+                otherEdges,
+                findAll = true,
+                collideMyAxiss = false
+            ) ?: return null
         if (r.isEmpty()) return null
 
         return (when (face.axis) {

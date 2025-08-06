@@ -135,7 +135,6 @@ class Composite(
             part.q.set(Quaterniond(q).mul(pose.rot))
 
             part.update()
-            part.visualize()
         }
 
         linearDelta.set(pos).sub(prevP)
@@ -153,6 +152,10 @@ class Composite(
 
         vertices = calcVertices()
         boundingBox = calcBoundingBox()
+    }
+
+    override fun visualize() {
+        parts.forEach { it.visualize() }
     }
 
     override fun intersect(

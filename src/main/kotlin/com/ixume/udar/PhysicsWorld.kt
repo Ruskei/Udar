@@ -1,24 +1,23 @@
 package com.ixume.udar
 
+import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
-import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.collisiondetection.LocalMathUtil
 import com.ixume.udar.collisiondetection.mesh.Mesh
-import com.ixume.udar.physics.ContactSolver
-import com.ixume.udar.physics.IContact
-import com.ixume.udar.physics.StatusUpdater
+import com.ixume.udar.physics.*
 import com.ixume.udar.testing.PhysicsWorldTestDebugData
-import com.ixume.udar.testing.debugConnect
 import org.bukkit.*
 import org.joml.Vector3d
+import java.util.*
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.roundToInt
 import kotlin.system.measureNanoTime
 
 class PhysicsWorld(
     val world: World
 ) {
-    val activeBodies: MutableList<ActiveBody> = mutableListOf()
+    val activeBodies: MutableList<ActiveBody> = Collections.synchronizedList(mutableListOf<ActiveBody>())
     val contacts: MutableList<IContact> = mutableListOf()
     val meshes: MutableList<Mesh> = mutableListOf()
 
@@ -27,13 +26,19 @@ class PhysicsWorld(
     var untilCollision = false
     var steps = 0
 
-    private val simTask = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { tick() }, 1, 1)
-
     val debugData = PhysicsWorldTestDebugData()
-
     val math = LocalMathUtil()
 
+    val realWorldGetter = RealWorldGetter(world)
+    private val entityUpdater = EntityUpdater(this)
     private val statusUpdater = StatusUpdater(this)
+
+    private val simTask = Bukkit.getScheduler().runTaskTimerAsynchronously(Udar.INSTANCE, Runnable { tick() }, 1, 1)
+    private val realWorldTask =
+        Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { realWorldGetter.tick() }, 1, 1)
+    private val entityTask = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { entityUpdater.tick() }, 1, 1)
+
+    private val busy = AtomicBoolean(false)
 
     private fun tick() {
         time++
@@ -44,170 +49,174 @@ class PhysicsWorld(
             }
 
             if (doTick) {
-                debugData.reset()
+                if (busy.get()) return@repeat
+                busy.set(true)
+                synchronized(activeBodies) {
+                    debugData.reset()
 
-                contacts.clear()
-                meshes.clear()
+                    contacts.clear()
+                    meshes.clear()
 
-                statusUpdater.updateBodies()
+                    statusUpdater.updateBodies()
 
-                for (i in 0..<activeBodies.size) {
-                    val first = activeBodies[i]
-                    first.ensureNonAligned()
-                    val firstBoundingBox = first.boundingBox
-                    if (activeBodies.size > 1) {
-                        for (j in (i + 1)..<activeBodies.size) {
-                            debugData.totalPairs++
-                            val second = activeBodies[j]
-                            if (!first.awake && !second.awake) {
-                                continue
-                            }
-
-                            val canFirst = first.capableCollision(second)
-                            val canSecond = second.capableCollision(first)
-
-                            var choice = 0 //0 = none, 1 = first, 2 = second
-                            if (canFirst.capable && canSecond.capable) {
-                                choice = if (canFirst.priority > canSecond.priority) {
-                                    1
-                                } else {
-                                    2
+                    for (i in 0..<activeBodies.size) {
+                        val first = activeBodies[i]
+                        first.ensureNonAligned()
+                        val firstBoundingBox = first.boundingBox
+                        if (activeBodies.size > 1) {
+                            for (j in (i + 1)..<activeBodies.size) {
+                                debugData.totalPairs++
+                                val second = activeBodies[j]
+                                if (!first.awake && !second.awake) {
+                                    continue
                                 }
-                            } else if (canFirst.capable) {
-                                choice = 1
-                            } else if (canSecond.capable) {
-                                choice = 2
-                            }
 
-                            if (choice == 0) continue
+                                val canFirst = first.capableCollision(second)
+                                val canSecond = second.capableCollision(first)
 
-                            if (!firstBoundingBox.overlaps(second.boundingBox)) continue
-
-                            val d = first.pos.distance(second.pos)
-                            if (d > first.radius + second.radius) {
-                                debugData.missedEarlies++
-                                continue
-                            }
-
-                            val result: List<IContact>
-
-                            debugData.totalPairCollisionChecks++
-                            val t = measureNanoTime {
-                                result = if (choice == 1) first.collides(second) else second.collides(first)
-                            }
-
-                            if (result.isEmpty()) continue
-
-                            debugData.pairCollisions++
-
-                            first.awake = true
-                            second.awake = true
-
-                            if (Udar.CONFIG.debug.collisionTimes > 0) {
-                                println("B-B COLLISION TOOK: ${t.toDouble() / 1_000_000.0} ms")
-                            }
-
-                            for (contact in result) {
-                                val ourContacts =
-                                    first.previousContacts.filter { it.first == second || it.second == second }
-
-                                first.contacts += contact
-                                second.contacts += contact
-
-                                for (ourContact in ourContacts) {
-                                    if (ourContact.result.point.distance(contact.result.point) < 1e-2) {
-                                        contact.lambdaSum += ourContact.lambdaSum * Udar.CONFIG.collision.lambdaCarryover
-
-                                        break
+                                var choice = 0 //0 = none, 1 = first, 2 = second
+                                if (canFirst.capable && canSecond.capable) {
+                                    choice = if (canFirst.priority > canSecond.priority) {
+                                        1
+                                    } else {
+                                        2
                                     }
+                                } else if (canFirst.capable) {
+                                    choice = 1
+                                } else if (canSecond.capable) {
+                                    choice = 2
                                 }
 
-                                contacts += contact
+                                if (choice == 0) continue
+
+                                if (!firstBoundingBox.overlaps(second.boundingBox)) continue
+
+                                val d = first.pos.distance(second.pos)
+                                if (d > first.radius + second.radius) {
+                                    debugData.missedEarlies++
+                                    continue
+                                }
+
+                                val result: List<IContact>
+
+                                debugData.totalPairCollisionChecks++
+                                val t = measureNanoTime {
+                                    result = if (choice == 1) first.collides(second) else second.collides(first)
+                                }
+
+                                if (result.isEmpty()) continue
+
+                                debugData.pairCollisions++
+
+                                first.awake = true
+                                second.awake = true
+
+                                if (Udar.CONFIG.debug.collisionTimes > 0) {
+                                    println("B-B COLLISION TOOK: ${t.toDouble() / 1_000_000.0} ms")
+                                }
+
+                                for (contact in result) {
+                                    val ourContacts =
+                                        first.previousContacts.filter { it.first == second || it.second == second }
+
+                                    first.contacts += contact
+                                    second.contacts += contact
+
+                                    for (ourContact in ourContacts) {
+                                        if (ourContact.result.point.distance(contact.result.point) < 1e-2) {
+                                            contact.lambdaSum += ourContact.lambdaSum * Udar.CONFIG.collision.lambdaCarryover
+
+                                            break
+                                        }
+                                    }
+
+                                    contacts += contact
+                                }
                             }
+                        }
+
+                        if (!first.awake) {
+                            continue
+                        }
+
+                        val environmentBody = EnvironmentBody(world)
+                        if (!first.capableCollision(environmentBody).capable) continue
+
+                        val result = first.collides(environmentBody)
+
+                        debugData.totalEnvironmentCollisionChecks++
+
+                        if (result.isEmpty()) continue
+
+                        debugData.environmentCollisions++
+
+                        for (c in result) {
+                            val ourContacts =
+                                first.previousContacts.filter { it.first is EnvironmentBody || it.second is EnvironmentBody }
+
+                            for (ourContact in ourContacts) {
+                                if (ourContact.result.point.distance(c.result.point) < 1e-2) {
+                                    c.lambdaSum += ourContact.lambdaSum * Udar.CONFIG.collision.lambdaCarryover
+
+                                    break
+
+                                }
+                            }
+
+                            first.contacts += c
+                            contacts += c
+                        }
+                    }
+                    for (body in activeBodies) {
+                        if (body.awake && body.hasGravity) body.velocity.add(Vector3d(Udar.CONFIG.gravity).mul(TIME_STEP))
+                    }
+
+                    ContactSolver.solve(contacts)
+
+                    for (body in activeBodies) {
+                        if (body.awake) {
+                            body.step()
                         }
                     }
 
-                    if (!first.awake) {
-                        continue
-                    }
-
-                    val environmentBody = EnvironmentBody(world)
-                    if (!first.capableCollision(environmentBody).capable) continue
-
-                    val result = first.collides(environmentBody)
-
-                    debugData.totalEnvironmentCollisionChecks++
-
-                    if (result.isEmpty()) continue
-
-                    debugData.environmentCollisions++
-
-                    for (c in result) {
-                        val ourContacts =
-                            first.previousContacts.filter { it.first is EnvironmentBody || it.second is EnvironmentBody }
-
-                        for (ourContact in ourContacts) {
-                            if (ourContact.result.point.distance(c.result.point) < 1e-2) {
-                                c.lambdaSum += ourContact.lambdaSum * Udar.CONFIG.collision.lambdaCarryover
-
-                                break
-
-                            }
-                        }
-
-                        first.contacts += c
-                        contacts += c
+                    if (untilCollision && contacts.isNotEmpty()) {
+                        untilCollision = false
+                        frozen = true
                     }
                 }
-
-                for (body in activeBodies) {
-                    if (body.awake && body.hasGravity) body.velocity.add(Vector3d(Udar.CONFIG.gravity).mul(TIME_STEP))
-                }
-
-                ContactSolver.solve(contacts)
-
-                for (body in activeBodies) {
-                    if (body.awake) {
-                        body.step()
-                    }
-                }
-
-                if (untilCollision && contacts.isNotEmpty()) {
-                    untilCollision = false
-                    frozen = true
-                }
+                busy.set(false)
 
                 if (Udar.CONFIG.debug.data > 0) {
                     debugData.print()
                 }
             }
 
-            if (time % Udar.CONFIG.debug.frequency == 0) {
-//                for (body in activeBodies) {
-//                    body.visualize()
+//            if (time % Udar.CONFIG.debug.frequency == 0) {
+////                for (body in activeBodies) {
+////                    body.visualize()
+////                }
+//
+//                for (contact in contacts) {
+//                    if (Udar.CONFIG.debug.normals > 0) {
+//                        val (point, norm, _) = contact.result
+//
+//                        world.debugConnect(
+//                            point,
+//                            Vector3d(point).add(Vector3d(norm).mul(0.5)),
+//                            Particle.DustOptions(Color.BLUE, 0.15f)
+//                        )
+//
+//                        world.spawnParticle(
+//                            Particle.REDSTONE,
+//                            Location(
+//                                world,
+//                                point.x, point.y, point.z,
+//                            ),
+//                            1, Particle.DustOptions(Color.RED, 0.3f)
+//                        )
+//                    }
 //                }
-
-                for (contact in contacts) {
-                    if (Udar.CONFIG.debug.normals > 0) {
-                        val (point, norm, _) = contact.result
-
-                        world.debugConnect(
-                            point,
-                            Vector3d(point).add(Vector3d(norm).mul(0.5)),
-                            Particle.DustOptions(Color.BLUE, 0.15f)
-                        )
-
-                        world.spawnParticle(
-                            Particle.REDSTONE,
-                            Location(
-                                world,
-                                point.x, point.y, point.z,
-                            ),
-                            1, Particle.DustOptions(Color.RED, 0.3f)
-                        )
-                    }
-                }
-            }
+//            }
         }
     }
 
@@ -220,5 +229,7 @@ class PhysicsWorld(
         clear()
 
         simTask.cancel()
+        realWorldTask.cancel()
+        entityTask.cancel()
     }
 }
