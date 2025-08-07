@@ -3,8 +3,8 @@ package com.ixume.udar
 import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
-import com.ixume.udar.collisiondetection.MathPool
 import com.ixume.udar.collisiondetection.mesh.Mesh
+import com.ixume.udar.collisiondetection.pool.MathPool
 import com.ixume.udar.physics.*
 import com.ixume.udar.testing.PhysicsWorldTestDebugData
 import kotlinx.coroutines.*
@@ -21,6 +21,8 @@ class PhysicsWorld(
     val activeBodies = AtomicList<ActiveBody>()
     val contacts: MutableList<IContact> = mutableListOf()
     val meshes: MutableList<Mesh> = mutableListOf()
+
+    private val environmentBody = EnvironmentBody(this)
 
     private var time = 0
     private var physicsTime = 0
@@ -101,8 +103,7 @@ class PhysicsWorld(
                                 continue
                             }
 
-                            val environmentBody = EnvironmentBody(world)
-                            if (!body.capableCollision(environmentBody).capable) continue
+                            if (body.capableCollision(environmentBody) < 0) continue
 
                             val result = body.collides(environmentBody, math)
 
@@ -191,7 +192,7 @@ class PhysicsWorld(
                 if (!firstBoundingBox.overlaps(second.boundingBox)) continue
 
                 val canFirst = first.capableCollision(second)
-                if (!canFirst.capable) continue
+                if (canFirst < 0) continue
 
                 val d = first.pos.distance(second.pos)
                 if (d > first.radius + second.radius) {

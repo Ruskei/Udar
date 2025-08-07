@@ -1,9 +1,10 @@
 package com.ixume.udar.body.active
 
 import com.ixume.udar.body.CollidableBody
+import com.ixume.udar.collisiondetection.MutableBB
 import com.ixume.udar.collisiondetection.capability.Projectable
-import org.bukkit.util.BoundingBox
 import org.joml.Quaterniond
+import org.joml.Vector2d
 import org.joml.Vector3d
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.max
@@ -12,9 +13,9 @@ import kotlin.math.min
 interface ActiveBody : CollidableBody, Projectable {
     var age: Int
 
-    val vertices: List<Vector3d>
+    val vertices: Array<Vector3d>
     val radius: Double
-    val boundingBox: BoundingBox
+    val boundingBox: MutableBB
 
     var awake: AtomicBoolean
     var startled: AtomicBoolean
@@ -41,13 +42,13 @@ interface ActiveBody : CollidableBody, Projectable {
 
     fun kill()
 
-    override fun project(axis: Vector3d): Pair<Double, Double> {
+    override fun project(axis: Vector3d): Vector2d {
         var min = Double.MAX_VALUE
         var max = -Double.MAX_VALUE
 
         val vs = vertices
 
-        if (vs.isEmpty()) return 0.0 to 0.0
+        if (vs.isEmpty()) return Vector2d(0.0)
 
         for (v in vs) {
             val s = v.dot(axis)
@@ -55,7 +56,7 @@ interface ActiveBody : CollidableBody, Projectable {
             max = max(max, s)
         }
 
-        return min to max
+        return Vector2d(min, max)
     }
 
     fun applyImpulse(

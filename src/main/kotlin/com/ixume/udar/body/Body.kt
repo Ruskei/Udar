@@ -5,7 +5,7 @@ import org.bukkit.World
 import org.joml.Matrix3d
 import org.joml.Quaterniond
 import org.joml.Vector3d
-import java.util.UUID
+import java.util.*
 
 interface Body {
     val id: UUID

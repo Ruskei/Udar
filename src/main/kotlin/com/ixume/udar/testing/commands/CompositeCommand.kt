@@ -70,7 +70,7 @@ object CompositeCommand : Command {
                         0.0,
                         0.0
                     ),
-                    omega = Vector3d(0.0, 0.0, 0.0),
+                    omega = Vector3d(0.0),
                     hasGravity = true,
                     parts = listOf(cuboid, cuboid2)
                 )

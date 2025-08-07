@@ -6,7 +6,6 @@ import com.ixume.udar.body.Collidable
 import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.collisiondetection.LocalMathUtil
-import com.ixume.udar.collisiondetection.capability.Capability
 import com.ixume.udar.collisiondetection.mesh.Axis
 import com.ixume.udar.collisiondetection.mesh.Edge
 import com.ixume.udar.collisiondetection.mesh.Mesh
@@ -28,8 +27,8 @@ import kotlin.math.max
 class EnvironmentSATContactGenerator(
     val activeBody: ActiveBody
 ) : Collidable {
-    override fun capableCollision(other: Body): Capability {
-        return Capability(other is EnvironmentBody, 0)
+    override fun capableCollision(other: Body): Int {
+        return if (other is EnvironmentBody) 0 else -1
     }
 
     private val cachedMesh: AtomicReference<Mesh> =
@@ -85,7 +84,7 @@ class EnvironmentSATContactGenerator(
     private var prevMaxDepth = Udar.Companion.CONFIG.collision.passiveSlop
     var facesChecked = 0
     override fun collides(other: Body, math: LocalMathUtil): List<Contact> {
-        require(capableCollision(other).capable)
+        require(capableCollision(other) >= 0)
 
         val mesh = getMesh()
 //        mesh.visualize(
@@ -225,7 +224,7 @@ class EnvironmentSATContactGenerator(
             Axis.X -> {
                 if (boundingBox.maxX < face.level || boundingBox.minX > face.level) return null
 
-                listOf<Vector3d>() to listOf(
+                listOf<Vector3d>() to arrayOf(
                     Vector3d(start.x, start.y - large, start.z - large),
                     Vector3d(start.x, end.y + large, start.z - large),
                     Vector3d(start.x, end.y + large, end.z + large),
@@ -236,7 +235,7 @@ class EnvironmentSATContactGenerator(
             Axis.Y -> {
                 if (boundingBox.maxY < face.level || boundingBox.minY > face.level) return null
 
-                listOf<Vector3d>() to listOf(
+                listOf<Vector3d>() to arrayOf(
                     Vector3d(start.x - large, start.y, start.z - large),
                     Vector3d(end.x + large, start.y, start.z - large),
                     Vector3d(end.x + large, start.y, end.z + large),
@@ -247,7 +246,7 @@ class EnvironmentSATContactGenerator(
             Axis.Z -> {
                 if (boundingBox.maxZ < face.level || boundingBox.minZ > face.level) return null
 
-                listOf<Vector3d>() to listOf(
+                listOf<Vector3d>() to arrayOf(
                     Vector3d(start.x - large, start.y - large, start.z),
                     Vector3d(end.x + large, start.y - large, start.z),
                     Vector3d(end.x + large, end.y + large, start.z),
@@ -290,7 +289,7 @@ class EnvironmentSATContactGenerator(
     ): CollisionResult? {
         edge.axis!!
         edge.mount!!
-        val otherVertices = listOf(
+        val otherVertices = arrayOf(
             edge.start,
             edge.end,
         )

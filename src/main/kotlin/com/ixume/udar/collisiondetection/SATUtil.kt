@@ -130,6 +130,7 @@ fun edgeCrosses(
 
     return ls
 }
+
 data class SATCycle(
     val overlap: Double,
     val order: Boolean,
@@ -140,8 +141,12 @@ fun cycleSAT(
     my: Projectable,
     other: Projectable,
 ): SATCycle? {
-    val (myMin, myMax) = my.project(axis)
-    val (otherMin, otherMax) = other.project(axis)
+    val myminmax = my.project(axis)
+    val myMin = myminmax.x
+    val myMax = myminmax.y
+    val otherminmax = other.project(axis)
+    val otherMin = otherminmax.x
+    val otherMax = otherminmax.y
 
     var order: Boolean? = null
     val overlap = if (myMin < otherMax && myMax > otherMin) {
@@ -169,48 +174,4 @@ fun cycleSAT(
     return SATCycle(overlap, order!!)
 }
 
-fun cycleSAT(
-    myMin: Double,
-    myMax: Double,
-    otherMin: Double,
-    otherMax: Double,
-): SATCycle? {
-    var order: Boolean? = null
-    val overlap = if (myMin < otherMax && myMax > otherMin) {
-        //overlapping
-        order = (otherMax - myMin) < (myMax - otherMin)
-
-        //check if contained or overlapping; if contained then choose smallest distance as overlap
-        if (myMin < otherMin && myMax > otherMax) {
-            //i contain other
-            min(myMax - otherMin, otherMax - myMin)
-        } else if (otherMin < myMin && otherMax > myMax) {
-            //other contains me
-            min(otherMax - myMin, myMax - otherMin)
-        } else {
-            //just overlapping
-            if (myMax > otherMax) otherMax - myMin
-            else myMax - otherMin
-        }
-    } else 0.0
-
-    if (overlap <= 0.0) {
-        return null
-    }
-
-    return SATCycle(overlap, order!!)
-}
-
-fun List<Vector3d>.project(axis: Vector3d): Pair<Double, Double> {
-    var min = Double.MAX_VALUE
-    var max = -Double.MAX_VALUE
-
-    for (v in this) {
-        val s = v.dot(axis)
-        min = min(min, s)
-        max = max(max, s)
-    }
-
-    return min to max
-}
 

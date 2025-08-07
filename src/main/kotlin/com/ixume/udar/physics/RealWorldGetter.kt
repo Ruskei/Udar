@@ -1,8 +1,8 @@
 package com.ixume.udar.physics
 
+import com.ixume.udar.collisiondetection.MutableBB
 import com.ixume.udar.collisiondetection.mesh.Mesh
 import org.bukkit.World
-import org.bukkit.util.BoundingBox
 import java.util.concurrent.ConcurrentLinkedQueue
 
 class RealWorldGetter(
@@ -24,6 +24,6 @@ class RealWorldGetter(
 }
 
 data class BBRequest(
-    val bb: BoundingBox,
+    val bb: MutableBB,
     val callback: (Mesh) -> (Unit)
 )

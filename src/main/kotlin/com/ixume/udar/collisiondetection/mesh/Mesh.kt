@@ -1,11 +1,11 @@
 package com.ixume.udar.collisiondetection.mesh
 
+import com.ixume.udar.collisiondetection.MutableBB
 import com.ixume.udar.testing.debugConnect
 import org.bukkit.Color.*
 import org.bukkit.Particle.DustOptions
 import org.bukkit.World
 import org.bukkit.util.BoundingBox
-import org.bukkit.util.Vector
 import org.joml.Vector2d
 import org.joml.Vector3d
 import org.joml.Vector3i
@@ -92,7 +92,7 @@ class Mesh(
 
         fun mesh(
             world: World,
-            boundingBox: BoundingBox,
+            boundingBox: MutableBB,
         ): Mesh {
             val meshStart = Vector3i(
                 floor(boundingBox.minX).toInt() - OUTER,
@@ -143,35 +143,51 @@ class Mesh(
             meshStart: Vector3i,
             meshEnd: Vector3i,
         ): MutableList<MeshFace> {
-            fun Vector.a(): Double {
+            fun BoundingBox.maxA(): Double {
                 return when (axis) {
-                    Axis.X -> x
-                    Axis.Y -> y
-                    Axis.Z -> z
+                    Axis.X -> maxX
+                    Axis.Y -> maxY
+                    Axis.Z -> maxZ
                 }
             }
 
-            fun Vector.b(): Double {
+            fun BoundingBox.maxB(): Double {
                 return when (axis) {
-                    Axis.X -> y
-                    Axis.Y -> x
-                    Axis.Z -> x
+                    Axis.X -> maxY
+                    Axis.Y -> maxX
+                    Axis.Z -> maxX
                 }
             }
 
-            fun Vector.c(): Double {
+            fun BoundingBox.maxC(): Double {
                 return when (axis) {
-                    Axis.X -> z
-                    Axis.Y -> z
-                    Axis.Z -> y
+                    Axis.X -> maxZ
+                    Axis.Y -> maxZ
+                    Axis.Z -> maxY
                 }
             }
 
-            fun Vector3i.a(): Int {
+            fun BoundingBox.minA(): Double {
                 return when (axis) {
-                    Axis.X -> x
-                    Axis.Y -> y
-                    Axis.Z -> z
+                    Axis.X -> minX
+                    Axis.Y -> minY
+                    Axis.Z -> minZ
+                }
+            }
+
+            fun BoundingBox.minB(): Double {
+                return when (axis) {
+                    Axis.X -> minY
+                    Axis.Y -> minX
+                    Axis.Z -> minX
+                }
+            }
+
+            fun BoundingBox.minC(): Double {
+                return when (axis) {
+                    Axis.X -> minZ
+                    Axis.Y -> minZ
+                    Axis.Z -> minY
                 }
             }
 
@@ -199,22 +215,6 @@ class Mesh(
                 }
             }
 
-            fun Vector3d.b(): Double {
-                return when (axis) {
-                    Axis.X -> y
-                    Axis.Y -> x
-                    Axis.Z -> x
-                }
-            }
-
-            fun Vector3d.c(): Double {
-                return when (axis) {
-                    Axis.X -> z
-                    Axis.Y -> z
-                    Axis.Z -> y
-                }
-            }
-
             fun Vector3d.deshuffle(): Vector3d {
                 return when (axis) {
                     Axis.X -> Vector3d(x, y, z) //from x, y, z
@@ -232,21 +232,21 @@ class Mesh(
                 val bb1 = boundingBoxes[i]
 
                 var doMin = false
-                val minFace = faces.firstOrNull { abs(it.start.a() - bb1.min.a()) < epsilon } ?: let {
+                val minFace = faces.firstOrNull { abs(it.start.a() - bb1.minA()) < epsilon } ?: let {
                     val f = MeshFace(
                         axis = axis,
-                        start = Vector3d(bb1.min.a(), meshStart.b().toDouble(), meshStart.c().toDouble()).deshuffle(),
-                        end = Vector3d(bb1.min.a(), meshEnd.b().toDouble(), meshEnd.c().toDouble()).deshuffle(),
+                        start = Vector3d(bb1.minA(), meshStart.b().toDouble(), meshStart.c().toDouble()).deshuffle(),
+                        end = Vector3d(bb1.minA(), meshEnd.b().toDouble(), meshEnd.c().toDouble()).deshuffle(),
                         valid = mutableListOf(
                             MeshFacePass(
-                                Vector2d(bb1.min.b(), bb1.min.c()),
-                                Vector2d(bb1.max.b(), bb1.max.c()),
+                                Vector2d(bb1.minB(), bb1.minC()),
+                                Vector2d(bb1.maxB(), bb1.maxC()),
                                 false,
 
                                 )
                         ),
                         invalid = mutableListOf(),
-                        level = bb1.min.a(),
+                        level = bb1.minA(),
                     )
 
                     doMin = true
@@ -255,20 +255,20 @@ class Mesh(
                 }
 
                 var doMax = false
-                val maxFace = faces.firstOrNull { abs(it.start.a() - bb1.max.a()) < epsilon } ?: let {
+                val maxFace = faces.firstOrNull { abs(it.start.a() - bb1.maxA()) < epsilon } ?: let {
                     val f = MeshFace(
                         axis = axis,
-                        start = Vector3d(bb1.max.a(), meshStart.b().toDouble(), meshStart.c().toDouble()).deshuffle(),
-                        end = Vector3d(bb1.max.a(), meshEnd.b().toDouble(), meshEnd.c().toDouble()).deshuffle(),
+                        start = Vector3d(bb1.maxA(), meshStart.b().toDouble(), meshStart.c().toDouble()).deshuffle(),
+                        end = Vector3d(bb1.maxA(), meshEnd.b().toDouble(), meshEnd.c().toDouble()).deshuffle(),
                         valid = mutableListOf(
                             MeshFacePass(
-                                Vector2d(bb1.min.b(), bb1.min.c()),
-                                Vector2d(bb1.max.b(), bb1.max.c()),
+                                Vector2d(bb1.minB(), bb1.minC()),
+                                Vector2d(bb1.maxB(), bb1.maxC()),
                                 true
                             )
                         ),
                         invalid = mutableListOf(),
-                        level = bb1.max.a(),
+                        level = bb1.maxA(),
                     )
 
                     doMax = true
@@ -279,41 +279,41 @@ class Mesh(
                 for (j in (i + 1)..<boundingBoxes.size) {
                     val bb2 = boundingBoxes[j]
 
-                    val minMaxClose = abs(bb1.min.a() - bb2.max.a()) < epsilon
-                    val isMinClose = abs(bb1.min.a() - bb2.min.a()) < epsilon
+                    val minMaxClose = abs(bb1.minA() - bb2.maxA()) < epsilon
+                    val isMinClose = abs(bb1.minA() - bb2.minA()) < epsilon
                     if (doMin && (minMaxClose || isMinClose)) {
                         minFace.valid += MeshFacePass(
-                            Vector2d(bb2.min.b(), bb2.min.c()),
-                            Vector2d(bb2.max.b(), bb2.max.c()),
+                            Vector2d(bb2.minB(), bb2.minC()),
+                            Vector2d(bb2.maxB(), bb2.maxC()),
                             !isMinClose
                         )
                     }
 
                     if (minMaxClose) {
                         overlap(
-                            Vector2d(bb1.min.b(), bb1.min.c()),
-                            Vector2d(bb1.max.b(), bb1.max.c()),
-                            Vector2d(bb2.min.b(), bb2.min.c()),
-                            Vector2d(bb2.max.b(), bb2.max.c()),
+                            Vector2d(bb1.minB(), bb1.minC()),
+                            Vector2d(bb1.maxB(), bb1.maxC()),
+                            Vector2d(bb2.minB(), bb2.minC()),
+                            Vector2d(bb2.maxB(), bb2.maxC()),
                         )?.let { minFace.invalid += it }
                     }
 
-                    val maxMinClose = abs(bb1.max.a() - bb2.min.a()) < epsilon
-                    val isMaxClose = abs(bb1.max.a() - bb2.max.a()) < epsilon
+                    val maxMinClose = abs(bb1.maxA() - bb2.minA()) < epsilon
+                    val isMaxClose = abs(bb1.maxA() - bb2.maxA()) < epsilon
                     if (doMax && (maxMinClose || isMaxClose)) {
                         maxFace.valid += MeshFacePass(
-                            Vector2d(bb2.min.b(), bb2.min.c()),
-                            Vector2d(bb2.max.b(), bb2.max.c()),
+                            Vector2d(bb2.minB(), bb2.minC()),
+                            Vector2d(bb2.maxB(), bb2.maxC()),
                             isMaxClose
                         )
                     }
 
                     if (maxMinClose) {
                         overlap(
-                            Vector2d(bb1.min.b(), bb1.min.c()),
-                            Vector2d(bb1.max.b(), bb1.max.c()),
-                            Vector2d(bb2.min.b(), bb2.min.c()),
-                            Vector2d(bb2.max.b(), bb2.max.c()),
+                            Vector2d(bb1.minB(), bb1.minC()),
+                            Vector2d(bb1.maxB(), bb1.maxC()),
+                            Vector2d(bb2.minB(), bb2.minC()),
+                            Vector2d(bb2.maxB(), bb2.maxC()),
                         )?.let { maxFace.invalid += it }
                     }
                 }

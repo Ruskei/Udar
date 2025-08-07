@@ -5,7 +5,7 @@ import com.ixume.udar.body.Body
 import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.collisiondetection.LocalMathUtil
-import com.ixume.udar.collisiondetection.capability.Capability
+import com.ixume.udar.collisiondetection.MutableBB
 import com.ixume.udar.collisiondetection.capability.GJKCapable
 import com.ixume.udar.collisiondetection.capability.SDFCapable
 import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentSATContactGenerator
@@ -18,7 +18,6 @@ import org.bukkit.World
 import org.bukkit.entity.BlockDisplay
 import org.bukkit.entity.EntityType
 import org.bukkit.entity.TextDisplay
-import org.bukkit.util.BoundingBox
 import org.bukkit.util.Transformation
 import org.joml.*
 import java.util.*
@@ -71,56 +70,36 @@ class Cuboid(
         Vector3d(0.5, 0.5, -0.5),
     )
 
-    private fun calcVertices(): List<Vector3d> {
-        return rawVertices.map { localToGlobal(it) }
+    private fun updateVertices() {
+        var i = 0
+        while (i < vertices.size) {
+            val v = vertices[i]
+            v.set(rawVertices[i]).mul(scale).rotate(q).add(pos)
+            ++i
+        }
     }
 
-    override var vertices: List<Vector3d> = calcVertices()
+    override val vertices: Array<Vector3d> = Array(8) { Vector3d() }
 
-    private val edges: List<Pair<Vector3d, Vector3d>>
-        get() {
-            return listOf(
-                //bottom face
-                vertices[0] to vertices[1],
-                vertices[1] to vertices[2],
-                vertices[2] to vertices[3],
-                vertices[3] to vertices[0],
-                //top face
-                vertices[4] to vertices[5],
-                vertices[5] to vertices[6],
-                vertices[6] to vertices[7],
-                vertices[7] to vertices[4],
-                //connection
-                vertices[0] to vertices[4],
-                vertices[1] to vertices[5],
-                vertices[2] to vertices[6],
-                vertices[3] to vertices[7],
-            )
+    private fun updateBB() {
+        boundingBox.minX = Double.MAX_VALUE
+        boundingBox.maxX = -Double.MAX_VALUE
+        boundingBox.minY = Double.MAX_VALUE
+        boundingBox.maxY = -Double.MAX_VALUE
+        boundingBox.minZ = Double.MAX_VALUE
+        boundingBox.maxZ = -Double.MAX_VALUE
+
+        for (vertex in vertices) {
+            boundingBox.minX = min(boundingBox.minX, vertex.x)
+            boundingBox.maxX = max(boundingBox.maxX, vertex.x)
+            boundingBox.minY = min(boundingBox.minY, vertex.y)
+            boundingBox.maxY = max(boundingBox.maxY, vertex.y)
+            boundingBox.minZ = min(boundingBox.minZ, vertex.z)
+            boundingBox.maxZ = max(boundingBox.maxZ, vertex.z)
         }
-
-    private fun calcBoundingBox(): BoundingBox {
-        var xMin = Double.MAX_VALUE
-        var xMax = -Double.MAX_VALUE
-        var yMin = Double.MAX_VALUE
-        var yMax = -Double.MAX_VALUE
-        var zMin = Double.MAX_VALUE
-        var zMax = -Double.MAX_VALUE
-
-        val myVertices = vertices
-
-        for (vertex in myVertices) {
-            xMin = min(xMin, vertex.x)
-            xMax = max(xMax, vertex.x)
-            yMin = min(yMin, vertex.y)
-            yMax = max(yMax, vertex.y)
-            zMin = min(zMin, vertex.z)
-            zMax = max(zMax, vertex.z)
-        }
-
-        return BoundingBox(xMin, yMin, zMin, xMax, yMax, zMax)
     }
 
-    override var boundingBox: BoundingBox = calcBoundingBox()
+    override val boundingBox: MutableBB = MutableBB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
     private val display: BlockDisplay = world.spawnEntity(
         Location(world, pos.x, pos.y, pos.z),
@@ -148,18 +127,21 @@ class Cuboid(
     private val envContactGen = EnvironmentSATContactGenerator(this)
     private val SATContactGen = SATContactGenerator(this)
 
-    init {
-        val material = VALID_MATERIALS.random()
+    private val _rm = Matrix3d()
+    private val _rmT = Matrix3d()
 
-        display.block = material.createBlockData()
-
-        display.transformation = createTransformation()
-        display.interpolationDuration = 2
-    }
-
-    override fun kill() {
-        display.remove()
-        debugDisplay?.remove()
+    private fun updateII() {
+        _rm.rotation(q)
+        _rmT.set(_rm).transpose()
+        inverseInertia.set(
+            _rmT.mul(
+                inverseInertia.set(
+                    1.0 / localInertia.x, 0.0, 0.0,
+                    0.0, 1.0 / localInertia.y, 0.0,
+                    0.0, 0.0, 1.0 / localInertia.z,
+                )
+            ).mul(_rm)
+        )
     }
 
     private val volume = width * height * length
@@ -179,18 +161,27 @@ class Cuboid(
     override val localInertia: Vector3d = calcInertia()
     val localInverseInertia: Vector3d = Vector3d(1.0 / localInertia.x, 1.0 / localInertia.y, 1.0 / localInertia.z)
 
-    private fun calcInverseInertia(): Matrix3d {
-        val rm = Matrix3d().rotation(q)
-        return Matrix3d(rm).transpose().mul(
-            Matrix3d(
-                1.0 / localInertia.x, 0.0, 0.0,
-                0.0, 1.0 / localInertia.y, 0.0,
-                0.0, 0.0, 1.0 / localInertia.z,
-            )
-        ).mul(rm)
+
+    override val inverseInertia: Matrix3d = Matrix3d()
+
+    init {
+        val material = VALID_MATERIALS.random()
+
+        display.block = material.createBlockData()
+
+        display.transformation = createTransformation()
+        display.interpolationDuration = 2
+
+        updateVertices()
+        updateBB()
+        updateII()
     }
 
-    override val inverseInertia: Matrix3d = calcInverseInertia()
+    override fun kill() {
+        display.remove()
+        debugDisplay?.remove()
+    }
+
 
     private val rotationIntegrator = RigidbodyRotationIntegrator(this)
 
@@ -212,7 +203,7 @@ class Cuboid(
 
         localInertia.set(calcInertia())
         localInverseInertia.set(1.0 / localInertia.x, 1.0 / localInertia.y, 1.0 / localInertia.z)
-        inverseInertia.set(calcInverseInertia())
+        updateII()
 
         linearDelta.set(pos).sub(prevP)
 
@@ -227,8 +218,8 @@ class Cuboid(
         previousContacts += contacts
         contacts.clear()
 
-        vertices = calcVertices()
-        boundingBox = calcBoundingBox()
+        updateVertices()
+        updateBB()
     }
 
     override fun visualize() {
@@ -318,7 +309,7 @@ class Cuboid(
         velocity.add(linear)
     }
 
-    override fun capableCollision(other: Body): Capability {
+    override fun capableCollision(other: Body): Int {
         return when (other) {
             is EnvironmentBody -> {
                 envContactGen.capableCollision(other)
@@ -329,7 +320,7 @@ class Cuboid(
             }
 
             else -> {
-                Capability(false, 0)
+                -1
             }
         }
     }
@@ -453,16 +444,17 @@ class Cuboid(
             return vertices.map { Vector3d(it) }
         }
 
+    private val _naTemp = Array(3) { Vector3d() }
+
     override fun ensureNonAligned() {
         val tiny = 1e-14
         val perturbation = 1e-10
-        val myAxiss = listOf(
-            Vector3d(1.0, 0.0, 0.0).rotate(q).normalize(),
-            Vector3d(0.0, 1.0, 0.0).rotate(q).normalize(),
-            Vector3d(0.0, 0.0, 1.0).rotate(q).normalize(),
-        )
 
-        if (myAxiss.any {
+        _naTemp[0].set(1.0, 0.0, 0.0).rotate(q).normalize()
+        _naTemp[1].set(0.0, 1.0, 0.0).rotate(q).normalize()
+        _naTemp[2].set(0.0, 0.0, 1.0).rotate(q).normalize()
+
+        if (_naTemp.any {
                 it.distance(1.0, 0.0, 0.0) < tiny || it.distance(-1.0, 0.0, 0.0) < tiny ||
                         it.distance(0.0, 1.0, 0.0) < tiny || it.distance(0.0, -1.0, 0.0) < tiny ||
                         it.distance(0.0, 0.0, 1.0) < tiny || it.distance(0.0, 0.0, -1.0) < tiny

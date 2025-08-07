@@ -4,14 +4,13 @@ import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.collisiondetection.LocalMathUtil
-import com.ixume.udar.collisiondetection.capability.Capability
+import com.ixume.udar.collisiondetection.MutableBB
 import com.ixume.udar.collisiondetection.contactgeneration.CompositeCompositeContactGenerator
 import com.ixume.udar.jacobiEigenDecomposition
 import com.ixume.udar.physics.Contact
 import com.ixume.udar.physics.IContact
 import com.ixume.udar.physicsWorld
 import org.bukkit.World
-import org.bukkit.util.BoundingBox
 import org.joml.Matrix3d
 import org.joml.Quaterniond
 import org.joml.Vector3d
@@ -80,35 +79,46 @@ class Composite(
         valueTransform = { RelativePose(Vector3d(it.pos).sub(pos), Quaterniond(it.q)) }
     )
 
-    private fun calcVertices(): List<Vector3d> {
-        return parts.flatMap { it.vertices }
+    private fun updateVertices() {
+        var i = 0
+        var idx = 0
+        while (i < parts.size) {
+            val part = parts[i]
+            val vs = part.vertices
+            var j = idx
+            while (j < idx + vs.size) {
+                vertices[j].set(vs[j - idx])
+                ++j
+            }
+
+            idx = j
+            ++i
+        }
     }
 
-    override var vertices: List<Vector3d> = calcVertices()
+    override val vertices: Array<Vector3d> = Array(parts.fold(0) { s, p -> s + p.vertices.size }) { Vector3d() }
 
-    private fun calcBoundingBox(): BoundingBox {
+    private fun updateBB() {
         val bbs = parts.map { it.boundingBox }
 
-        var xMin = Double.MAX_VALUE
-        var xMax = -Double.MAX_VALUE
-        var yMin = Double.MAX_VALUE
-        var yMax = -Double.MAX_VALUE
-        var zMin = Double.MAX_VALUE
-        var zMax = -Double.MAX_VALUE
+        boundingBox.minX = Double.MAX_VALUE
+        boundingBox.maxX = -Double.MAX_VALUE
+        boundingBox.minY = Double.MAX_VALUE
+        boundingBox.maxY = -Double.MAX_VALUE
+        boundingBox.minZ = Double.MAX_VALUE
+        boundingBox.maxZ = -Double.MAX_VALUE
 
         for (bb in bbs) {
-            xMin = min(xMin, bb.minX)
-            xMax = max(xMax, bb.maxX)
-            yMin = min(yMin, bb.minY)
-            yMax = max(yMax, bb.maxY)
-            zMin = min(zMin, bb.minZ)
-            zMax = max(zMax, bb.maxZ)
+            boundingBox.minX = min(boundingBox.minX, bb.minX)
+            boundingBox.maxX = max(boundingBox.maxX, bb.maxX)
+            boundingBox.minY = min(boundingBox.minY, bb.minY)
+            boundingBox.maxY = max(boundingBox.maxY, bb.maxY)
+            boundingBox.minZ = min(boundingBox.minZ, bb.minZ)
+            boundingBox.maxZ = max(boundingBox.maxZ, bb.maxZ)
         }
-
-        return BoundingBox(xMin, yMin, zMin, xMax, yMax, zMax)
     }
 
-    override var boundingBox: BoundingBox = calcBoundingBox()
+    override val boundingBox: MutableBB = MutableBB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
     override val prevQ: Quaterniond = Quaterniond(q)
     private val prevP = Vector3d(pos)
@@ -146,14 +156,14 @@ class Composite(
         dQ.normalize()
         angularDelta = 2.0 * acos(dQ.w.coerceIn(-1.0, 1.0))
 
-        inverseInertia.set(calcInverseInertia())
+        updateII()
 
         previousContacts.clear()
         previousContacts += contacts
         contacts.clear()
 
-        vertices = calcVertices()
-        boundingBox = calcBoundingBox()
+        updateVertices()
+        updateBB()
     }
 
     override fun visualize() {
@@ -247,15 +257,20 @@ class Composite(
         return InertialData(ev, iI, eV)
     }
 
-    private fun calcInverseInertia(): Matrix3d {
-        val rm = Matrix3d().rotation(q)
-        return Matrix3d(rm).transpose().mul(Matrix3d(localInverseInertia)).mul(rm)
+    private val _rm = Matrix3d()
+    private val _rmT = Matrix3d()
+    private val _lII = Matrix3d()
+
+    private fun updateII() {
+        _rm.rotation(q)
+        _rmT.set(_rm).transpose()
+        inverseInertia.set(_rmT.mul(_lII.set(localInverseInertia)).mul(_rm))
     }
 
     override val mass: Double = totalMass()
     override val inverseMass: Double = 1.0 / mass
     override val localInertia: Vector3d
-    override val inverseInertia: Matrix3d
+    override val inverseInertia: Matrix3d = Matrix3d()
     val inertialPrincipleRotation: Matrix3d
     val localInverseInertia: Matrix3d
 
@@ -265,33 +280,35 @@ class Composite(
         localInverseInertia = iI
         inertialPrincipleRotation = eV.transpose()
 
-        inverseInertia = calcInverseInertia()
+        updateII()
+        updateVertices()
+        updateBB()
     }
 
     override val isConvex: Boolean = false
 
     private val compositeContactGenerator = CompositeCompositeContactGenerator(this)
 
-    override fun capableCollision(other: Body): Capability {
+    override fun capableCollision(other: Body): Int {
         if (other is Composite) {
-            return Capability(true, 0)
+            return 0
         }
 
         var highestPriority: Int? = null
         for (part in parts) {
-            val (capable, priority) = part.capableCollision(other)
-            if (!capable) return Capability(false, 0)
+            val cap = part.capableCollision(other)
+            if (cap < 0) return -1
 
             highestPriority = if (highestPriority == null) {
-                priority
+                cap
             } else {
-                max(highestPriority, priority)
+                max(highestPriority, cap)
             }
         }
 
-        if (highestPriority == null) return Capability(false, 0)
+        if (highestPriority == null) return -1
 
-        return Capability(true, highestPriority)
+        return highestPriority
     }
 
     override fun collides(other: Body, math: LocalMathUtil): List<IContact> {
@@ -312,18 +329,21 @@ class Composite(
                 if (d > part.radius + other.radius) continue
 
                 val r = part.collides(other, math)
-                cs += r.map { Contact(
-                    first = this,
-                    second = other,
-                    result = it.result,
-                ) }
+                cs += r.map {
+                    Contact(
+                        first = this,
+                        second = other,
+                        result = it.result,
+                    )
+                }
             }
 
             return cs
         } else {
             return parts
                 .flatMap {
-                    it.collides(other, math) }
+                    it.collides(other, math)
+                }
                 .map {
                     Contact(
                         first = this,

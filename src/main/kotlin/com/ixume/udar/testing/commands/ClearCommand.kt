@@ -4,7 +4,6 @@ import com.ixume.udar.PhysicsWorldsManager
 import com.ixume.udar.Udar
 import org.bukkit.Bukkit
 import org.bukkit.command.CommandSender
-import org.bukkit.command.TabExecutor
 import org.bukkit.entity.Player
 
 object ClearCommand : Command {

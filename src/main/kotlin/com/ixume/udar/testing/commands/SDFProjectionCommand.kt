@@ -8,7 +8,6 @@ import org.bukkit.Color
 import org.bukkit.Location
 import org.bukkit.Particle
 import org.bukkit.command.CommandSender
-import org.bukkit.command.TabExecutor
 import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitTask
 import org.joml.Vector3d

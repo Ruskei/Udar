@@ -4,15 +4,14 @@ import com.ixume.udar.body.Body
 import com.ixume.udar.body.Collidable
 import com.ixume.udar.body.active.Composite
 import com.ixume.udar.collisiondetection.LocalMathUtil
-import com.ixume.udar.collisiondetection.capability.Capability
 import com.ixume.udar.physics.IContact
 import com.ixume.udar.physicsWorld
 
 class CompositeCompositeContactGenerator(
     val composite: Composite
 ) : Collidable {
-    override fun capableCollision(other: Body): Capability {
-        return Capability(other is Composite, 0)
+    override fun capableCollision(other: Body): Int {
+        return if (other is Composite) 0 else -1
     }
 
     override fun collides(other: Body, math: LocalMathUtil): List<IContact> {
@@ -25,7 +24,7 @@ class CompositeCompositeContactGenerator(
         for (myPart in composite.parts) {
             for (otherPart in other.parts) {
                 val can = myPart.capableCollision(otherPart)
-                if (!can.capable) continue
+                if (can < 0) continue
 
                 pw.debugData.totalPairs++
                 pw.debugData.totalCompositePairs++

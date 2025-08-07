@@ -1,7 +1,7 @@
 package com.ixume.udar.collisiondetection
 
-import com.ixume.udar.applyIf
 import com.ixume.udar.body.active.ActiveBody
+import com.ixume.udar.collisiondetection.pool.TrackingD3Pool
 import com.ixume.udar.physics.CollisionResult
 import org.joml.Vector3d
 import kotlin.math.abs
@@ -9,9 +9,21 @@ import kotlin.math.max
 import kotlin.math.min
 
 class LocalMathUtil {
+    private val d3Pool = TrackingD3Pool(15)
+
+    private val _efa = Vector3d()
+    private val _myOrderedAxis = Vector3d()
+    private val _otherOrderedAxis = Vector3d()
+
+    private val _antiNormal = Vector3d()
+    private val _trueAxis = Vector3d()
+
+    private val _myAxiss = Array(3) { Vector3d() }
+    private val _tv = Vector3d()
+
     fun collidesSAT(
         activeBody: ActiveBody,
-        otherVertices: List<Vector3d>,
+        otherVertices: Array<Vector3d>,
         otherAxiss: List<Vector3d>,
         otherEdges: List<Vector3d>,
         allowedNormals: List<Vector3d>? = null,
@@ -20,24 +32,13 @@ class LocalMathUtil {
     ): MutableList<CollisionResult>? {
         val q = activeBody.q
 
-        val myAxiss = if (collideMyAxiss) listOf<Vector3d>(
-            Vector3d(1.0, 0.0, 0.0).rotate(q).normalize(),
-            Vector3d(0.0, 1.0, 0.0).rotate(q).normalize(),
-            Vector3d(0.0, 0.0, 1.0).rotate(q).normalize(),
-        ) else listOf()
+        if (collideMyAxiss) {
+            _myAxiss[0].set(1.0, 0.0, 0.0).rotate(q).normalize()
+            _myAxiss[1].set(0.0, 1.0, 0.0).rotate(q).normalize()
+            _myAxiss[2].set(0.0, 0.0, 1.0).rotate(q).normalize()
+        }
 
-        val myEdges = if (collideMyAxiss) listOf(
-            Vector3d(1.0, 0.0, 0.0).rotate(q).normalize(),
-            Vector3d(0.0, 1.0, 0.0).rotate(q).normalize(),
-            Vector3d(0.0, 0.0, 1.0).rotate(q).normalize(),
-        ) else listOf()
-
-        val edgeAxiss = edgeCrosses(otherEdges, myEdges)
-
-        val axiss = ArrayList<Vector3d>(otherAxiss.size + myAxiss.size + edgeAxiss.size)
-        axiss += otherAxiss
-        axiss += myAxiss
-        axiss += edgeAxiss
+        if (collideMyAxiss) _edgeCrosses(otherEdges, _myAxiss)
 
         val myVertices = activeBody.vertices
 
@@ -45,33 +46,101 @@ class LocalMathUtil {
         var minOverlap = Double.MAX_VALUE
         var minAxis: Vector3d? = null
 
-        for (axis in axiss) {
-            val my = activeBody.project(axis)
-            val other = otherVertices.project(axis)
+        if (collideMyAxiss) {
+            var i = 0
+            while (i < _myAxiss.size) {
+                val axis = _myAxiss[i]
+                val my = activeBody.project(axis)
+                otherVertices.project(axis)
 
-            val (overlap, order) = cycleSAT(
-                myMin = my.first, myMax = my.second,
-                otherMin = other.first, otherMax = other.second,
-            ) ?: return null
+                val cr = cycleSAT(
+                    myMin = my.x, myMax = my.y,
+                    otherMin = _pmin, otherMax = _pmax,
+                )
 
-            if (overlap < minOverlap) {
-                minAxis = axis
-                minOverlap = overlap
-                minOrder = order
+                if (!cr) {
+                    d3Pool.clearTracked()
+                    return null
+                }
+
+                if (_overlap < minOverlap) {
+                    minAxis = axis
+                    minOverlap = _overlap
+                    minOrder = _order
+                }
+
+                ++i
             }
+
+            var k = 0
+            while (k < _edgeArr.size) {
+                val axis = _edgeArr[k]
+                val my = activeBody.project(axis)
+                otherVertices.project(axis)
+
+                val cr = cycleSAT(
+                    myMin = my.x, myMax = my.y,
+                    otherMin = _pmin, otherMax = _pmax,
+                )
+
+                if (!cr) {
+                    d3Pool.clearTracked()
+                    return null
+                }
+
+                if (_overlap < minOverlap) {
+                    minAxis = axis
+                    minOverlap = _overlap
+                    minOrder = _order
+                }
+
+                ++k
+            }
+        }
+
+        var j = 0
+        while (j < otherAxiss.size) {
+            val axis = otherAxiss[j]
+            val my = activeBody.project(axis)
+            otherVertices.project(axis)
+
+            val cr = cycleSAT(
+                myMin = my.x, myMax = my.y,
+                otherMin = _pmin, otherMax = _pmax,
+            )
+
+            if (!cr) {
+                d3Pool.clearTracked()
+                return null
+            }
+
+            if (_overlap < minOverlap) {
+                minAxis = axis
+                minOverlap = _overlap
+                minOrder = _order
+            }
+
+            ++j
         }
 
         minAxis!!
         minOrder!!
 
         if (allowedNormals != null) {
-            val efa = if (minOrder) minAxis else Vector3d(minAxis).negate()
-            if (!allowedNormals.all { efa.dot(it) >= 0.0 }) return null
+            _efa.set(minAxis)
+            if (!minOrder) {
+                _efa.negate()
+            }
+
+            if (!allowedNormals.all { _efa.dot(it) >= 0.0 }) {
+                d3Pool.clearTracked()
+                return null
+            }
         }
 
         val epsilon = 1e-10
 
-        if (minAxis in edgeAxiss) {
+        if (collideMyAxiss && minAxis in _edgeArr) {
             //edge-edge
             //depending on the order, find most penetrating point(s) on each body, then choose the edges from that
 //            if (PhysicsCommand.DEBUG_SAT_LEVEL > 0) {
@@ -81,12 +150,14 @@ class LocalMathUtil {
 //                println("  - ORDER: $minOrder")
 //            }
 
-            var myDeepestVertices = mutableListOf<Vector3d>()
+            val myDeepestVertices = mutableListOf<Vector3d>()
             var myDeepestDistance = -Double.MAX_VALUE
-            val myOrderedAxis = if (minOrder) Vector3d(minAxis).negate() else minAxis
+
+            _myOrderedAxis.set(minAxis)
+            if (minOrder) _myOrderedAxis.negate()
 
             for (vertex in myVertices) {
-                val d = vertex.dot(myOrderedAxis)
+                val d = vertex.dot(_myOrderedAxis)
 //                println("my $vertex d: $d deepest: $myDeepestDistance")
                 if (abs(d - myDeepestDistance) < epsilon) {
 //                    println("MERGER!")
@@ -95,23 +166,25 @@ class LocalMathUtil {
                 } else if (d > myDeepestDistance) {
 //                    println("NEW LARGEST!")
                     myDeepestDistance = d
-                    myDeepestVertices = mutableListOf(vertex)
+                    myDeepestVertices.clear()
+                    myDeepestVertices += vertex
                 }
             }
 
-            var otherDeepestVertices = mutableListOf<Vector3d>()
+            val otherDeepestVertices = mutableListOf<Vector3d>()
             var otherDeepestDistance = -Double.MAX_VALUE
-            val otherOrderedAxis = Vector3d(myOrderedAxis).negate()
+            _otherOrderedAxis.set(_myOrderedAxis).negate()
 
             for (vertex in otherVertices) {
-                val d = vertex.dot(otherOrderedAxis)
+                val d = vertex.dot(_otherOrderedAxis)
 //                println("other $vertex d: $d deepest: $otherDeepestDistance")
                 if (abs(d - otherDeepestDistance) < epsilon) {
                     otherDeepestVertices += vertex
                     continue
                 } else if (d > otherDeepestDistance) {
                     otherDeepestDistance = d
-                    otherDeepestVertices = mutableListOf(vertex)
+                    otherDeepestVertices.clear()
+                    otherDeepestVertices += vertex
                 }
             }
 
@@ -157,10 +230,11 @@ class LocalMathUtil {
 //                println("   * DISTANCE: ${r.third}")
 //            }
 
+            d3Pool.clearTracked()
             return mutableListOf(
                 CollisionResult(
-                    Vector3d(r.first).mul(0.5).add(Vector3d(r.second).mul(0.5)),
-                    if (minOrder) minAxis else Vector3d(minAxis).negate(),
+                    Vector3d(r.first).mul(0.5).add(_tv.set(r.second).mul(0.5)),
+                    Vector3d(if (minOrder) minAxis else minAxis.negate()),
                     r.third
                 )
             )
@@ -176,12 +250,15 @@ class LocalMathUtil {
             var furthestDistance = -Double.MAX_VALUE
             var furtherVertex: Vector3d? = null
 
-            if (myAxiss.contains(minAxis)) {
-                val antiNormal = if (!minOrder) Vector3d(minAxis).negate() else Vector3d(minAxis)
+            if (collideMyAxiss && _myAxiss.contains(minAxis)) {
+                _antiNormal.set(minAxis)
+                if (!minOrder) {
+                    _antiNormal.negate()
+                }
 //                println("OTHER AXIS")
                 //other has incident
                 for (vertex in otherVertices) {
-                    val d = vertex.dot(antiNormal)
+                    val d = vertex.dot(_antiNormal)
                     if (d > furthestDistance) {
                         furthestDistance = d
                         furtherVertex = vertex
@@ -192,36 +269,43 @@ class LocalMathUtil {
 //                }
 
                 //happens to conicide with antinormal here, but keep them as separate variables to not cause confusion
-                val trueAxis = Vector3d(minAxis).applyIf(!minOrder) { negate() }
+                _trueAxis.set(minAxis)
+                if (!minOrder) {
+                    _trueAxis.negate()
+                }
 
                 val r = mutableListOf(
                     CollisionResult(
                         furtherVertex!!,
-                        trueAxis,
+                        Vector3d(_trueAxis),
                         minOverlap,
                     )
                 )
 
                 if (findAll) {
                     for (vertex in otherVertices) {
-                        val d = vertex.dot(antiNormal)
+                        val d = vertex.dot(_antiNormal)
                         if (abs(d - furthestDistance) <= minOverlap) {
                             r += CollisionResult(
                                 vertex,
-                                trueAxis,
+                                Vector3d(_trueAxis),
                                 minOverlap - abs(d - furthestDistance),
                             )
                         }
                     }
                 }
 
+                d3Pool.clearTracked()
                 return r
             } else {
-                val antiNormal = if (minOrder) Vector3d(minAxis).negate() else Vector3d(minAxis)
+                _antiNormal.set(minAxis)
+                if (minOrder) {
+                    _antiNormal.negate()
+                }
 //                println("MY AXIS")
                 //i have incident
                 for (vertex in myVertices) {
-                    val d = vertex.dot(antiNormal)
+                    val d = vertex.dot(_antiNormal)
                     if (d > furthestDistance) {
                         furthestDistance = d
                         furtherVertex = vertex
@@ -232,33 +316,113 @@ class LocalMathUtil {
 //                    println("  - POINT: $furtherVertex")
 //                }
 
-                val trueAxis = Vector3d(minAxis).applyIf(!minOrder) { negate() }
+                _trueAxis.set(minAxis)
+                if (!minOrder) {
+                    _trueAxis.negate()
+                }
 
                 val r = mutableListOf(
                     CollisionResult(
                         furtherVertex!!,
-                        trueAxis,
+                        Vector3d(_trueAxis),
                         minOverlap,
                     )
                 )
 
                 if (findAll) {
                     for (vertex in myVertices) {
-                        val d = vertex.dot(antiNormal)
+                        val d = vertex.dot(_antiNormal)
                         if (abs(d - furthestDistance) <= minOverlap) {
                             r += CollisionResult(
                                 vertex,
-                                trueAxis,
+                                Vector3d(_trueAxis),
                                 minOverlap - abs(d - furthestDistance),
                             )
                         }
                     }
                 }
 
+                d3Pool.clearTracked()
                 return r
             }
         }
     }
+
+    private var _pmin = 0.0
+    private var _pmax = 0.0
+
+    fun Array<Vector3d>.project(axis: Vector3d) {
+        _pmin = Double.MAX_VALUE
+        _pmax = -Double.MAX_VALUE
+
+        var i = 0
+        while (i < size) {
+            val v = this[i]
+            val s = v.dot(axis)
+            _pmin = min(_pmin, s)
+            _pmax = max(_pmax, s)
+
+            i++
+        }
+    }
+
+
+    private var _overlap = 0.0
+    private var _order = false
+
+    fun cycleSAT(
+        myMin: Double,
+        myMax: Double,
+        otherMin: Double,
+        otherMax: Double,
+    ): Boolean {
+        var order: Boolean? = null
+        val overlap = if (myMin < otherMax && myMax > otherMin) {
+            //overlapping
+            order = (otherMax - myMin) < (myMax - otherMin)
+
+            //check if contained or overlapping; if contained then choose smallest distance as overlap
+            if (myMin < otherMin && myMax > otherMax) {
+                //i contain other
+                min(myMax - otherMin, otherMax - myMin)
+            } else if (otherMin < myMin && otherMax > myMax) {
+                //other contains me
+                min(otherMax - myMin, myMax - otherMin)
+            } else {
+                //just overlapping
+                if (myMax > otherMax) otherMax - myMin
+                else myMax - otherMin
+            }
+        } else 0.0
+
+        if (overlap <= 0.0) {
+            return false
+        }
+
+        _overlap = overlap
+        _order = order!!
+        return true
+    }
+
+    private val _edgeArr = ArrayList<Vector3d>()
+
+    private fun _edgeCrosses(
+        edgesA: Collection<Vector3d>,
+        edgesB: Array<Vector3d>,
+    ) {
+        if (edgesA.isEmpty() || edgesB.isEmpty()) return
+        _edgeArr.clear()
+        for (edgeA in edgesA) {
+            for (edgeB in edgesB) {
+                _edgeArr += d3Pool.get().set(edgeA).cross(edgeB).normalize()
+            }
+        }
+    }
+
+    private val _onLLA = Vector3d()
+    private val _onLLB = Vector3d()
+    private val _an = Vector3d()
+    private val _bn = Vector3d()
 
     /**
      * Finds closest distance between two lines defined by a0, a and b0, b
@@ -272,8 +436,8 @@ class LocalMathUtil {
     ): Triple<Vector3d, Vector3d, Double> {
         val epsilon = 1e-10
 
-        val a = Vector3d(a1).sub(a0).normalize()
-        val b = Vector3d(b1).sub(b0).normalize()
+        _an.set(a1).sub(a0).normalize()
+        _bn.set(b1).sub(b0).normalize()
 
         val axRange = (min(a0.x, a1.x) - epsilon)..(max(a0.x, a1.x) + epsilon)
         val ayRange = (min(a0.y, a1.y) - epsilon)..(max(a0.y, a1.y) + epsilon)
@@ -288,9 +452,9 @@ class LocalMathUtil {
         //if vertex-line is valid then that's the answer
         //otherwise check vertex-vertex
         //check line-line
-        val (onLLA, onLLB, llD) = closestPointsBetweenLines(a0, a, b0, b) ?: return let {
-            val p1 = Vector3d(a0).mul(0.5).add(Vector3d(a1).mul(0.5))
-            val p2 = Vector3d(b0).mul(0.5).add(Vector3d(b1).mul(0.5))
+        val llD = closestPointsBetweenLines(a0, _an, b0, _bn, _onLLA, _onLLB) ?: return let {
+            val p1 = Vector3d(a0).mul(0.5).add(_an.set(a1).mul(0.5))
+            val p2 = Vector3d(b0).mul(0.5).add(_bn.set(b1).mul(0.5))
             Triple(
                 p1,
                 p2,
@@ -298,9 +462,9 @@ class LocalMathUtil {
             )
         }
 
-        if (onLLA.inside(axRange, ayRange, azRange) && onLLB.inside(bxRange, byRange, bzRange)) return Triple(
-            onLLA,
-            onLLB,
+        if (_onLLA.inside(axRange, ayRange, azRange) && _onLLB.inside(bxRange, byRange, bzRange)) return Triple(
+            Vector3d(_onLLA),
+            Vector3d(_onLLB),
             llD
         )
 
@@ -309,28 +473,28 @@ class LocalMathUtil {
         //return closest valid, because if it's valid then it must be closer than it is to a vertex, otherwise try vertex-vertex
         val vls = mutableListOf<Triple<Vector3d, Vector3d, Double>>()
 
-        closestPointOnLine(b0, b, a0).let {
+        closestPointOnLine(b0, _bn, a0).let {
             if (it.first.inside(bxRange, byRange, bzRange)) vls += Triple(
                 a0,
                 it.first,
                 it.second
             )
         }
-        closestPointOnLine(b0, b, a1).let {
+        closestPointOnLine(b0, _bn, a1).let {
             if (it.first.inside(bxRange, byRange, bzRange)) vls += Triple(
                 a1,
                 it.first,
                 it.second
             )
         }
-        closestPointOnLine(a0, a, b0).let {
+        closestPointOnLine(a0, _an, b0).let {
             if (it.first.inside(axRange, ayRange, azRange)) vls += Triple(
                 it.first,
                 b0,
                 it.second
             )
         }
-        closestPointOnLine(a0, a, b1).let {
+        closestPointOnLine(a0, _an, b1).let {
             if (it.first.inside(axRange, ayRange, azRange)) vls += Triple(
                 it.first,
                 b1,
@@ -374,8 +538,10 @@ class LocalMathUtil {
         a0: Vector3d,
         a: Vector3d,
         b0: Vector3d,
-        b: Vector3d
-    ): Triple<Vector3d, Vector3d, Double>? {
+        b: Vector3d,
+        onLLA: Vector3d,
+        onLLB: Vector3d,
+    ): Double? {
         an.set(a).normalize()
         bn.set(b).normalize()
         cn.set(an).cross(bn).normalize()
@@ -385,10 +551,12 @@ class LocalMathUtil {
 
         val r = d1.set(d).sub(a1.set(a).mul(d.dot(a))).sub(c1.set(cn).mul(d.dot(cn)))
         if (r.length() < 0.0000001) return null
-        val bClosest = Vector3d(b0).sub(b2.set(b).mul(r.length() / b.dot(r1.set(r).normalize())))
+        val bClosest = onLLB.set(b0).sub(b2.set(b).mul(r.length() / b.dot(r1.set(r).normalize())))
         val c = cn1.set(cn).mul(d2.set(d).sub(a2.set(a).mul(d.dot(a))).dot(cn))
 
-        return Triple(Vector3d(bClosest).sub(c), bClosest, c.length())
+        onLLA.set(bClosest).sub(c)
+
+        return c.length()
     }
 
     private val xn = Vector3d()

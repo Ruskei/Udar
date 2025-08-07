@@ -9,10 +9,10 @@ import org.joml.Vector3d
 import java.util.*
 
 class EnvironmentBody(
-    override val world: World
+    override val physicsWorld: PhysicsWorld,
 ) : Body {
+    override val world: World = physicsWorld.world
     override val id: UUID = UUID.randomUUID()
-    override val physicsWorld: PhysicsWorld = world.physicsWorld!!
     override val pos: Vector3d = Vector3d()
     override val q: Quaterniond = Quaterniond()
     override val velocity: Vector3d = Vector3d()

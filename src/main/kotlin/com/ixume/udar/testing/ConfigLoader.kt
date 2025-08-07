@@ -77,7 +77,7 @@ data class Config(
     val debug: DebugConfig = DebugConfig(),
     val sleepLinearVelocity: Double = 1e-3,
     val sleepAngularVelocity: Double = 1e-3,
-    val birthTime: Int = 10,
+    val birthTime: Int = 20,
 ) {
     companion object : InstanceCreator<Config> {
         override fun createInstance(type: Type?): Config? {

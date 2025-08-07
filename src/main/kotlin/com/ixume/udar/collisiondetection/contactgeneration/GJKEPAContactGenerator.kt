@@ -3,18 +3,19 @@ package com.ixume.udar.collisiondetection.contactgeneration
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.Collidable
 import com.ixume.udar.collisiondetection.LocalMathUtil
-import com.ixume.udar.collisiondetection.capability.Capability
 import com.ixume.udar.collisiondetection.capability.GJKCapable
 import com.ixume.udar.physics.CollisionResult
 import com.ixume.udar.physics.Contact
 import org.joml.Vector3d
-import kotlin.math.*
+import kotlin.math.abs
+import kotlin.math.absoluteValue
+import kotlin.math.sign
 
 class GJKEPAContactGenerator<T>(
     val activeBody: T
 ) : Collidable where T : Body, T : GJKCapable {
-    override fun capableCollision(other: Body): Capability {
-        return Capability(other.isConvex && other is GJKCapable, 0)
+    override fun capableCollision(other: Body): Int {
+        return if(other.isConvex && other is GJKCapable) 0 else -1
     }
 
     override fun collides(other: Body, math: LocalMathUtil): List<Contact> {
