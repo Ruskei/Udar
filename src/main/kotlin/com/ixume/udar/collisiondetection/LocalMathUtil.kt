@@ -191,8 +191,8 @@ class LocalMathUtil {
 //            println("myDeepestVertices : $myDeepestDistance : $myDeepestVertices")
 //            println("otherDeepestVertices : $otherDeepestDistance : $otherDeepestVertices")
 
-            check(myDeepestVertices.size % 2 == 0)
-            check(otherDeepestVertices.size % 2 == 0)
+            if (myDeepestVertices.size % 2 != 0) return null
+            if (otherDeepestVertices.size % 2 != 0) return null
 
             val r = if (myDeepestVertices.size > 2 || otherDeepestVertices.size > 2) {
                 var closestResult = Triple(Vector3d(), Vector3d(), Double.MAX_VALUE)
