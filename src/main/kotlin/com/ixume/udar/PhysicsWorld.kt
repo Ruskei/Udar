@@ -83,11 +83,9 @@ class PhysicsWorld(
                     check(activePairs.size == processors)
 
                     job = scope.launch {
-                        coroutineScope {
-                            (0..<processors).forEach { i ->
-                                val ps = activePairs[i]
-                                launch { narrowPhase(ps) }
-                            }
+                        (0..<processors).forEach { i ->
+                            val ps = activePairs[i]
+                            launch { narrowPhase(ps) }
                         }
                     }
                 }
