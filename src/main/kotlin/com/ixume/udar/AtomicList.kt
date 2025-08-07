@@ -12,8 +12,19 @@ class AtomicList<T> {
         } while (!items.compareAndSet(curr, n))
     }
 
+    fun addAll(elements: Collection<T>) {
+        do {
+            val curr = items.get()!!
+            val n = curr + elements
+        } while (!items.compareAndSet(curr, n))
+    }
+
     operator fun plusAssign(element: T) {
         add(element)
+    }
+
+    operator fun plusAssign(elements: Collection<T>) {
+        addAll(elements)
     }
 
     operator fun minusAssign(element: T) {

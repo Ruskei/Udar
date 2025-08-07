@@ -106,55 +106,115 @@ class EnvironmentSATContactGenerator(
                 val valid = run validate@{
                     when (cheesyFace.axis) {
                         Axis.X -> {
-                            for (invalid in cheesyFace.invalid) {
-                                if (p.point.y in invalid.first.x..invalid.second.x && p.point.z in invalid.first.y..invalid.second.y) {
+                            if (cheesyFace.invalid.size < cheesyFace.valid.size) {
+                                for (invalid in cheesyFace.invalid) {
+                                    if (p.point.y in invalid.first.x..invalid.second.x && p.point.z in invalid.first.y..invalid.second.y) {
+                                        return@validate false
+                                    }
+                                }
+
+                                val firstMatch =
+                                    cheesyFace.valid.firstOrNull { p.point.y in it.start.x..it.end.x && p.point.z in it.start.y..it.end.y }
+                                if (firstMatch == null) {
                                     return@validate false
                                 }
-                            }
 
-                            val firstMatch =
-                                cheesyFace.valid.firstOrNull { p.point.y in it.start.x..it.end.x && p.point.z in it.start.y..it.end.y }
-                            if (firstMatch == null) {
-                                return@validate false
-                            }
+                                val m = if (firstMatch.inAxisDir) 1.0 else -1.0
+                                val d = (p.norm.dot(cheesyFace.axis.vec) * m >= 0)
+                                return@validate d
+                            } else {
+                                val firstMatch =
+                                    cheesyFace.valid.firstOrNull { p.point.y in it.start.x..it.end.x && p.point.z in it.start.y..it.end.y }
+                                if (firstMatch == null) {
+                                    return@validate false
+                                }
 
-                            val m = if (firstMatch.inAxisDir) 1.0 else -1.0
-                            val d = (p.norm.dot(cheesyFace.axis.vec) * m >= 0)
-                            return@validate d
+                                val m = if (firstMatch.inAxisDir) 1.0 else -1.0
+                                val d = (p.norm.dot(cheesyFace.axis.vec) * m >= 0)
+
+                                if (!d) return@validate false
+
+                                for (invalid in cheesyFace.invalid) {
+                                    if (p.point.y in invalid.first.x..invalid.second.x && p.point.z in invalid.first.y..invalid.second.y) {
+                                        return@validate false
+                                    }
+                                }
+
+                                return@validate true
+                            }
                         }
 
                         Axis.Y -> {
-                            for (invalid in cheesyFace.invalid) {
-                                if (p.point.x in invalid.first.x..invalid.second.x && p.point.z in invalid.first.y..invalid.second.y) {
+                            if (cheesyFace.invalid.size < cheesyFace.valid.size) {
+                                for (invalid in cheesyFace.invalid) {
+                                    if (p.point.x in invalid.first.x..invalid.second.x && p.point.z in invalid.first.y..invalid.second.y) {
+                                        return@validate false
+                                    }
+                                }
+
+                                val firstMatch =
+                                    cheesyFace.valid.firstOrNull { p.point.x in it.start.x..it.end.x && p.point.z in it.start.y..it.end.y }
+                                if (firstMatch == null) {
                                     return@validate false
                                 }
-                            }
+                                val m = if (firstMatch.inAxisDir) 1.0 else -1.0
+                                val d = (p.norm.dot(cheesyFace.axis.vec) * m >= 0)
+                                return@validate d
+                            } else {
+                                val firstMatch =
+                                    cheesyFace.valid.firstOrNull { p.point.x in it.start.x..it.end.x && p.point.z in it.start.y..it.end.y }
+                                if (firstMatch == null) {
+                                    return@validate false
+                                }
 
-                            val firstMatch =
-                                cheesyFace.valid.firstOrNull { p.point.x in it.start.x..it.end.x && p.point.z in it.start.y..it.end.y }
-                            if (firstMatch == null) {
-                                return@validate false
+                                val m = if (firstMatch.inAxisDir) 1.0 else -1.0
+                                val d = (p.norm.dot(cheesyFace.axis.vec) * m >= 0)
+                                if (!d) return@validate false
+
+                                for (invalid in cheesyFace.invalid) {
+                                    if (p.point.x in invalid.first.x..invalid.second.x && p.point.z in invalid.first.y..invalid.second.y) {
+                                        return@validate false
+                                    }
+                                }
+
+                                return@validate true
                             }
-                            val m = if (firstMatch.inAxisDir) 1.0 else -1.0
-                            val d = (p.norm.dot(cheesyFace.axis.vec) * m >= 0)
-                            return@validate d
                         }
 
                         Axis.Z -> {
-                            for (invalid in cheesyFace.invalid) {
-                                if (p.point.x in invalid.first.x..invalid.second.x && p.point.y in invalid.first.y..invalid.second.y) {
+                            if (cheesyFace.invalid.size < cheesyFace.valid.size) {
+                                for (invalid in cheesyFace.invalid) {
+                                    if (p.point.x in invalid.first.x..invalid.second.x && p.point.y in invalid.first.y..invalid.second.y) {
+                                        return@validate false
+                                    }
+                                }
+
+                                val firstMatch =
+                                    cheesyFace.valid.firstOrNull { p.point.x in it.start.x..it.end.x && p.point.y in it.start.y..it.end.y }
+                                if (firstMatch == null) {
                                     return@validate false
                                 }
-                            }
+                                val m = if (firstMatch.inAxisDir) 1.0 else -1.0
+                                val d = (p.norm.dot(cheesyFace.axis.vec) * m >= 0)
+                                return@validate d
+                            } else {
+                                val firstMatch =
+                                    cheesyFace.valid.firstOrNull { p.point.x in it.start.x..it.end.x && p.point.y in it.start.y..it.end.y }
+                                if (firstMatch == null) {
+                                    return@validate false
+                                }
+                                val m = if (firstMatch.inAxisDir) 1.0 else -1.0
+                                val d = (p.norm.dot(cheesyFace.axis.vec) * m >= 0)
+                                if (!d) return@validate false
 
-                            val firstMatch =
-                                cheesyFace.valid.firstOrNull { p.point.x in it.start.x..it.end.x && p.point.y in it.start.y..it.end.y }
-                            if (firstMatch == null) {
-                                return@validate false
+                                for (invalid in cheesyFace.invalid) {
+                                    if (p.point.x in invalid.first.x..invalid.second.x && p.point.y in invalid.first.y..invalid.second.y) {
+                                        return@validate false
+                                    }
+                                }
+
+                                return@validate true
                             }
-                            val m = if (firstMatch.inAxisDir) 1.0 else -1.0
-                            val d = (p.norm.dot(cheesyFace.axis.vec) * m >= 0)
-                            return@validate d
                         }
                     }
                 }

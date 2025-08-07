@@ -43,12 +43,13 @@ class PhysicsWorld(
 
     private val busy = AtomicBoolean(false)
 
-    private val processors = 3//Runtime.getRuntime().availableProcessors()
+    private val processors = 6//Runtime.getRuntime().availableProcessors()
     private val mathPool = MathPool(processors)
     private val scope = CoroutineScope(Dispatchers.Default)
 
     private val dataInterval = 400
     private var rollingAverage = 0.0
+    private var rollingNarrowAverage = 0.0
 
     private fun tick() {
         time++
@@ -78,6 +79,7 @@ class PhysicsWorld(
 
                 val activePairs = broadPhase(bodiesSnapshot, processors)
 
+                val startNarrowTime = System.nanoTime()
 
                 if (activePairs != null) {
                     check(activePairs.size == processors)
@@ -92,6 +94,8 @@ class PhysicsWorld(
 
                 runBlocking {
                     job?.join()
+
+                    val endNarrowTime = System.nanoTime()
 
                     val math = mathPool.get()
 
@@ -157,9 +161,14 @@ class PhysicsWorld(
                     val duration = (System.nanoTime() - startTime).toDouble()
                     rollingAverage += duration / dataInterval.toDouble()
 
+                    val narrowDuration = (endNarrowTime - startNarrowTime).toDouble()
+                    rollingNarrowAverage += narrowDuration / dataInterval.toDouble()
+
                     if (physicsTime % dataInterval == 0) {
-                        println("Narrowphase takes ${rollingAverage / 1_000.0}us on average")
+                        println("Total takes ${rollingAverage / 1_000.0}us on average")
+                        println("  - Narrowphase takes ${rollingNarrowAverage / 1_000.0}us on average")
                         rollingAverage = 0.0
+                        rollingNarrowAverage = 0.0
                     }
 
                     busy.set(false)
