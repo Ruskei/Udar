@@ -2,6 +2,7 @@ package com.ixume.udar.collisiondetection.contactgeneration
 
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.Collidable
+import com.ixume.udar.collisiondetection.LocalMathUtil
 import com.ixume.udar.collisiondetection.capability.Capability
 import com.ixume.udar.collisiondetection.capability.GJKCapable
 import com.ixume.udar.physics.CollisionResult
@@ -16,7 +17,7 @@ class GJKEPAContactGenerator<T>(
         return Capability(other.isConvex && other is GJKCapable, 0)
     }
 
-    override fun collides(other: Body): List<Contact> {
+    override fun collides(other: Body, math: LocalMathUtil): List<Contact> {
         require(other.isConvex)
         require(other is GJKCapable)
         // map from difference to MINE to OTHER

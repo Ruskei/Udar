@@ -3,6 +3,7 @@ package com.ixume.udar.collisiondetection.contactgeneration
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.Collidable
 import com.ixume.udar.body.active.Composite
+import com.ixume.udar.collisiondetection.LocalMathUtil
 import com.ixume.udar.collisiondetection.capability.Capability
 import com.ixume.udar.physics.IContact
 import com.ixume.udar.physicsWorld
@@ -14,7 +15,7 @@ class CompositeCompositeContactGenerator(
         return Capability(other is Composite, 0)
     }
 
-    override fun collides(other: Body): List<IContact> {
+    override fun collides(other: Body, math: LocalMathUtil): List<IContact> {
         require(other is Composite)
 
         val pw = other.world.physicsWorld!!
@@ -39,7 +40,7 @@ class CompositeCompositeContactGenerator(
 
                 pw.debugData.totalCompositeCollisionChecks++
 
-                val result = myPart.collides(otherPart)
+                val result = myPart.collides(otherPart, math)
 
                 if (result.isNotEmpty()) {
                     pw.debugData.compositeCollisions++

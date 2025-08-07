@@ -4,6 +4,7 @@ import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
+import com.ixume.udar.collisiondetection.LocalMathUtil
 import com.ixume.udar.collisiondetection.capability.Capability
 import com.ixume.udar.collisiondetection.capability.GJKCapable
 import com.ixume.udar.collisiondetection.capability.SDFCapable
@@ -333,14 +334,14 @@ class Cuboid(
         }
     }
 
-    override fun collides(other: Body): List<IContact> {
+    override fun collides(other: Body, math: LocalMathUtil): List<IContact> {
         return when (other) {
             is EnvironmentBody -> {
-                envContactGen.collides(other)
+                envContactGen.collides(other, math)
             }
 
             is Cuboid -> {
-                SATContactGen.collides(other)
+                SATContactGen.collides(other, math)
             }
 
             else -> {

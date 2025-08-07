@@ -3,6 +3,7 @@ package com.ixume.udar.body.active
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
+import com.ixume.udar.collisiondetection.LocalMathUtil
 import com.ixume.udar.collisiondetection.capability.Capability
 import com.ixume.udar.collisiondetection.contactgeneration.CompositeCompositeContactGenerator
 import com.ixume.udar.jacobiEigenDecomposition
@@ -293,9 +294,9 @@ class Composite(
         return Capability(true, highestPriority)
     }
 
-    override fun collides(other: Body): List<IContact> {
+    override fun collides(other: Body, math: LocalMathUtil): List<IContact> {
         if (other is Composite) {
-            return compositeContactGenerator.collides(other)
+            return compositeContactGenerator.collides(other, math)
                 .map {
                     Contact(
                         first = this,
@@ -310,7 +311,7 @@ class Composite(
                 val d = part.pos.distance(other.pos)
                 if (d > part.radius + other.radius) continue
 
-                val r = part.collides(other)
+                val r = part.collides(other, math)
                 cs += r.map { Contact(
                     first = this,
                     second = other,
@@ -322,7 +323,7 @@ class Composite(
         } else {
             return parts
                 .flatMap {
-                    it.collides(other) }
+                    it.collides(other, math) }
                 .map {
                     Contact(
                         first = this,

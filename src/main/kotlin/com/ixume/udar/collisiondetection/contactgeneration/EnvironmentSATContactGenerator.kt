@@ -5,6 +5,7 @@ import com.ixume.udar.body.Body
 import com.ixume.udar.body.Collidable
 import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.body.active.ActiveBody
+import com.ixume.udar.collisiondetection.LocalMathUtil
 import com.ixume.udar.collisiondetection.capability.Capability
 import com.ixume.udar.collisiondetection.mesh.Axis
 import com.ixume.udar.collisiondetection.mesh.Edge
@@ -83,7 +84,7 @@ class EnvironmentSATContactGenerator(
 
     private var prevMaxDepth = Udar.Companion.CONFIG.collision.passiveSlop
     var facesChecked = 0
-    override fun collides(other: Body): List<Contact> {
+    override fun collides(other: Body, math: LocalMathUtil): List<Contact> {
         require(capableCollision(other).capable)
 
         val mesh = getMesh()
@@ -99,7 +100,7 @@ class EnvironmentSATContactGenerator(
         prevMaxDepth = 0.0
 
         for (cheesyFace in mesh.faces) {
-            val r = collidesFace(cheesyFace) ?: continue
+            val r = collidesFace(cheesyFace, math = math) ?: continue
             if (r.isEmpty()) continue
 
             for (p in r) {
@@ -191,7 +192,7 @@ class EnvironmentSATContactGenerator(
         facesChecked = 0
 
         for (edge in mesh.edges) {
-            val r = collidesEdge(edge) ?: continue
+            val r = collidesEdge(edge, math = math) ?: continue
 
             if (r.depth > maxDepth) {
                 continue
@@ -210,6 +211,7 @@ class EnvironmentSATContactGenerator(
     private fun collidesFace(
         face: MeshFace,
         normal: Vector3d = face.axis.vec,
+        math: LocalMathUtil,
     ): List<CollisionResult>? {
         val start = Vector3d(face.start)
         val end = Vector3d(face.end)
@@ -258,7 +260,7 @@ class EnvironmentSATContactGenerator(
 
         facesChecked++
         val r =
-            activeBody.physicsWorld.math.collidesSAT(
+            math.collidesSAT(
                 activeBody,
                 otherVertices,
                 otherAxiss,
@@ -284,7 +286,7 @@ class EnvironmentSATContactGenerator(
     }
 
     private fun collidesEdge(
-        edge: Edge
+        edge: Edge, math: LocalMathUtil
     ): CollisionResult? {
         edge.axis!!
         edge.mount!!
@@ -329,7 +331,7 @@ class EnvironmentSATContactGenerator(
             }
         }
 
-        val r = activeBody.physicsWorld.math.collidesSAT(
+        val r = math.collidesSAT(
             activeBody,
             otherVertices = otherVertices,
             otherAxiss = listOf(),

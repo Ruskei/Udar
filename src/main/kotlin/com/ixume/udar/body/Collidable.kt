@@ -1,5 +1,6 @@
 package com.ixume.udar.body
 
+import com.ixume.udar.collisiondetection.LocalMathUtil
 import com.ixume.udar.collisiondetection.capability.Capability
 import com.ixume.udar.physics.IContact
 
@@ -8,5 +9,5 @@ interface Collidable {
      * @return true if this the object associated with this contact generator can collide with 'body'
      */
     fun capableCollision(other: Body): Capability
-    fun collides(other: Body): List<IContact>
+    fun collides(other: Body, math: LocalMathUtil): List<IContact>
 }

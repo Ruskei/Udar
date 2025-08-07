@@ -3,6 +3,7 @@ package com.ixume.udar.collisiondetection.contactgeneration
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.Collidable
 import com.ixume.udar.body.active.ActiveBody
+import com.ixume.udar.collisiondetection.LocalMathUtil
 import com.ixume.udar.collisiondetection.capability.Capability
 import com.ixume.udar.collisiondetection.capability.Projectable
 import com.ixume.udar.collisiondetection.edgeCrosses
@@ -17,7 +18,7 @@ class SATContactGenerator(
         return Capability(other.isConvex && other is Projectable, 0)
     }
 
-    override fun collides(other: Body): List<IContact> {
+    override fun collides(other: Body, math: LocalMathUtil): List<IContact> {
         require(other is ActiveBody)
 
         val myAxiss = listOf<Vector3d>(
@@ -39,7 +40,7 @@ class SATContactGenerator(
         axiss += otherAxiss
         axiss += edgeAxiss
 
-        val r = activeBody.physicsWorld.math.collidesSAT(
+        val r = math.collidesSAT(
             activeBody = activeBody,
             otherVertices = other.vertices,
             otherAxiss = otherAxiss,
