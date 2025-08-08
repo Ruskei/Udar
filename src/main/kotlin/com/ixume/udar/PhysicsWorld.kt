@@ -43,13 +43,18 @@ class PhysicsWorld(
 
     private val busy = AtomicBoolean(false)
 
-    private val processors = 6//Runtime.getRuntime().availableProcessors()
+    private val processors = 3//Runtime.getRuntime().availableProcessors()
     private val mathPool = MathPool(processors)
     private val scope = CoroutineScope(Dispatchers.Default)
 
     private val dataInterval = 400
+
     private var rollingAverage = 0.0
     private var rollingNarrowAverage = 0.0
+    private var rollingBroadAverage = 0.0
+    private var rollingEnvAverage = 0.0
+    private var rollingContactAverage = 0.0
+    private var rollingStepAverage = 0.0
 
     private fun tick() {
         time++
@@ -77,7 +82,9 @@ class PhysicsWorld(
 
                 var job: Job? = null
 
+                val startBroadTime = System.nanoTime()
                 val activePairs = broadPhase(bodiesSnapshot, processors)
+                val endBroadTime = System.nanoTime()
 
                 val startNarrowTime = System.nanoTime()
 
@@ -99,6 +106,7 @@ class PhysicsWorld(
 
                     val math = mathPool.get()
 
+                    val startEnvTime = System.nanoTime()
                     try {
                         for (body in bodiesSnapshot) {
                             if (!body.awake.get()) {
@@ -137,6 +145,8 @@ class PhysicsWorld(
                         mathPool.put(math)
                     }
 
+                    val endEnvTime = System.nanoTime()
+
                     for (body in bodiesSnapshot) {
                         if (body.awake.get() && body.hasGravity) body.velocity.add(
                             Vector3d(Udar.CONFIG.gravity).mul(
@@ -145,13 +155,21 @@ class PhysicsWorld(
                         )
                     }
 
+                    val startContactTime = System.nanoTime()
+
                     ContactSolver.solve(contacts)
+
+                    val endContactTime = System.nanoTime()
+
+                    val startStepTime = System.nanoTime()
 
                     for (body in bodiesSnapshot) {
                         if (body.awake.get()) {
                             body.step()
                         }
                     }
+
+                    val endStepTime = System.nanoTime()
 
                     if (untilCollision && contacts.isNotEmpty()) {
                         untilCollision = false
@@ -164,11 +182,32 @@ class PhysicsWorld(
                     val narrowDuration = (endNarrowTime - startNarrowTime).toDouble()
                     rollingNarrowAverage += narrowDuration / dataInterval.toDouble()
 
+                    val broadDuration = (endBroadTime - startBroadTime).toDouble()
+                    rollingBroadAverage += broadDuration / dataInterval.toDouble()
+
+                    val contactDuration = (endContactTime - startContactTime).toDouble()
+                    rollingContactAverage += contactDuration / dataInterval.toDouble()
+
+                    val envDuration = (endEnvTime - startEnvTime).toDouble()
+                    rollingEnvAverage += envDuration / dataInterval.toDouble()
+
+                    val stepDuration = (endStepTime - startStepTime).toDouble()
+                    rollingStepAverage += stepDuration / dataInterval.toDouble()
+
                     if (physicsTime % dataInterval == 0) {
                         println("Total takes ${rollingAverage / 1_000.0}us on average")
+                        println("  - Broadphase takes ${rollingBroadAverage / 1_000.0}us on average")
                         println("  - Narrowphase takes ${rollingNarrowAverage / 1_000.0}us on average")
+                        println("  - Env takes ${rollingEnvAverage / 1_000.0}us on average")
+                        println("  - Contact takes ${rollingContactAverage / 1_000.0}us on average")
+                        println("  - Step takes ${rollingStepAverage / 1_000.0}us on average")
+                        println("ACCOUNTED FOR ${(rollingNarrowAverage + rollingBroadAverage + rollingContactAverage + rollingEnvAverage + rollingStepAverage) / rollingAverage * 100.0}%")
                         rollingAverage = 0.0
                         rollingNarrowAverage = 0.0
+                        rollingBroadAverage = 0.0
+                        rollingContactAverage = 0.0
+                        rollingEnvAverage = 0.0
+                        rollingStepAverage = 0.0
                     }
 
                     busy.set(false)
@@ -183,13 +222,15 @@ class PhysicsWorld(
 
         val groups = Array(groups) { mutableListOf<Pair<ActiveBody, ActiveBody>>() }
 
-        for (first in bodies) {
+        for (i in 0..<bodies.size) {
+            val first = bodies[i]
+
             val myPairs = mutableListOf<Pair<ActiveBody, ActiveBody>>()
             first.ensureNonAligned()
             val firstBoundingBox = first.boundingBox
 
-            for (second in bodies) {
-                if (second === first) continue
+            for (j in (i + 1)..<bodies.size) {
+                val second = bodies[j]
 
                 debugData.totalPairs++
                 if (!first.awake.get() && !second.awake.get()) {
@@ -272,5 +313,6 @@ class PhysicsWorld(
         simTask.cancel()
         realWorldTask.cancel()
         entityTask.cancel()
+        scope.cancel()
     }
 }

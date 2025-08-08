@@ -163,14 +163,6 @@ object ContactSolver {
         }
     }
 
-    class DeltaV(
-        val dVA: Vector3d,
-        val dOA: Vector3d,
-        val dVB: Vector3d,
-        val dOB: Vector3d,
-        val significant: Boolean,
-    )
-
     private enum class DeltaType {
         NORMAL, T1, T2
     }
