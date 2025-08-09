@@ -29,7 +29,7 @@ class CompositeCompositeContactGenerator(
                 pw.debugData.totalPairs++
                 pw.debugData.totalCompositePairs++
 
-                if (!myPart.boundingBox.overlaps(otherPart.boundingBox)) continue
+                if (!myPart.fatBB.overlaps(otherPart.fatBB)) continue
 
                 val d = myPart.pos.distance(otherPart.pos)
                 if (d > myPart.radius + otherPart.radius) {

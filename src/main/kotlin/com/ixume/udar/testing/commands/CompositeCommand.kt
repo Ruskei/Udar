@@ -75,14 +75,14 @@ object CompositeCommand : Command {
                     parts = listOf(cuboid, cuboid2)
                 )
 
-                physicsWorld.activeBodies += composite
+                physicsWorld.registerBody(composite)
             }
             "coalesce" -> {
                 if (args.size < 2) return true
 
                 val num = args[1].toIntOrNull() ?: return true
 
-                val ss = physicsWorld.activeBodies.get().sortedBy { it.pos.distance(origin) }
+                val ss = physicsWorld.bodiesSnapshot().sortedBy { it.pos.distance(origin) }
 
                 val bodies = ss.take(num)
 
@@ -99,8 +99,8 @@ object CompositeCommand : Command {
                     parts = bodies,
                 )
 
-                sender.world.physicsWorld?.activeBodies += rb
-                sender.world.physicsWorld?.activeBodies -= bodies
+                sender.world.physicsWorld?.registerBody(rb)
+                sender.world.physicsWorld?.removeBodies(bodies)
             }
         }
 

@@ -38,7 +38,7 @@ object CuboidCommand : com.ixume.udar.testing.commands.Command {
             hasGravity = opts.hasGravity,
         )
 
-        sender.world.physicsWorld?.activeBodies += rb
+        sender.world.physicsWorld?.registerBody(rb)
 
         return true
     }

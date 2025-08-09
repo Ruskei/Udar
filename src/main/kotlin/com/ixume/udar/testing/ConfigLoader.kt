@@ -144,6 +144,8 @@ data class Config(
         val SDFOther: Boolean = false,
         val SDFNode: Int = -1,
         val tests: Tests = Tests(mapOf()),
+
+        val timings: Boolean = false,
     ) {
         companion object : InstanceCreator<DebugConfig> {
             override fun createInstance(type: Type?): DebugConfig? {

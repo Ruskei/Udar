@@ -32,7 +32,7 @@ class EnvironmentSATContactGenerator(
     }
 
     private val cachedMesh: AtomicReference<Mesh> =
-        AtomicReference(Mesh.Companion.mesh(world = activeBody.world, boundingBox = activeBody.boundingBox))
+        AtomicReference(Mesh.Companion.mesh(world = activeBody.world, boundingBox = activeBody.fatBB))
 
     private fun setMesh(value: Mesh) {
         do {
@@ -41,7 +41,7 @@ class EnvironmentSATContactGenerator(
     }
 
     private fun getMesh(): Mesh {
-        val bb = activeBody.boundingBox
+        val bb = activeBody.fatBB
 
         val cm = cachedMesh.get()
 
@@ -59,7 +59,7 @@ class EnvironmentSATContactGenerator(
         if (meshStart.x < cm.start.x || meshStart.y < cm.start.y || meshStart.z < cm.start.z
             || meshEnd.x > cm.end.x || meshEnd.y > cm.end.y || meshEnd.z > cm.end.z
         ) {
-            activeBody.physicsWorld.realWorldGetter.fetchBBs(BBRequest(bb) { setMesh(it) })
+            activeBody.physicsWorld.realWorldHandler.getter.fetchBBs(BBRequest(bb) { setMesh(it) })
 
             return cm
         } else {
@@ -68,7 +68,7 @@ class EnvironmentSATContactGenerator(
     }
 
     private fun maxChange(): Double {
-        val bb = activeBody.boundingBox
+        val bb = activeBody.fatBB
         val p = activeBody.pos
         val fp = Vector3d(
             max(abs(bb.maxX - p.x), abs(bb.minX - p.x)),
@@ -277,7 +277,7 @@ class EnvironmentSATContactGenerator(
 
         require(start.x <= end.x && start.y <= end.y && start.z <= end.z)
 
-        val boundingBox = activeBody.boundingBox
+        val boundingBox = activeBody.fatBB
 
         val large = 64.0
         val (otherEdges, otherVertices) = when (face.axis) {
@@ -356,7 +356,7 @@ class EnvironmentSATContactGenerator(
 
         val otherEdges = listOf(edge.vec)
 
-        val boundingBox = activeBody.boundingBox
+        val boundingBox = activeBody.fatBB
 
         val allowedNormals = when (edge.axis) {
             Axis.X -> {

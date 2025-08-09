@@ -48,8 +48,7 @@ object SDFProjectionCommand : Command {
             task = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable {
                 val o = sender.location.toVector().toVector3d()
 
-                val obj = physicsWorld.activeBodies
-                    .get()
+                val obj = physicsWorld.bodiesSnapshot()
                     .filter { it is SDFCapable }
                     .minByOrNull { it.pos.distance(o) }
                     ?: return@Runnable

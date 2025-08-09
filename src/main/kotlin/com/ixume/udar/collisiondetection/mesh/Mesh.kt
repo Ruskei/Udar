@@ -1,6 +1,6 @@
 package com.ixume.udar.collisiondetection.mesh
 
-import com.ixume.udar.collisiondetection.MutableBB
+import com.ixume.udar.collisiondetection.broadphase.aabb.AABB
 import com.ixume.udar.testing.debugConnect
 import org.bukkit.Color.*
 import org.bukkit.Particle.DustOptions
@@ -92,7 +92,7 @@ class Mesh(
 
         fun mesh(
             world: World,
-            boundingBox: MutableBB,
+            boundingBox: AABB,
         ): Mesh {
             val meshStart = Vector3i(
                 floor(boundingBox.minX).toInt() - OUTER,

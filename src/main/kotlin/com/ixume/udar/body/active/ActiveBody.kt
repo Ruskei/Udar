@@ -1,7 +1,7 @@
 package com.ixume.udar.body.active
 
 import com.ixume.udar.body.CollidableBody
-import com.ixume.udar.collisiondetection.MutableBB
+import com.ixume.udar.collisiondetection.broadphase.aabb.AABB
 import com.ixume.udar.collisiondetection.capability.Projectable
 import org.joml.Quaterniond
 import org.joml.Vector2d
@@ -15,7 +15,8 @@ interface ActiveBody : CollidableBody, Projectable {
 
     val vertices: Array<Vector3d>
     val radius: Double
-    val boundingBox: MutableBB
+    val fatBB: AABB
+    val tightBB: AABB
 
     var awake: AtomicBoolean
     var startled: AtomicBoolean
@@ -40,7 +41,7 @@ interface ActiveBody : CollidableBody, Projectable {
     fun intersect(origin: Vector3d, end: Vector3d): List<Pair<Vector3d, Vector3d>>
     fun visualize() {}
 
-    fun kill()
+    fun onKill()
 
     override fun project(axis: Vector3d): Vector2d {
         var min = Double.MAX_VALUE

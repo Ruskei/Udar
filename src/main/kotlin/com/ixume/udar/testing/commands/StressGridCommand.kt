@@ -51,7 +51,7 @@ object StressGridCommand : Command {
             }
         }
 
-        sender.world.physicsWorld?.activeBodies += bodies
+        sender.world.physicsWorld?.registerBodies(bodies)
 
         return true
     }

@@ -3,9 +3,13 @@ package com.ixume.udar
 import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
+import com.ixume.udar.collisiondetection.broadphase.aabb.AABBTree
 import com.ixume.udar.collisiondetection.mesh.Mesh
 import com.ixume.udar.collisiondetection.pool.MathPool
-import com.ixume.udar.physics.*
+import com.ixume.udar.physics.ContactSolver
+import com.ixume.udar.physics.EntityUpdater
+import com.ixume.udar.physics.IContact
+import com.ixume.udar.physics.StatusUpdater
 import com.ixume.udar.testing.PhysicsWorldTestDebugData
 import kotlinx.coroutines.*
 import org.bukkit.Bukkit
@@ -18,7 +22,14 @@ import kotlin.system.measureNanoTime
 class PhysicsWorld(
     val world: World
 ) {
-    val activeBodies = AtomicList<ActiveBody>()
+    private val bodiesToAdd = AtomicList<ActiveBody>()
+    private val bodiesToRemove = AtomicList<ActiveBody>()
+
+    private val activeBodies = AtomicList<ActiveBody>()
+    fun bodiesSnapshot(): List<ActiveBody> {
+        return activeBodies.get()
+    }
+
     val contacts: MutableList<IContact> = mutableListOf()
     val meshes: MutableList<Mesh> = mutableListOf()
 
@@ -32,13 +43,12 @@ class PhysicsWorld(
 
     val debugData = PhysicsWorldTestDebugData()
 
-    val realWorldGetter = RealWorldGetter(world)
     private val entityUpdater = EntityUpdater(this)
     private val statusUpdater = StatusUpdater(this)
 
+    val realWorldHandler = RealWorldHandler(world)
+
     private val simTask = Bukkit.getScheduler().runTaskTimerAsynchronously(Udar.INSTANCE, Runnable { tick() }, 1, 1)
-    private val realWorldTask =
-        Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { realWorldGetter.tick() }, 1, 1)
     private val entityTask = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { entityUpdater.tick() }, 1, 1)
 
     private val busy = AtomicBoolean(false)
@@ -56,7 +66,26 @@ class PhysicsWorld(
     private var rollingContactAverage = 0.0
     private var rollingStepAverage = 0.0
 
+    private val aabbTree = AABBTree()
+
+    fun registerBody(body: ActiveBody) {
+        bodiesToAdd += body
+    }
+
+    fun registerBodies(bodies: Collection<ActiveBody>) {
+        bodiesToAdd += bodies
+    }
+
+    fun removeBody(body: ActiveBody) {
+        bodiesToRemove += body
+    }
+
+    fun removeBodies(bodies: Collection<ActiveBody>) {
+        bodiesToRemove += bodies
+    }
+
     private fun tick() {
+//        aabbTree.visualize(world)
         time++
         repeat((0.05 / TIME_STEP).roundToInt()) {
             var doTick = true
@@ -68,6 +97,9 @@ class PhysicsWorld(
                 if (!busy.compareAndSet(false, true)) return@repeat
 
                 val startTime = System.nanoTime()
+
+                processToAdd()
+                processToRemove()
 
                 physicsTime++
 
@@ -195,13 +227,15 @@ class PhysicsWorld(
                     rollingStepAverage += stepDuration / dataInterval.toDouble()
 
                     if (physicsTime % dataInterval == 0) {
-                        println("Total takes ${rollingAverage / 1_000.0}us on average")
-                        println("  - Broadphase takes ${rollingBroadAverage / 1_000.0}us on average")
-                        println("  - Narrowphase takes ${rollingNarrowAverage / 1_000.0}us on average")
-                        println("  - Env takes ${rollingEnvAverage / 1_000.0}us on average")
-                        println("  - Contact takes ${rollingContactAverage / 1_000.0}us on average")
-                        println("  - Step takes ${rollingStepAverage / 1_000.0}us on average")
-                        println("ACCOUNTED FOR ${(rollingNarrowAverage + rollingBroadAverage + rollingContactAverage + rollingEnvAverage + rollingStepAverage) / rollingAverage * 100.0}%")
+                        if (Udar.CONFIG.debug.timings) {
+                            println("Total takes ${rollingAverage / 1_000.0}us on average")
+                            println("  - Broadphase takes ${rollingBroadAverage / 1_000.0}us on average")
+                            println("  - Narrowphase takes ${rollingNarrowAverage / 1_000.0}us on average")
+                            println("  - Env takes ${rollingEnvAverage / 1_000.0}us on average")
+                            println("  - Contact takes ${rollingContactAverage / 1_000.0}us on average")
+                            println("  - Step takes ${rollingStepAverage / 1_000.0}us on average")
+                            println("ACCOUNTED FOR ${(rollingNarrowAverage + rollingBroadAverage + rollingContactAverage + rollingEnvAverage + rollingStepAverage) / rollingAverage * 100.0}%")
+                        }
                         rollingAverage = 0.0
                         rollingNarrowAverage = 0.0
                         rollingBroadAverage = 0.0
@@ -216,85 +250,131 @@ class PhysicsWorld(
         }
     }
 
-    private fun broadPhase(bodies: List<ActiveBody>, groups: Int): Array<MutableList<Pair<ActiveBody, ActiveBody>>>? {
+    fun updateBB(body: ActiveBody) {
+        body.fatBB.update(aabbTree, body.tightBB)
+    }
+
+    private fun processToAdd() {
+//        val start = System.nanoTime()
+
+        val ss = bodiesToAdd.get()
+        for (body in ss) {
+            body.fatBB.body = body
+        }
+
+        activeBodies += ss
+
+        bodiesToAdd.clear()
+
+//        val finish = System.nanoTime()
+//
+//        println("Insertions took ${(finish - start).toDouble() / 1_000.0}us")
+    }
+
+    private fun processToRemove() {
+//        val start = System.nanoTime()
+
+        val ss = bodiesToRemove.get()
+        for (body in ss) {
+            kill(body)
+        }
+
+        bodiesToRemove.clear()
+
+//        val finish = System.nanoTime()
+//
+//        println("Deletions took ${(finish - start).toDouble() / 1_000.0}us")
+    }
+
+    private fun broadPhase(bodies: List<ActiveBody>, groups: Int): Array<MutableMap<ActiveBody, List<ActiveBody>>>? {
         require(groups > 0)
         if (bodies.size <= 1) return null
 
-        val groups = Array(groups) { mutableListOf<Pair<ActiveBody, ActiveBody>>() }
+        val cs = aabbTree.collisions()
 
-        for (i in 0..<bodies.size) {
-            val first = bodies[i]
+        val groups = Array(groups) { mutableMapOf<ActiveBody, List<ActiveBody>>() }
 
-            val myPairs = mutableListOf<Pair<ActiveBody, ActiveBody>>()
-            first.ensureNonAligned()
-            val firstBoundingBox = first.boundingBox
-
-            for (j in (i + 1)..<bodies.size) {
-                val second = bodies[j]
-
-                debugData.totalPairs++
-                if (!first.awake.get() && !second.awake.get()) {
-                    continue
-                }
-
-                if (!firstBoundingBox.overlaps(second.boundingBox)) continue
-
-                val canFirst = first.capableCollision(second)
-                if (canFirst < 0) continue
-
-                val d = first.pos.distance(second.pos)
-                if (d > first.radius + second.radius) {
-                    debugData.missedEarlies++
-                    continue
-                }
-
-                myPairs += first to second
-            }
-
-            groups.minBy { it.size } += myPairs
+        for ((a, bs) in cs) {
+            groups.minBy { it.size }[a] = bs
         }
 
         return groups
+//
+//        for (i in 0..<bodies.size) {
+//            val first = bodies[i]
+//
+//            val myPairs = mutableListOf<Pair<ActiveBody, ActiveBody>>()
+//            first.ensureNonAligned()
+//            val firstBoundingBox = first.fatBB
+//
+//            for (j in (i + 1)..<bodies.size) {
+//                val second = bodies[j]
+//
+//                debugData.totalPairs++
+//                if (!first.awake.get() && !second.awake.get()) {
+//                    continue
+//                }
+//
+//                if (!firstBoundingBox.overlaps(second.fatBB)) continue
+//
+//                val canFirst = first.capableCollision(second)
+//                if (canFirst < 0) continue
+//
+//                val d = first.pos.distance(second.pos)
+//                if (d > first.radius + second.radius) {
+//                    debugData.missedEarlies++
+//                    continue
+//                }
+//
+//                myPairs += first to second
+//            }
+//
+//            groups.minBy { it.size } += myPairs
+//        }
+//
+//        return groups
     }
 
-    private fun narrowPhase(ps: List<Pair<ActiveBody, ActiveBody>>) {
+    private fun narrowPhase(ps: Map<ActiveBody, List<ActiveBody>>) {
         val math = mathPool.get()
 
         try {
-            for ((first, second) in ps) {
-                val result: List<IContact>
+            for ((first, ls) in ps) {
+                for (second in ls) {
+                    val result: List<IContact>
 
-                val t = measureNanoTime {
-                    result = first.collides(second, math)
-                }
-
-                if (result.isEmpty()) continue
-
-                debugData.pairCollisions++
-
-                first.awake.set(true)
-                second.awake.set(true)
-
-                if (Udar.CONFIG.debug.collisionTimes > 0) {
-                    println("B-B COLLISION TOOK: ${t.toDouble() / 1_000_000.0} ms")
-                }
-
-                for (contact in result) {
-                    val ourContacts =
-                        first.previousContacts.filter { it.first == second || it.second == second }
-
-                    first.contacts += contact
-                    second.contacts += contact
-
-                    for (ourContact in ourContacts) {
-                        if (ourContact.result.point.distance(contact.result.point) < 1e-2) {
-                            contact.lambdaSum += ourContact.lambdaSum * Udar.CONFIG.collision.lambdaCarryover
-
-                            break
-                        }
+                    val t = measureNanoTime {
+                        result = first.collides(second, math)
                     }
 
-                    contacts += contact
+                    if (result.isEmpty()) continue
+
+                    debugData.pairCollisions++
+
+                    first.awake.set(true)
+                    second.awake.set(true)
+
+                    if (Udar.CONFIG.debug.collisionTimes > 0) {
+                        println("B-B COLLISION TOOK: ${t.toDouble() / 1_000_000.0} ms")
+                    }
+
+                    for (contact in result) {
+                        val ourContacts =
+                            first.previousContacts.filter { it.first == second || it.second == second }
+
+                        first.contacts += contact
+                        second.contacts += contact
+
+                        for (ourContact in ourContacts) {
+                            if (ourContact.result.point.distance(contact.result.point) < 1e-2) {
+                                contact.lambdaSum += ourContact.lambdaSum * Udar.CONFIG.collision.lambdaCarryover
+
+                                break
+                            }
+                        }
+
+                        contacts += contact
+                    }
                 }
             }
         } finally {
@@ -303,15 +383,22 @@ class PhysicsWorld(
     }
 
     fun clear() {
-        activeBodies.get().forEach { it.kill() }
-        activeBodies.clear()
+        bodiesToRemove += activeBodies.get()
+    }
+
+    private fun kill(obj: ActiveBody) {
+        obj.fatBB.node!!.remove(aabbTree)
+        activeBodies -= obj
+        Bukkit.getScheduler().runTask(Udar.INSTANCE, Runnable {
+            obj.onKill()
+        })
     }
 
     fun kill() {
         clear()
 
         simTask.cancel()
-        realWorldTask.cancel()
+        realWorldHandler.kill()
         entityTask.cancel()
         scope.cancel()
     }

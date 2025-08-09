@@ -13,7 +13,7 @@ class StatusUpdater(
         val linear = config.sleepLinearVelocity
         val angular = config.sleepAngularVelocity
 
-        val snapshot = physicsWorld.activeBodies.get()
+        val snapshot = physicsWorld.bodiesSnapshot()
 
         for (obj in snapshot) {
             obj.age++

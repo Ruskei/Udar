@@ -5,7 +5,7 @@ import com.ixume.udar.body.Body
 import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.collisiondetection.LocalMathUtil
-import com.ixume.udar.collisiondetection.MutableBB
+import com.ixume.udar.collisiondetection.broadphase.aabb.AABB
 import com.ixume.udar.collisiondetection.capability.GJKCapable
 import com.ixume.udar.collisiondetection.capability.SDFCapable
 import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentSATContactGenerator
@@ -82,24 +82,29 @@ class Cuboid(
     override val vertices: Array<Vector3d> = Array(8) { Vector3d() }
 
     private fun updateBB() {
-        boundingBox.minX = Double.MAX_VALUE
-        boundingBox.maxX = -Double.MAX_VALUE
-        boundingBox.minY = Double.MAX_VALUE
-        boundingBox.maxY = -Double.MAX_VALUE
-        boundingBox.minZ = Double.MAX_VALUE
-        boundingBox.maxZ = -Double.MAX_VALUE
+        tightBB.minX = Double.MAX_VALUE
+        tightBB.maxX = -Double.MAX_VALUE
+        tightBB.minY = Double.MAX_VALUE
+        tightBB.maxY = -Double.MAX_VALUE
+        tightBB.minZ = Double.MAX_VALUE
+        tightBB.maxZ = -Double.MAX_VALUE
 
         for (vertex in vertices) {
-            boundingBox.minX = min(boundingBox.minX, vertex.x)
-            boundingBox.maxX = max(boundingBox.maxX, vertex.x)
-            boundingBox.minY = min(boundingBox.minY, vertex.y)
-            boundingBox.maxY = max(boundingBox.maxY, vertex.y)
-            boundingBox.minZ = min(boundingBox.minZ, vertex.z)
-            boundingBox.maxZ = max(boundingBox.maxZ, vertex.z)
+            tightBB.minX = min(tightBB.minX, vertex.x)
+            tightBB.maxX = max(tightBB.maxX, vertex.x)
+            tightBB.minY = min(tightBB.minY, vertex.y)
+            tightBB.maxY = max(tightBB.maxY, vertex.y)
+            tightBB.minZ = min(tightBB.minZ, vertex.z)
+            tightBB.maxZ = max(tightBB.maxZ, vertex.z)
+        }
+
+        if (!fatBB.contains(tightBB)) {
+            physicsWorld.updateBB(this)
         }
     }
 
-    override val boundingBox: MutableBB = MutableBB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    override val tightBB: AABB = AABB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    override val fatBB: AABB = AABB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
     private val display: BlockDisplay = world.spawnEntity(
         Location(world, pos.x, pos.y, pos.z),
@@ -177,11 +182,10 @@ class Cuboid(
         updateII()
     }
 
-    override fun kill() {
+    override fun onKill() {
         display.remove()
         debugDisplay?.remove()
     }
-
 
     private val rotationIntegrator = RigidbodyRotationIntegrator(this)
 

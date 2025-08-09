@@ -4,7 +4,7 @@ import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.collisiondetection.LocalMathUtil
-import com.ixume.udar.collisiondetection.MutableBB
+import com.ixume.udar.collisiondetection.broadphase.aabb.AABB
 import com.ixume.udar.collisiondetection.contactgeneration.CompositeCompositeContactGenerator
 import com.ixume.udar.jacobiEigenDecomposition
 import com.ixume.udar.physics.Contact
@@ -99,26 +99,31 @@ class Composite(
     override val vertices: Array<Vector3d> = Array(parts.fold(0) { s, p -> s + p.vertices.size }) { Vector3d() }
 
     private fun updateBB() {
-        val bbs = parts.map { it.boundingBox }
+        val bbs = parts.map { it.tightBB }
 
-        boundingBox.minX = Double.MAX_VALUE
-        boundingBox.maxX = -Double.MAX_VALUE
-        boundingBox.minY = Double.MAX_VALUE
-        boundingBox.maxY = -Double.MAX_VALUE
-        boundingBox.minZ = Double.MAX_VALUE
-        boundingBox.maxZ = -Double.MAX_VALUE
+        tightBB.minX = Double.MAX_VALUE
+        tightBB.maxX = -Double.MAX_VALUE
+        tightBB.minY = Double.MAX_VALUE
+        tightBB.maxY = -Double.MAX_VALUE
+        tightBB.minZ = Double.MAX_VALUE
+        tightBB.maxZ = -Double.MAX_VALUE
 
         for (bb in bbs) {
-            boundingBox.minX = min(boundingBox.minX, bb.minX)
-            boundingBox.maxX = max(boundingBox.maxX, bb.maxX)
-            boundingBox.minY = min(boundingBox.minY, bb.minY)
-            boundingBox.maxY = max(boundingBox.maxY, bb.maxY)
-            boundingBox.minZ = min(boundingBox.minZ, bb.minZ)
-            boundingBox.maxZ = max(boundingBox.maxZ, bb.maxZ)
+            tightBB.minX = min(tightBB.minX, bb.minX)
+            tightBB.maxX = max(tightBB.maxX, bb.maxX)
+            tightBB.minY = min(tightBB.minY, bb.minY)
+            tightBB.maxY = max(tightBB.maxY, bb.maxY)
+            tightBB.minZ = min(tightBB.minZ, bb.minZ)
+            tightBB.maxZ = max(tightBB.maxZ, bb.maxZ)
+        }
+
+        if (!fatBB.contains(tightBB)) {
+            physicsWorld.updateBB(this)
         }
     }
 
-    override val boundingBox: MutableBB = MutableBB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    override val tightBB: AABB = AABB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    override val fatBB: AABB = AABB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
     override val prevQ: Quaterniond = Quaterniond(q)
     private val prevP = Vector3d(pos)
@@ -177,8 +182,8 @@ class Composite(
         return parts.flatMap { it.intersect(origin, end) }
     }
 
-    override fun kill() {
-        parts.forEach { it.kill() }
+    override fun onKill() {
+        parts.forEach { it.onKill() }
     }
 
     override fun applyImpulse(point: Vector3d, normal: Vector3d, impulse: Vector3d) {
@@ -324,7 +329,7 @@ class Composite(
         } else if (other is ActiveBody) {
             val cs = mutableListOf<Contact>()
             for (part in parts) {
-                if (!part.boundingBox.overlaps(other.boundingBox)) continue
+                if (!part.tightBB.overlaps(other.tightBB)) continue
                 val d = part.pos.distance(other.pos)
                 if (d > part.radius + other.radius) continue
 
