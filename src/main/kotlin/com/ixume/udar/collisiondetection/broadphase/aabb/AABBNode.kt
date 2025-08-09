@@ -114,7 +114,6 @@ class AABBNode(
 
     companion object {
         fun pairs(a: AABBNode, b: AABBNode, ls: MutableMap<ActiveBody, MutableList<ActiveBody>>) {
-
             if (a.isLeaf) {
                 if (b.isLeaf) {
                     if (a.bb.overlaps(b.bb) && a.bb.body!!.tightBB.overlaps(b.bb.body!!.tightBB)) {
@@ -123,7 +122,7 @@ class AABBNode(
 
                     return
                 } else {
-                    if (a.parent == b.parent) {
+                    if (a.parent === b.parent) {
                         pairs(b.child1!!, b.child2!!, ls)
                     }
 
@@ -134,7 +133,7 @@ class AABBNode(
                 }
             } else {
                 if (b.isLeaf) {
-                    if (a.parent == b.parent) {
+                    if (a.parent === b.parent) {
                         pairs(a.child1!!, a.child2!!, ls)
                     }
 
@@ -143,7 +142,7 @@ class AABBNode(
                         pairs(b, a.child2!!, ls)
                     }
                 } else {
-                    if (a.parent == b.parent) {
+                    if (a.parent === b.parent) {
                         pairs(a.child1!!, a.child2!!, ls)
                         pairs(b.child1!!, b.child2!!, ls)
                     }

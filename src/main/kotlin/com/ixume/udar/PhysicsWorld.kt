@@ -299,40 +299,6 @@ class PhysicsWorld(
         }
 
         return groups
-//
-//        for (i in 0..<bodies.size) {
-//            val first = bodies[i]
-//
-//            val myPairs = mutableListOf<Pair<ActiveBody, ActiveBody>>()
-//            first.ensureNonAligned()
-//            val firstBoundingBox = first.fatBB
-//
-//            for (j in (i + 1)..<bodies.size) {
-//                val second = bodies[j]
-//
-//                debugData.totalPairs++
-//                if (!first.awake.get() && !second.awake.get()) {
-//                    continue
-//                }
-//
-//                if (!firstBoundingBox.overlaps(second.fatBB)) continue
-//
-//                val canFirst = first.capableCollision(second)
-//                if (canFirst < 0) continue
-//
-//                val d = first.pos.distance(second.pos)
-//                if (d > first.radius + second.radius) {
-//                    debugData.missedEarlies++
-//                    continue
-//                }
-//
-//                myPairs += first to second
-//            }
-//
-//            groups.minBy { it.size } += myPairs
-//        }
-//
-//        return groups
     }
 
     private fun narrowPhase(ps: Map<ActiveBody, List<ActiveBody>>) {
