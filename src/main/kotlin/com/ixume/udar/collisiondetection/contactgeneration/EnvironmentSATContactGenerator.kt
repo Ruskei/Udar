@@ -236,7 +236,7 @@ class EnvironmentSATContactGenerator(
                             1, Particle.DustOptions(Color.BLACK, 0.4f)
                         )
 
-//                        continue
+                        continue
                     }
 
                     if (p.depth > prevMaxDepth) {
