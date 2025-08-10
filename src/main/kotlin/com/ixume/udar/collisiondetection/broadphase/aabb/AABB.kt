@@ -132,7 +132,7 @@ class AABB(
     }
 
     companion object {
-        private const val FAT_MARGIN = 0.2
+        private const val FAT_MARGIN = 0.1
         private val colors = listOf(
             Color.WHITE,
             Color.SILVER,

@@ -178,7 +178,6 @@ class Cuboid(
         display.interpolationDuration = 2
 
         updateVertices()
-        updateBB()
         updateII()
     }
 

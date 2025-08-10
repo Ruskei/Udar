@@ -77,10 +77,15 @@ class PhysicsWorld(
     }
 
     fun removeBody(body: ActiveBody) {
+        body.onKill()
         bodiesToRemove += body
     }
 
     fun removeBodies(bodies: Collection<ActiveBody>) {
+        for (body in bodies) {
+            body.onKill()
+        }
+
         bodiesToRemove += bodies
     }
 
@@ -259,6 +264,7 @@ class PhysicsWorld(
 
         val ss = bodiesToAdd.get()
         for (body in ss) {
+            updateBB(body)
             body.fatBB.body = body
         }
 
@@ -275,11 +281,10 @@ class PhysicsWorld(
 //        val start = System.nanoTime()
 
         val ss = bodiesToRemove.get()
+        bodiesToRemove.clear()
         for (body in ss) {
             kill(body)
         }
-
-        bodiesToRemove.clear()
 
 //        val finish = System.nanoTime()
 //
@@ -349,15 +354,12 @@ class PhysicsWorld(
     }
 
     fun clear() {
-        bodiesToRemove += activeBodies.get()
+        removeBodies(activeBodies.get())
     }
 
     private fun kill(obj: ActiveBody) {
         obj.fatBB.node!!.remove(aabbTree)
         activeBodies -= obj
-        Bukkit.getScheduler().runTask(Udar.INSTANCE, Runnable {
-            obj.onKill()
-        })
     }
 
     fun kill() {

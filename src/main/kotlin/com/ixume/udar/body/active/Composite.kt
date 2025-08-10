@@ -287,7 +287,6 @@ class Composite(
 
         updateII()
         updateVertices()
-        updateBB()
     }
 
     override val isConvex: Boolean = false
