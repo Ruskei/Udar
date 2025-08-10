@@ -90,7 +90,7 @@ data class Config(
         val passiveSlop: Double = 0.0001,
         val activeSlop: Double = 0.001,
         val friction: Double = 0.3,
-        val lambdaCarryover: Double = 0.3,
+        val lambdaCarryover: Double = 0.8,
         val normalIterations: Int = 4,
         val frictionIterations: Int = 4,
     ) {

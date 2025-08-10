@@ -9,9 +9,7 @@ import org.joml.Vector3d
 import kotlin.math.abs
 
 object ContactSolver {
-    private const val NORMAL_ITERATIONS = 4
-    private const val FRICTION_ITERATIONS = 4
-    private const val SIGNIFICANT_LAMBDA = 1e-6
+    private const val SIGNIFICANT_LAMBDA = 1e-14
 
     private val vA = Vector3d()
     private val wA = Vector3d()
@@ -33,7 +31,7 @@ object ContactSolver {
 
     fun solve(contacts: List<IContact>) {
         var itr = 1
-        while (itr <= NORMAL_ITERATIONS) {
+        while (itr <= Udar.CONFIG.collision.normalIterations) {
             var itrSignificant = false
             for (contact in contacts) {
                 val first = contact.first
@@ -99,7 +97,7 @@ object ContactSolver {
 
 //        println("DID $itr ITERATIONS")
 
-        for (itr in 1..FRICTION_ITERATIONS) {
+        for (itr in 1..Udar.CONFIG.collision.frictionIterations) {
             var itrSignificant = false
             for (contact in contacts) {
                 val first = contact.first

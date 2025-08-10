@@ -329,16 +329,17 @@ class PhysicsWorld(
                         println("B-B COLLISION TOOK: ${t.toDouble() / 1_000_000.0} ms")
                     }
 
-                    for (contact in result) {
-                        val ourContacts =
-                            first.previousContacts.filter { it.first == second || it.second == second }
+                    val ourContacts =
+                        first.previousContacts.filter { it.second === second }
 
+                    for (contact in result) {
                         first.contacts += contact
-                        second.contacts += contact
 
                         for (ourContact in ourContacts) {
-                            if (ourContact.result.point.distance(contact.result.point) < 1e-2) {
-                                contact.lambdaSum += ourContact.lambdaSum * Udar.CONFIG.collision.lambdaCarryover
+                            if (ourContact.result.point.distance(contact.result.point) < 1.0) {
+                                contact.lambdaSum = ourContact.lambdaSum * Udar.CONFIG.collision.lambdaCarryover
+                                contact.t1Sum = ourContact.t1Sum * Udar.CONFIG.collision.lambdaCarryover
+                                contact.t2Sum = ourContact.t2Sum * Udar.CONFIG.collision.lambdaCarryover
 
                                 break
                             }

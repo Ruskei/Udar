@@ -82,7 +82,6 @@ class EnvironmentSATContactGenerator(
     }
 
     private var prevMaxDepth = Udar.Companion.CONFIG.collision.passiveSlop
-    var facesChecked = 0
     override fun collides(other: Body, math: LocalMathUtil): List<Contact> {
         require(capableCollision(other) >= 0)
 
@@ -248,8 +247,6 @@ class EnvironmentSATContactGenerator(
             }
         }
 
-        facesChecked = 0
-
         for (edge in mesh.edges) {
             val r = collidesEdge(edge, math = math) ?: continue
 
@@ -317,7 +314,6 @@ class EnvironmentSATContactGenerator(
 
         val otherAxiss = listOf(normal)
 
-        facesChecked++
         val r =
             math.collidesSAT(
                 activeBody,
