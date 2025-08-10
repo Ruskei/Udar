@@ -470,6 +470,13 @@ class Cuboid(
 
 //    private val contactGenerator: ContactGenerator = SATContactGenerator(this)
 
+    override fun equals(other: Any?): Boolean {
+        return other != null && other is Composite && other.id == id
+    }
+
+    override fun hashCode(): Int {
+        return id.hashCode()
+    }
 
     companion object {
         private val VALID_MATERIALS = listOf(

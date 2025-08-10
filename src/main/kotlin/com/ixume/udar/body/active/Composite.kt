@@ -357,4 +357,12 @@ class Composite(
                 }
         }
     }
+
+    override fun equals(other: Any?): Boolean {
+        return other != null && other is Composite && other.id == id
+    }
+
+    override fun hashCode(): Int {
+        return id.hashCode()
+    }
 }

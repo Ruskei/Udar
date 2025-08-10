@@ -6,15 +6,16 @@ import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.collisiondetection.broadphase.aabb.AABBTree
 import com.ixume.udar.collisiondetection.mesh.Mesh
 import com.ixume.udar.collisiondetection.pool.MathPool
-import com.ixume.udar.physics.ContactSolver
-import com.ixume.udar.physics.EntityUpdater
-import com.ixume.udar.physics.IContact
-import com.ixume.udar.physics.StatusUpdater
+import com.ixume.udar.physics.*
 import com.ixume.udar.testing.PhysicsWorldTestDebugData
+import it.unimi.dsi.fastutil.ints.IntArrayList
+import it.unimi.dsi.fastutil.ints.IntArraySet
+import it.unimi.dsi.fastutil.ints.IntSortedSets
 import kotlinx.coroutines.*
 import org.bukkit.Bukkit
 import org.bukkit.World
 import org.joml.Vector3d
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.roundToInt
 import kotlin.system.measureNanoTime
@@ -30,7 +31,7 @@ class PhysicsWorld(
         return activeBodies.get()
     }
 
-    val contacts: MutableList<IContact> = mutableListOf()
+    val contacts = ConcurrentLinkedQueue<IContact>()
     val meshes: MutableList<Mesh> = mutableListOf()
 
     private val environmentBody = EnvironmentBody(this)
@@ -330,7 +331,7 @@ class PhysicsWorld(
                     }
 
                     val ourContacts =
-                        first.previousContacts.filter { it.second === second }
+                        first.previousContacts.filter { it.second.id == second.id }
 
                     for (contact in result) {
                         first.contacts += contact

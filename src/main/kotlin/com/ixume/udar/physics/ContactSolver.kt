@@ -29,7 +29,7 @@ object ContactSolver {
     private val j2 = Vector3d()
     private val j3 = Vector3d()
 
-    fun solve(contacts: List<IContact>) {
+    fun solve(contacts: Collection<IContact>) {
         var itr = 1
         while (itr <= Udar.CONFIG.collision.normalIterations) {
             var itrSignificant = false
