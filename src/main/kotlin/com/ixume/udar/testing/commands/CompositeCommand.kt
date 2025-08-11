@@ -49,6 +49,8 @@ object CompositeCommand : Command {
                     hasGravity = false,
                 )
 
+                cuboid.isChild = true
+
                 val cuboid2 = Cuboid(
                     world = sender.world,
                     pos = Vector3d(origin).add(0.0, 0.0, 3.0),
@@ -61,6 +63,8 @@ object CompositeCommand : Command {
                     density = 1.0,
                     hasGravity = false,
                 )
+
+                cuboid2.isChild = true
 
                 val composite = Composite(
                     world = sender.world,
@@ -89,6 +93,8 @@ object CompositeCommand : Command {
                 val opts = if (args.size < 3) BodyOptions.default() else BodyOptions.fromArgs(args.copyOfRange(2, args.size - 1))
                 val q = Quaterniond().rotateXYZ(opts.rot0.x, opts.rot0.y, opts.rot0.z)
                 val o = if (opts.trueOmega) opts.l.rotate(Quaterniond(q).conjugate()) else opts.l
+
+                bodies.forEach { it.isChild = true }
 
                 val rb = Composite(
                     world = sender.world,

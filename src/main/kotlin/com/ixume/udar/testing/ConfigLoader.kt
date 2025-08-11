@@ -41,8 +41,10 @@ object ConfigLoader {
             return
         }
 
+        val reader = FileReader(configFile)
+
         try {
-            val cfg = gson.fromJson(FileReader(configFile), Config::class.java)
+            val cfg = gson.fromJson(reader, Config::class.java)
             if (cfg == null) {
                 Udar.CONFIG = Config()
                 configFile.writeText(gson.toJson(Udar.CONFIG))
@@ -63,6 +65,8 @@ object ConfigLoader {
             Udar.CONFIG = Config()
 
             return
+        } finally {
+            reader.close()
         }
     }
 }

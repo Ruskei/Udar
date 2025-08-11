@@ -56,6 +56,10 @@ class AtomicList<T> {
         return items.get()
     }
 
+    fun getAndClear(): List<T> {
+        return items.getAndSet(emptyList())
+    }
+
     fun clear() {
         do {
             val curr = items.get()!!

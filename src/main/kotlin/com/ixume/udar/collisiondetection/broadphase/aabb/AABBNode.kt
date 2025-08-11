@@ -24,7 +24,6 @@ class AABBNode(
 
     val isLeaf: Boolean
         get() {
-            check((child1 == null) == (child2 == null))
             return child1 == null
         }
 
@@ -62,39 +61,6 @@ class AABBNode(
 
     fun minChildrenCost(b: AABB): Double {
         return b.volume + recursiveRefittingCost(b)
-    }
-
-    fun remove(tree: AABBTree) {
-        if (parent == null) {
-            tree.root = null
-            return
-        }
-
-        val cp = parent!!
-        val cpc1 = cp.child1
-        val cpc2 = cp.child2
-        if (cpc1 == null || cpc2 == null) {
-            throw IllegalStateException("YK! 1: $cpc1 2: $cpc2")
-        }
-
-        val other = if (cp.child1 == this) cp.child2!! else cp.child1!!
-
-        val cpp = cp.parent
-        if (cpp == null) {
-            tree.root = other
-            other.parent = null
-            return
-        }
-
-        if (cpp.child1 == cp) {
-            cpp.child1 = other
-        } else {
-            cpp.child2 = other
-        }
-
-        cp.child1 = null
-        cp.child2 = null
-        other.parent = cpp
     }
 
     fun visualize(world: World, depth: Int) {

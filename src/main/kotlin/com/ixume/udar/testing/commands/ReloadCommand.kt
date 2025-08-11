@@ -1,6 +1,6 @@
 package com.ixume.udar.testing.commands
 
-import com.ixume.udar.Udar
+import com.ixume.udar.model.BBParser
 import com.ixume.udar.testing.ConfigLoader
 import org.bukkit.command.CommandSender
 
@@ -24,8 +24,8 @@ object ReloadCommand : Command {
         args: Array<out String>?
     ): Boolean {
         ConfigLoader.load()
-        println(Udar.CONFIG.debug.tests)
         TestCommand.load()
+        BBParser.load()
 
         sender.sendMessage("Reloaded!")
 

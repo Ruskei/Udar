@@ -1,6 +1,8 @@
 package com.ixume.udar
 
 import com.ixume.proverka.Proverka
+import com.ixume.udar.model.JavaModel
+import com.ixume.udar.model.BBParser
 import com.ixume.udar.testing.Config
 import com.ixume.udar.testing.ConfigLoader
 import com.ixume.udar.testing.commands.TestCommand
@@ -18,6 +20,7 @@ class Udar : JavaPlugin() {
         PhysicsWorldsManager.init()
 
         TestCommand.load()
+        BBParser.load()
 
         PlayerInteractListener.init()
     }
@@ -34,5 +37,6 @@ class Udar : JavaPlugin() {
         lateinit var INSTANCE: Udar
         lateinit var LOGGER: Logger
         lateinit var CONFIG: Config
+        lateinit var MODELS: List<JavaModel>
     }
 }

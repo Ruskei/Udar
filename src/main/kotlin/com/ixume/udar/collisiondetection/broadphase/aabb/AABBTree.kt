@@ -4,21 +4,46 @@ import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.collisiondetection.broadphase.aabb.AABBNode.Companion.pairs
 import org.bukkit.World
 import java.util.*
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 class AABBTree {
+    private val blocked = AtomicBoolean(false)
+    private val status = AtomicInteger(0)
     var root: AABBNode? = null
 
     fun collisions(): Map<ActiveBody, List<ActiveBody>> {
-        val r = root ?: return mapOf()
-        if (r.isLeaf) return mapOf()
+        if (!blocked.compareAndSet(false, true)) throw IllegalStateException("Tried to get collisions while blocked! STATUS: ${status.get()}")
+        status.set(1)
+
+        val r = root
+        if (r == null) {
+            status.set(0)
+            blocked.set(false)
+
+            return emptyMap()
+        }
+
+        if (r.isLeaf) {
+            status.set(0)
+            blocked.set(false)
+
+            return emptyMap()
+        }
 
         val m = mutableMapOf<ActiveBody, MutableList<ActiveBody>>()
         pairs(r.child1!!, r.child2!!, m)
+
+        status.set(0)
+        blocked.set(false)
 
         return m
     }
 
     fun insert(bb: AABB) {
+        if (!blocked.compareAndSet(false, true)) throw IllegalStateException("Tried to insert while blocked! STATUS: ${status.get()}")
+        status.set(2)
+
         val best = bestSibling(bb)
         if (best == null) {
             // root must be null
@@ -29,6 +54,8 @@ class AABBTree {
                 bb = bb,
             )
 
+            status.set(0)
+            blocked.set(false)
             return
         }
 
@@ -75,6 +102,9 @@ class AABBTree {
 
             p = p.parent
         }
+
+        status.set(0)
+        blocked.set(false)
     }
 
     private fun rotate(p: AABBNode) {
@@ -159,6 +189,60 @@ class AABBTree {
         }
 
         return bestNode
+    }
+
+    fun remove(node: AABBNode) {
+        if (!blocked.compareAndSet(false, true)) throw IllegalStateException("Tried to remove while blocked! STATUS: ${status.get()}")
+        status.set(3)
+
+        val cp = node.parent
+
+        if (cp == null) {
+            root = null
+
+            status.set(0)
+            blocked.set(false)
+            return
+        }
+
+        val cpc1 = cp.child1
+        val cpc2 = cp.child2
+        if (cpc1 == null || cpc2 == null) {
+            status.set(0)
+            blocked.set(false)
+            throw IllegalStateException("YK! 1: $cpc1 2: $cpc2")
+        }
+
+        val other = if (cp.child1 === node) cp.child2!! else cp.child1!!
+
+        val cpp = cp.parent
+        if (cpp == null) {
+            root = other
+            other.parent = null
+
+            status.set(0)
+            blocked.set(false)
+            return
+        }
+
+        if (cpp.child1 == null || cpp.child2 == null) {
+            status.set(0)
+            blocked.set(false)
+            throw IllegalStateException("YK 2! 1: $${cpp.child1} 2: ${cpp.child2}")
+        }
+
+        if (cpp.child1 === cp) {
+            cpp.child1 = other
+        } else {
+            cpp.child2 = other
+        }
+
+        cp.child1 = null
+        cp.child2 = null
+        other.parent = cpp
+
+        status.set(0)
+        blocked.set(false)
     }
 
     fun visualize(world: World) {

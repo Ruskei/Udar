@@ -12,6 +12,7 @@ import kotlin.math.min
 
 interface ActiveBody : CollidableBody, Projectable {
     var age: Int
+    var isChild: Boolean
 
     val vertices: Array<Vector3d>
     val radius: Double

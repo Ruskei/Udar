@@ -38,6 +38,7 @@ class Composite(
     override val id: UUID = UUID.randomUUID()
     override val physicsWorld: PhysicsWorld = world.physicsWorld!!
 
+    override var isChild: Boolean = false
     override var age: Int = 0
     override var awake = AtomicBoolean(true)
     override var startled = AtomicBoolean(true)
@@ -118,7 +119,10 @@ class Composite(
         }
 
         if (!fatBB.contains(tightBB)) {
-            physicsWorld.updateBB(this)
+            fatBB.updateDims(tightBB)
+            if (!isChild) {
+                physicsWorld.updateBB(this)
+            }
         }
     }
 
@@ -161,12 +165,15 @@ class Composite(
         dQ.normalize()
         angularDelta = 2.0 * acos(dQ.w.coerceIn(-1.0, 1.0))
 
-        updateII()
+        update()
+    }
 
+    override fun update() {
         previousContacts.clear()
         previousContacts += contacts
         contacts.clear()
 
+        updateII()
         updateVertices()
         updateBB()
     }

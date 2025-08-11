@@ -8,9 +8,6 @@ import com.ixume.udar.collisiondetection.mesh.Mesh
 import com.ixume.udar.collisiondetection.pool.MathPool
 import com.ixume.udar.physics.*
 import com.ixume.udar.testing.PhysicsWorldTestDebugData
-import it.unimi.dsi.fastutil.ints.IntArrayList
-import it.unimi.dsi.fastutil.ints.IntArraySet
-import it.unimi.dsi.fastutil.ints.IntSortedSets
 import kotlinx.coroutines.*
 import org.bukkit.Bukkit
 import org.bukkit.World
@@ -118,11 +115,11 @@ class PhysicsWorld(
 
                 statusUpdater.updateBodies()
 
-                var job: Job? = null
-
                 val startBroadTime = System.nanoTime()
                 val activePairs = broadPhase(bodiesSnapshot, processors)
                 val endBroadTime = System.nanoTime()
+
+                var job: Job? = null
 
                 val startNarrowTime = System.nanoTime()
 
@@ -257,21 +254,19 @@ class PhysicsWorld(
     }
 
     fun updateBB(body: ActiveBody) {
-        body.fatBB.update(aabbTree, body.tightBB)
+        body.fatBB.updateTree(aabbTree)
     }
 
     private fun processToAdd() {
 //        val start = System.nanoTime()
 
-        val ss = bodiesToAdd.get()
+        val ss = bodiesToAdd.getAndClear()
         for (body in ss) {
-            updateBB(body)
             body.fatBB.body = body
+            body.update()
         }
 
         activeBodies += ss
-
-        bodiesToAdd.clear()
 
 //        val finish = System.nanoTime()
 //
@@ -281,8 +276,7 @@ class PhysicsWorld(
     private fun processToRemove() {
 //        val start = System.nanoTime()
 
-        val ss = bodiesToRemove.get()
-        bodiesToRemove.clear()
+        val ss = bodiesToRemove.getAndClear()
         for (body in ss) {
             kill(body)
         }
@@ -360,7 +354,8 @@ class PhysicsWorld(
     }
 
     private fun kill(obj: ActiveBody) {
-        obj.fatBB.node!!.remove(aabbTree)
+        println("REMOVED A BODY!")
+        aabbTree.remove(obj.fatBB.node!!)
         activeBodies -= obj
     }
 

@@ -52,15 +52,20 @@ class AABB(
         return this.minX <= minX && this.maxX >= maxX && this.minY <= minY && this.maxY >= maxY && this.minZ <= minZ && this.maxZ >= maxZ
     }
 
-    fun update(tree: AABBTree, base: AABB) {
+    fun updateDims(base: AABB) {
         minX = base.minX - FAT_MARGIN
         minY = base.minY - FAT_MARGIN
         minZ = base.minZ - FAT_MARGIN
         maxX = base.maxX + FAT_MARGIN
         maxY = base.maxY + FAT_MARGIN
         maxZ = base.maxZ + FAT_MARGIN
+    }
 
-        node?.remove(tree)
+    fun updateTree(tree: AABBTree) {
+        node?.let {
+            tree.remove(it)
+        }
+
         tree.insert(this)
     }
 

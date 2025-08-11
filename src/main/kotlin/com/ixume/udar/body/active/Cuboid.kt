@@ -42,6 +42,7 @@ class Cuboid(
     override val id = UUID.randomUUID()!!
     override val physicsWorld: PhysicsWorld = world.physicsWorld!!
 
+    override var isChild: Boolean = false
     override var age: Int = 0
     override var awake = AtomicBoolean(true)
     override var startled = AtomicBoolean(true)
@@ -98,8 +99,13 @@ class Cuboid(
             tightBB.maxZ = max(tightBB.maxZ, vertex.z)
         }
 
+
         if (!fatBB.contains(tightBB)) {
-            physicsWorld.updateBB(this)
+            fatBB.updateDims(tightBB)
+
+            if (!isChild) {
+                physicsWorld.updateBB(this)
+            }
         }
     }
 
@@ -175,7 +181,8 @@ class Cuboid(
         display.block = material.createBlockData()
 
         display.transformation = createTransformation()
-        display.interpolationDuration = 2
+        display.interpolationDuration = 1
+        display.interpolationDelay = 1
 
         updateVertices()
         updateII()
@@ -471,7 +478,7 @@ class Cuboid(
 //    private val contactGenerator: ContactGenerator = SATContactGenerator(this)
 
     override fun equals(other: Any?): Boolean {
-        return other != null && other is Composite && other.id == id
+        return other != null && other is Cuboid && other.id == id
     }
 
     override fun hashCode(): Int {
