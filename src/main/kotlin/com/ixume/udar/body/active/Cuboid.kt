@@ -182,7 +182,8 @@ class Cuboid(
 
         display.transformation = createTransformation()
         display.interpolationDuration = 1
-        display.interpolationDelay = 1
+        display.interpolationDelay = 0
+        display.teleportDuration = 1
 
         updateVertices()
         updateII()
@@ -217,7 +218,7 @@ class Cuboid(
 
         linearDelta.set(pos).sub(prevP)
 
-        val dQ = Quaterniond(q).mul(Quaterniond(q).conjugate())
+        val dQ = Quaterniond(q).mul(Quaterniond(prevQ).conjugate())
         if (dQ.w < 0.0) dQ.mul(-1.0)
         dQ.normalize()
         angularDelta = 2.0 * acos(dQ.w.coerceIn(-1.0, 1.0))
