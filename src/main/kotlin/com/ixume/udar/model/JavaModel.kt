@@ -3,7 +3,7 @@ package com.ixume.udar.model
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.model.element.instance.ModelElement
 import com.ixume.udar.body.active.ActiveBody
-import com.ixume.udar.body.active.Composite
+import com.ixume.udar.body.active.CompositeImpl
 import org.joml.Quaterniond
 import org.joml.Vector3d
 
@@ -11,14 +11,14 @@ class JavaModel(
     val name: String,
     val elems: List<ModelElement>,
 ) {
-    fun realize(pw: PhysicsWorld, origin: Vector3d): ActiveBody {
+    fun realize(pw: PhysicsWorld, origin: Vector3d): CompositeImpl {
         val bs = elems.map {
             it.realize(pw, origin).apply {
                 isChild = true
             }
         }
 
-        return Composite(
+        return CompositeImpl(
             world = pw.world,
             velocity = Vector3d(),
             q = Quaterniond(),

@@ -112,23 +112,7 @@ class Cuboid(
     override val tightBB: AABB = AABB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
     override val fatBB: AABB = AABB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
-    private val display: BlockDisplay = world.spawnEntity(
-        Location(world, pos.x, pos.y, pos.z),
-        EntityType.BLOCK_DISPLAY
-    ) as BlockDisplay
-
     private var debugDisplay: TextDisplay? = null
-
-    private fun createTransformation(): Transformation {
-        val scale = Vector3f(scale.x.toFloat(), scale.y.toFloat(), scale.z.toFloat())
-        val rot = Quaternionf(q.x.toFloat(), q.y.toFloat(), q.z.toFloat(), q.w.toFloat())
-        return Transformation(
-            Vector3f(-0.5f).mul(scale).rotate(rot),
-            rot,
-            scale,
-            Quaternionf(),
-        )
-    }
 
     override val isConvex: Boolean = true
 
@@ -176,21 +160,11 @@ class Cuboid(
     override val inverseInertia: Matrix3d = Matrix3d()
 
     init {
-        val material = VALID_MATERIALS.random()
-
-        display.block = material.createBlockData()
-
-        display.transformation = createTransformation()
-        display.interpolationDuration = 1
-        display.interpolationDelay = 0
-        display.teleportDuration = 1
-
         updateVertices()
         updateII()
     }
 
     override fun onKill() {
-        display.remove()
         debugDisplay?.remove()
     }
 
@@ -231,11 +205,6 @@ class Cuboid(
 
         updateVertices()
         updateBB()
-    }
-
-    override fun visualize() {
-        display.transformation = createTransformation()
-        display.teleport(Location(world, pos.x, pos.y, pos.z))
     }
 
     override fun intersect(origin: Vector3d, end: Vector3d): List<Pair<Vector3d, Vector3d>> {

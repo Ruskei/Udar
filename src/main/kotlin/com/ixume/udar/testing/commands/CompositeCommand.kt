@@ -1,8 +1,10 @@
 package com.ixume.udar.testing.commands
 
-import com.ixume.udar.body.active.Composite
+import com.ixume.udar.body.active.CompositeImpl
 import com.ixume.udar.body.active.Cuboid
+import com.ixume.udar.body.active.blockEntity
 import com.ixume.udar.physicsWorld
+import org.bukkit.Material
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 import org.joml.Quaterniond
@@ -52,7 +54,7 @@ object CompositeCommand : Command {
                     omega = Vector3d(0.0, 0.0, 0.0),
                     density = 1.0,
                     hasGravity = false,
-                )
+                ).blockEntity(Material.DARK_PRISMARINE)
 
                 cuboid.isChild = true
 
@@ -67,11 +69,11 @@ object CompositeCommand : Command {
                     omega = Vector3d(0.0, 0.0, 0.0),
                     density = 1.0,
                     hasGravity = false,
-                )
+                ).blockEntity(Material.DARK_PRISMARINE)
 
                 cuboid2.isChild = true
 
-                val composite = Composite(
+                val composite = CompositeImpl(
                     world = sender.world,
                     velocity = opts.v0,
                     q = Quaterniond().rotateXYZ(
@@ -101,7 +103,7 @@ object CompositeCommand : Command {
 
                 bodies.forEach { it.isChild = true }
 
-                val rb = Composite(
+                val rb = CompositeImpl(
                     world = sender.world,
                     velocity = Vector3d(opts.v0),
                     q = q,

@@ -1,7 +1,9 @@
 package com.ixume.udar.testing.commands
 
+import com.ixume.udar.body.active.BlockEntityCuboid
 import com.ixume.udar.body.active.Cuboid
 import com.ixume.udar.physicsWorld
+import org.bukkit.Material
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
@@ -38,7 +40,7 @@ object CuboidCommand : com.ixume.udar.testing.commands.Command {
             hasGravity = opts.hasGravity,
         )
 
-        sender.world.physicsWorld?.registerBody(rb)
+        sender.world.physicsWorld?.registerBody(BlockEntityCuboid(rb, Material.CHERRY_LEAVES))
 
         return true
     }
