@@ -28,7 +28,7 @@ class Composite(
 
     override val omega: Vector3d,
 
-    override val hasGravity: Boolean,
+    override var hasGravity: Boolean,
     val parts: List<ActiveBody>
 ) : ActiveBody {
     init {
@@ -160,7 +160,7 @@ class Composite(
 
         linearDelta.set(pos).sub(prevP)
 
-        val dQ = Quaterniond(q).mul(Quaterniond(q).conjugate())
+        val dQ = Quaterniond(q).mul(Quaterniond(prevQ).conjugate())
         if (dQ.w < 0.0) dQ.mul(-1.0)
         dQ.normalize()
         angularDelta = 2.0 * acos(dQ.w.coerceIn(-1.0, 1.0))

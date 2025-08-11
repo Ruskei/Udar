@@ -354,7 +354,6 @@ class PhysicsWorld(
     }
 
     private fun kill(obj: ActiveBody) {
-        println("REMOVED A BODY!")
         aabbTree.remove(obj.fatBB.node!!)
         activeBodies -= obj
     }

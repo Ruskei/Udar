@@ -4,6 +4,7 @@ import com.ixume.udar.Udar
 import com.ixume.udar.physicsWorld
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
+import org.joml.Quaterniond
 
 object ModelCommand : Command {
     override val arg: String = "model"
@@ -34,7 +35,19 @@ object ModelCommand : Command {
         val physicsWorld = sender.world.physicsWorld ?: return true
         val origin = sender.location.toVector().toVector3d()
 
-        physicsWorld.registerBody(model.realize(physicsWorld, origin))
+        val opts = if (args.size < 2) BodyOptions.default() else BodyOptions.fromArgs(args.copyOfRange(1, args.size))
+
+        val q = Quaterniond().rotateXYZ(opts.rot0.x, opts.rot0.y, opts.rot0.z)
+        val o = if (opts.trueOmega) opts.l.rotate(Quaterniond(q).conjugate()) else opts.l
+
+        val output = model.realize(physicsWorld, origin)
+
+        output.omega.set(o)
+        output.q.set(q)
+        output.hasGravity = opts.hasGravity
+        output.velocity.set(opts.v0)
+
+        physicsWorld.registerBody(output)
 
         return true
     }

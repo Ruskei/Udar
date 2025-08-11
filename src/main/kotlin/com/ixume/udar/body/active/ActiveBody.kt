@@ -28,7 +28,7 @@ interface ActiveBody : CollidableBody, Projectable {
     val localInertia: Vector3d
     val prevQ: Quaterniond
 
-    val hasGravity: Boolean
+    var hasGravity: Boolean
 
     fun globalToLocal(vec: Vector3d): Vector3d
 

@@ -36,6 +36,11 @@ object CompositeCommand : Command {
 
         when (args[0]) {
             "t-handle" -> {
+                val opts = if (args.size < 2) BodyOptions.default() else BodyOptions.fromArgs(args.copyOfRange(1, args.size))
+
+                val q = Quaterniond().rotateXYZ(opts.rot0.x, opts.rot0.y, opts.rot0.z)
+                val o = if (opts.trueOmega) opts.l.rotate(Quaterniond(q).conjugate()) else opts.l
+
                 val cuboid = Cuboid(
                     world = sender.world,
                     pos = Vector3d(origin),
@@ -68,14 +73,14 @@ object CompositeCommand : Command {
 
                 val composite = Composite(
                     world = sender.world,
-                    velocity = Vector3d(),
+                    velocity = opts.v0,
                     q = Quaterniond().rotateXYZ(
                         Math.PI * 0.5,
                         0.0,
                         0.0
                     ),
-                    omega = Vector3d(0.0),
-                    hasGravity = true,
+                    omega = o,
+                    hasGravity = opts.hasGravity,
                     parts = listOf(cuboid, cuboid2)
                 )
 

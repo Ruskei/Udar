@@ -37,7 +37,7 @@ class Cuboid(
     val height: Double,
     val length: Double,
     val density: Double,
-    override val hasGravity: Boolean,
+    override var hasGravity: Boolean,
 ) : ActiveBody, GJKCapable, SDFCapable {
     override val id = UUID.randomUUID()!!
     override val physicsWorld: PhysicsWorld = world.physicsWorld!!
