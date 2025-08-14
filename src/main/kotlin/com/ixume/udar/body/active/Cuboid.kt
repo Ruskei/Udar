@@ -290,35 +290,13 @@ class Cuboid(
     }
 
     override fun capableCollision(other: Body): Int {
-        return when (other) {
-            is EnvironmentBody -> {
-                envContactGen.capableCollision(other)
-            }
-
-            is Cuboid -> {
-                SATContactGen.capableCollision(other)
-            }
-
-            else -> {
-                -1
-            }
-        }
+        if (other is EnvironmentBody) return envContactGen.capableCollision(other)
+        return SATContactGen.capableCollision(other)
     }
 
     override fun collides(other: Body, math: LocalMathUtil): List<IContact> {
-        return when (other) {
-            is EnvironmentBody -> {
-                envContactGen.collides(other, math)
-            }
-
-            is Cuboid -> {
-                SATContactGen.collides(other, math)
-            }
-
-            else -> {
-                emptyList()
-            }
-        }
+        if (other is EnvironmentBody) return envContactGen.collides(other, math)
+        return SATContactGen.collides(other, math)
     }
 
     override fun support(dir: Vector3d): Vector3d {

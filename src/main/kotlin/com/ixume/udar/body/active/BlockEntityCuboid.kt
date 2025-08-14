@@ -47,7 +47,7 @@ class BlockEntityCuboid(
     }
 
     override fun project(axis: Vector3d): Vector2d {
-        return cuboid.project(axis)
+        return super.project(axis)
     }
 
     override fun onKill() {

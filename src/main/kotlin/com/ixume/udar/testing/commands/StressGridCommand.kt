@@ -2,7 +2,9 @@ package com.ixume.udar.testing.commands
 
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.Cuboid
+import com.ixume.udar.body.active.blockEntity
 import com.ixume.udar.physicsWorld
+import org.bukkit.Material
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 import org.joml.Quaterniond
@@ -45,7 +47,7 @@ object StressGridCommand : Command {
                     omega = Vector3d(),
                     density = 1.0,
                     hasGravity = true,
-                )
+                ).blockEntity(Material.entries.filter { it.isBlock }.random())
 
                 bodies += rb
             }
