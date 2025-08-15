@@ -24,6 +24,10 @@ fun JsonObject.str(path: String): String? {
     return if (e.isString) e.asString else null
 }
 
+fun JsonElement.asStringOrNull(): String? {
+    return if (isJsonPrimitive && asJsonPrimitive.isString) asString else null
+}
+
 fun JsonObject.array(path: String): JsonArray? {
     return this[path] as? JsonArray
 }

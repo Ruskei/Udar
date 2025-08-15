@@ -46,7 +46,7 @@ class CubeElement(
         val c = Cuboid(
             world = pw.world,
             pos = p,
-            velocity = Vector3d(0.0),
+            velocity = Vector3d(),
             width = dims.x,
             height = dims.y,
             length = dims.z,
@@ -54,7 +54,7 @@ class CubeElement(
             omega = Vector3d(0.0, 0.0, 0.0),
             density = 1.0,
             hasGravity = false,
-        ).blockEntity(Material.DARK_PRISMARINE)
+        )
 
         return c
     }

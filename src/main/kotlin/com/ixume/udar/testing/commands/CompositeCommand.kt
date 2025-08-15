@@ -83,7 +83,8 @@ object CompositeCommand : Command {
                     ),
                     omega = o,
                     hasGravity = opts.hasGravity,
-                    parts = listOf(cuboid, cuboid2)
+                    parts = listOf(cuboid, cuboid2),
+                    origin = origin
                 )
 
                 physicsWorld.registerBody(composite)
@@ -110,6 +111,7 @@ object CompositeCommand : Command {
                     omega = o,
                     hasGravity = opts.hasGravity,
                     parts = bodies,
+                    origin = origin,
                 )
 
                 sender.world.physicsWorld?.registerBody(rb)

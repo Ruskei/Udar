@@ -127,8 +127,6 @@ fun jacobiEigenDecomposition(S: Matrix3d, maxItrs: Int = 100): Pair<Vector3d, Ma
         }
     }
 
-    println("DECOMP TOOK $itr ITERATIONS!")
-
     return eigenValues to eigenVectors
 }
 

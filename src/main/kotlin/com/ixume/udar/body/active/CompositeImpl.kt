@@ -22,6 +22,7 @@ import kotlin.math.min
 
 class CompositeImpl(
     override val world: World,
+    val origin: Vector3d,
     override var velocity: Vector3d,
 
     override val q: Quaterniond,
@@ -29,7 +30,7 @@ class CompositeImpl(
     override val omega: Vector3d,
 
     override var hasGravity: Boolean,
-    override val parts: List<ActiveBody>
+    override val parts: List<ActiveBody>,
 ) : ActiveBody, Composite {
     init {
         require(parts.isNotEmpty())
@@ -61,7 +62,93 @@ class CompositeImpl(
         return p
     }
 
-    override var pos: Vector3d = calcCOM()
+    val comOffset: Vector3d
+    override var pos: Vector3d
+    override val contacts: MutableList<IContact> = mutableListOf()
+    override val previousContacts: MutableList<IContact> = mutableListOf()
+
+    override val torque: Vector3d = Vector3d()
+
+    private fun totalMass(): Double {
+        return parts.fold(0.0) { sum, body -> sum + body.mass }
+    }
+
+    data class InertialData(
+        val localInertia: Vector3d,
+        val inverseInertia: Matrix3d,
+        val principleRotation: Matrix3d
+    )
+
+    private fun calcInitialInertialData(): InertialData {
+        val matrix = Matrix3d(
+            0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0,
+        )
+
+        for (part in parts) {
+            val lI = part.localInertia
+            val rm = Matrix3d().rotation(part.q)
+            val gI = Matrix3d(rm).mul(
+                Matrix3d(
+                    lI.x, 0.0, 0.0,
+                    0.0, lI.y, 0.0,
+                    0.0, 0.0, lI.z,
+                )
+            ).mul(rm.transpose())
+
+            val r = Vector3d(part.pos).sub(pos).rotate(Quaterniond(q).conjugate())
+            val r2 = r.lengthSquared()
+            //parallel axis theorem
+            val addon = Matrix3d(
+                r2 - r.x * r.x, -r.y * r.x, -r.z * r.x,
+                -r.x * r.y, r2 - r.y * r.y, -r.z * r.y,
+                -r.x * r.z, -r.y * r.z, r2 - r.z * r.z,
+            ).scale(part.mass)
+
+            matrix.add(gI).add(addon)
+        }
+
+        val (ev, eV) = jacobiEigenDecomposition(Matrix3d(matrix))
+        val iI = matrix.invert()
+
+        return InertialData(ev, iI, eV)
+    }
+
+    private val _rm = Matrix3d()
+    private val _rmT = Matrix3d()
+    private val _lII = Matrix3d()
+
+    private fun updateII() {
+        _rm.rotation(q)
+        _rmT.set(_rm).transpose()
+        inverseInertia.set(_rmT.mul(_lII.set(localInverseInertia)).mul(_rm))
+    }
+
+    override val mass: Double = totalMass()
+    override val inverseMass: Double = 1.0 / mass
+    override val localInertia: Vector3d
+    override val inverseInertia: Matrix3d = Matrix3d()
+    val inertialPrincipleRotation: Matrix3d
+    val localInverseInertia: Matrix3d
+
+    override val vertices: Array<Vector3d> = Array(parts.fold(0) { s, p -> s + p.vertices.size }) { Vector3d() }
+
+    init {
+        val com = calcCOM()
+        pos = com
+        comOffset = Vector3d(com).sub(origin).rotate(Quaterniond(q).conjugate())
+
+        val (lI, iI, eV) = calcInitialInertialData()
+        localInertia = lI
+        localInverseInertia = iI
+        inertialPrincipleRotation = eV.transpose()
+
+        updateII()
+        updateVertices()
+    }
+
+    override val isConvex: Boolean = false
 
     private fun calcRadius(): Double {
         var r = -Double.MAX_VALUE
@@ -96,8 +183,6 @@ class CompositeImpl(
             ++i
         }
     }
-
-    override val vertices: Array<Vector3d> = Array(parts.fold(0) { s, p -> s + p.vertices.size }) { Vector3d() }
 
     private fun updateBB() {
         val bbs = parts.map { it.tightBB }
@@ -218,85 +303,6 @@ class CompositeImpl(
         velocity.add(linear)
     }
 
-    override val contacts: MutableList<IContact> = mutableListOf()
-    override val previousContacts: MutableList<IContact> = mutableListOf()
-
-    override val torque: Vector3d = Vector3d()
-
-    private fun totalMass(): Double {
-        return parts.fold(0.0) { sum, body -> sum + body.mass }
-    }
-
-    data class InertialData(
-        val localInertia: Vector3d,
-        val inverseInertia: Matrix3d,
-        val principleRotation: Matrix3d
-    )
-
-    private fun calcInitialInertialData(): InertialData {
-        val matrix = Matrix3d(
-            0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0,
-        )
-
-        for (part in parts) {
-            val lI = part.localInertia
-            val rm = Matrix3d().rotation(part.q)
-            val gI = Matrix3d(rm).mul(
-                Matrix3d(
-                    lI.x, 0.0, 0.0,
-                    0.0, lI.y, 0.0,
-                    0.0, 0.0, lI.z,
-                )
-            ).mul(rm.transpose())
-
-            val r = Vector3d(part.pos).sub(pos).rotate(Quaterniond(q).conjugate())
-            val r2 = r.lengthSquared()
-            //parallel axis theorem
-            val addon = Matrix3d(
-                r2 - r.x * r.x, -r.y * r.x, -r.z * r.x,
-                -r.x * r.y, r2 - r.y * r.y, -r.z * r.y,
-                -r.x * r.z, -r.y * r.z, r2 - r.z * r.z,
-            ).scale(part.mass)
-
-            matrix.add(gI).add(addon)
-        }
-
-        val (ev, eV) = jacobiEigenDecomposition(Matrix3d(matrix))
-        val iI = matrix.invert()
-
-        return InertialData(ev, iI, eV)
-    }
-
-    private val _rm = Matrix3d()
-    private val _rmT = Matrix3d()
-    private val _lII = Matrix3d()
-
-    private fun updateII() {
-        _rm.rotation(q)
-        _rmT.set(_rm).transpose()
-        inverseInertia.set(_rmT.mul(_lII.set(localInverseInertia)).mul(_rm))
-    }
-
-    override val mass: Double = totalMass()
-    override val inverseMass: Double = 1.0 / mass
-    override val localInertia: Vector3d
-    override val inverseInertia: Matrix3d = Matrix3d()
-    val inertialPrincipleRotation: Matrix3d
-    val localInverseInertia: Matrix3d
-
-    init {
-        val (lI, iI, eV) = calcInitialInertialData()
-        localInertia = lI
-        localInverseInertia = iI
-        inertialPrincipleRotation = eV.transpose()
-
-        updateII()
-        updateVertices()
-    }
-
-    override val isConvex: Boolean = false
 
     private val compositeContactGenerator = CompositeCompositeContactGenerator(this)
 

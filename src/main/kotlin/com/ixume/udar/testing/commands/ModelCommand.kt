@@ -1,7 +1,8 @@
 package com.ixume.udar.testing.commands
 
-import com.ixume.udar.Udar
+import com.ixume.udar.body.active.JavaModelBody
 import com.ixume.udar.physicsWorld
+import com.ixume.udar.rp.RPManager
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 import org.joml.Quaterniond
@@ -16,7 +17,7 @@ object ModelCommand : Command {
         label: String,
         args: Array<String>
     ): List<String> {
-        return Udar.MODELS.map { it.name }
+        return RPManager.modelMap.keys.toList()
     }
 
     override fun onCommand(
@@ -30,7 +31,7 @@ object ModelCommand : Command {
         if (args.isEmpty()) return true
 
         val modelName = args[0]
-        val model = Udar.MODELS.firstOrNull { it.name == modelName } ?: return true
+        val model = RPManager.modelMap[modelName] ?: return true
 
         val physicsWorld = sender.world.physicsWorld ?: return true
         val origin = sender.location.toVector().toVector3d()
@@ -40,7 +41,7 @@ object ModelCommand : Command {
         val q = Quaterniond().rotateXYZ(opts.rot0.x, opts.rot0.y, opts.rot0.z)
         val o = if (opts.trueOmega) opts.l.rotate(Quaterniond(q).conjugate()) else opts.l
 
-        val output = model.realize(physicsWorld, origin)
+        val output = JavaModelBody.construct(physicsWorld, origin, model)
 
         output.omega.set(o)
         output.q.set(q)

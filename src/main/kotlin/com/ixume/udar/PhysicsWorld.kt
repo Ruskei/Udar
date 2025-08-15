@@ -47,7 +47,7 @@ class PhysicsWorld(
     val realWorldHandler = RealWorldHandler(world)
 
     private val simTask = Bukkit.getScheduler().runTaskTimerAsynchronously(Udar.INSTANCE, Runnable { tick() }, 1, 1)
-    private val entityTask = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { entityUpdater.tick() }, 1, 1)
+    private val entityTask = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { entityUpdater.tick() }, 1, 2)
 
     private val busy = AtomicBoolean(false)
 
