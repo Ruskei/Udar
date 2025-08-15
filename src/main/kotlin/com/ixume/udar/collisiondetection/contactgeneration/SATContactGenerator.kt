@@ -6,7 +6,6 @@ import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.collisiondetection.LocalMathUtil
 import com.ixume.udar.collisiondetection.capability.Projectable
 import com.ixume.udar.physics.Contact
-import com.ixume.udar.physics.IContact
 import org.joml.Vector3d
 
 class SATContactGenerator(
@@ -20,7 +19,7 @@ class SATContactGenerator(
     private val _myEdgeY = Vector3d()
     private val _myEdgeZ = Vector3d()
 
-    override fun collides(other: Body, math: LocalMathUtil): List<IContact> {
+    override fun collides(other: Body, math: LocalMathUtil): List<Contact> {
         require(other is ActiveBody)
 
         val otherAxiss = listOf<Vector3d>(

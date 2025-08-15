@@ -9,8 +9,6 @@ import org.joml.Vector3d
 import kotlin.math.abs
 
 object ContactSolver {
-    private const val SIGNIFICANT_LAMBDA = 1e-14
-
     private val vA = Vector3d()
     private val wA = Vector3d()
     private val vB = Vector3d()
@@ -29,7 +27,7 @@ object ContactSolver {
     private val j2 = Vector3d()
     private val j3 = Vector3d()
 
-    fun solve(contacts: Collection<IContact>) {
+    fun solve(contacts: Collection<Contact>) {
         var itr = 1
         while (itr <= Udar.CONFIG.collision.normalIterations) {
             var itrSignificant = false
@@ -70,22 +68,6 @@ object ContactSolver {
                 )
 
                 if (significant) itrSignificant = true
-
-
-//                                println("ITR: $itr")
-//                                println("  - FIRST IM: ${first.inverseMass}")
-//                                println("  - FIRST V: ${first.velocity}")
-//                                println("  - SECOND IM: ${second.inverseMass}")
-//                                println("  - SECOND V: ${second.velocity}")
-//                                println("-- lambda: $lambda")
-//                                println("-- dVA: $dVA")
-//                                println("-- dOA: $dOA")
-//                                println("-- dVB: $dVB")
-//                                println("-- dOB: $dOB")
-
-
-                //friction is same as normal but find orthonormal basis from normal
-
             }
 
             if (!itrSignificant) {
@@ -177,7 +159,7 @@ object ContactSolver {
     private val secondQ = Quaterniond()
 
     private fun deltaV(
-        contact: IContact, type: DeltaType,
+        contact: Contact, type: DeltaType,
         j0: Vector3d, j1: Vector3d, j2: Vector3d, j3: Vector3d,
         iMA: Vector3d, iIA: Matrix3d, iMB: Vector3d, iIB: Matrix3d,
         vA: Vector3d, wA: Vector3d, vB: Vector3d, wB: Vector3d,
@@ -234,6 +216,6 @@ object ContactSolver {
         secondV.sub(dVB)
         secondO.sub(dOB)
 
-        return lambda > SIGNIFICANT_LAMBDA
+        return lambda > Udar.CONFIG.significant
     }
 }

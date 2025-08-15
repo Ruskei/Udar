@@ -10,7 +10,7 @@ import com.ixume.udar.collisiondetection.capability.GJKCapable
 import com.ixume.udar.collisiondetection.capability.SDFCapable
 import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentSATContactGenerator
 import com.ixume.udar.collisiondetection.contactgeneration.SATContactGenerator
-import com.ixume.udar.physics.IContact
+import com.ixume.udar.physics.Contact
 import com.ixume.udar.physicsWorld
 import org.bukkit.Location
 import org.bukkit.Material
@@ -116,8 +116,8 @@ class Cuboid(
 
     override val isConvex: Boolean = true
 
-    override val contacts: MutableList<IContact> = mutableListOf()
-    override val previousContacts: MutableList<IContact> = mutableListOf()
+    override val contacts: MutableList<Contact> = mutableListOf()
+    override val previousContacts: MutableList<Contact> = mutableListOf()
 
     private val envContactGen = EnvironmentSATContactGenerator(this)
     private val SATContactGen = SATContactGenerator(this)
@@ -294,7 +294,7 @@ class Cuboid(
         return SATContactGen.capableCollision(other)
     }
 
-    override fun collides(other: Body, math: LocalMathUtil): List<IContact> {
+    override fun collides(other: Body, math: LocalMathUtil): List<Contact> {
         if (other is EnvironmentBody) return envContactGen.collides(other, math)
         return SATContactGen.collides(other, math)
     }

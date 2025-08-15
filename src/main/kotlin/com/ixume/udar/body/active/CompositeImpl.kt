@@ -8,7 +8,6 @@ import com.ixume.udar.collisiondetection.broadphase.aabb.AABB
 import com.ixume.udar.collisiondetection.contactgeneration.CompositeCompositeContactGenerator
 import com.ixume.udar.jacobiEigenDecomposition
 import com.ixume.udar.physics.Contact
-import com.ixume.udar.physics.IContact
 import com.ixume.udar.physicsWorld
 import org.bukkit.World
 import org.joml.Matrix3d
@@ -64,8 +63,8 @@ class CompositeImpl(
 
     val comOffset: Vector3d
     override var pos: Vector3d
-    override val contacts: MutableList<IContact> = mutableListOf()
-    override val previousContacts: MutableList<IContact> = mutableListOf()
+    override val contacts: MutableList<Contact> = mutableListOf()
+    override val previousContacts: MutableList<Contact> = mutableListOf()
 
     override val torque: Vector3d = Vector3d()
 
@@ -328,7 +327,7 @@ class CompositeImpl(
         return highestPriority
     }
 
-    override fun collides(other: Body, math: LocalMathUtil): List<IContact> {
+    override fun collides(other: Body, math: LocalMathUtil): List<Contact> {
         if (other is Composite) {
             return compositeContactGenerator.collides(other, math)
                 .map {

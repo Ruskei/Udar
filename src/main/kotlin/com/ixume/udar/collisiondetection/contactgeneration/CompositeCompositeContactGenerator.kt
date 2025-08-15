@@ -5,7 +5,7 @@ import com.ixume.udar.body.Collidable
 import com.ixume.udar.body.active.Composite
 import com.ixume.udar.body.active.CompositeImpl
 import com.ixume.udar.collisiondetection.LocalMathUtil
-import com.ixume.udar.physics.IContact
+import com.ixume.udar.physics.Contact
 import com.ixume.udar.physicsWorld
 
 class CompositeCompositeContactGenerator(
@@ -15,12 +15,12 @@ class CompositeCompositeContactGenerator(
         return if (other is Composite) 0 else -1
     }
 
-    override fun collides(other: Body, math: LocalMathUtil): List<IContact> {
+    override fun collides(other: Body, math: LocalMathUtil): List<Contact> {
         require(other is Composite)
 
         val pw = other.world.physicsWorld!!
 
-        val contacts = mutableListOf<IContact>()
+        val contacts = mutableListOf<Contact>()
 
         for (myPart in composite.parts) {
             for (otherPart in other.parts) {

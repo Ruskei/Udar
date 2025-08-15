@@ -28,7 +28,7 @@ class PhysicsWorld(
         return activeBodies.get()
     }
 
-    val contacts = ConcurrentLinkedQueue<IContact>()
+    val contacts = ConcurrentLinkedQueue<Contact>()
     val meshes: MutableList<Mesh> = mutableListOf()
 
     private val environmentBody = EnvironmentBody(this)
@@ -307,7 +307,7 @@ class PhysicsWorld(
         try {
             for ((first, ls) in ps) {
                 for (second in ls) {
-                    val result: List<IContact>
+                    val result: List<Contact>
 
                     val t = measureNanoTime {
                         result = first.collides(second, math)

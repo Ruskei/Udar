@@ -1,8 +1,8 @@
 package com.ixume.udar.body
 
-import com.ixume.udar.physics.IContact
+import com.ixume.udar.physics.Contact
 
 interface CollidableBody : Body, Collidable {
-    val contacts: MutableList<IContact>
-    val previousContacts: List<IContact>
+    val contacts: MutableList<Contact>
+    val previousContacts: List<Contact>
 }
