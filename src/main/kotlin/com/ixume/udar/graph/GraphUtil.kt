@@ -3,7 +3,6 @@ package com.ixume.udar.graph
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.physics.Contact
-import it.unimi.dsi.fastutil.ints.IntArraySet
 
 class GraphUtil(
     val physicsWorld: PhysicsWorld
@@ -13,8 +12,8 @@ class GraphUtil(
     lateinit var constraintBitGraph: LongArray //maps from contact.id (index) to a flattened bit set
     private var necessaryLongs = 1
     var coloredContacts = IntArray(0) //maps from contact.id (index) to color
-
     var contactsSize = 0
+    private var colorArr = LongArray(1)
 
     private var maxColor = 0
 
@@ -90,9 +89,13 @@ class GraphUtil(
 
         var i = contactsSize - 1 // current node, so this is currentID
         while (i >= 0) {
-            var color = 0
+            var freeColor = -1
 
-            val adjacentColors = IntArraySet()
+            var y = 0
+            while (y < colorArr.size) {
+                colorArr[y] = 0L
+                y++
+            }
 
             var j = 0
             while (j < necessaryLongs) {
@@ -118,7 +121,11 @@ class GraphUtil(
                     //not all colorings are yet added, so coloredContacts could return -1!
                     val color = coloredContacts[j * 64 + k]
                     if (color != -1) {
-                        adjacentColors += color
+                        if (color > colorArr.size * 64) {
+                            colorArr = colorArr.copyOf((color + 63) / 64)
+                        }
+
+                        colorArr[color shr 6] = (colorArr[color shr 6] or (1L shl color))
                     }
 
                     k += ((l shr (k + 1)).countTrailingZeroBits() + 1)
@@ -127,11 +134,29 @@ class GraphUtil(
                 j++
             }
 
-            while (color in adjacentColors) {
-                color++
+            //find first available color; this means finding first zero bit in colorArr
+            var b = 0
+            while (b < colorArr.size) {
+                val ent = colorArr[b]
+                if (ent == 0L) {
+                    freeColor = 0
+                    //can just set at first bit
+                    break
+                }
+
+                val trailing = ent.inv().countTrailingZeroBits() //if this == 64, then no free bits here; else, we've found our bit
+                if (trailing == 64) {
+                    b++
+                    continue
+                }
+
+                freeColor = trailing
+                break
             }
 
-            coloredContacts[i] = color
+            check(freeColor != -1)
+
+            coloredContacts[i] = freeColor
 
             i--
         }

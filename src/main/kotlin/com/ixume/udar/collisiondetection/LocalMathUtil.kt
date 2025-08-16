@@ -14,6 +14,7 @@ class LocalMathUtil(
     val world: PhysicsWorld
 ) {
     private val d3Pool = TrackingD3Pool(15)
+    val secondaryMap = mutableMapOf<ActiveBody, LongArray>()
 
     private val _efa = Vector3d()
     private val _myOrderedAxis = Vector3d()

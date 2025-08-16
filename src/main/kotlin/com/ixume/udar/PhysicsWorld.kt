@@ -132,8 +132,18 @@ class PhysicsWorld(
                 val startBroadTime = System.nanoTime()
                 val activePairs = broadPhase(bodiesSnapshot, processors)
 
+                val neededLongs = (numPossibleContacts + 63) / 64
                 for (body in bodiesSnapshot) {
-                    body.contactIDs = LongArray((numPossibleContacts + 63) / 64)
+                    if (body.contactIDs.size < neededLongs) {
+                        body.contactIDs = LongArray(neededLongs)
+                    } else {
+                        var i = 0
+                        while (i < body.contactIDs.size) {
+                            body.contactIDs[i] = 0L
+
+                            i++
+                        }
+                    }
                 }
 
                 val endBroadTime = System.nanoTime()
@@ -326,8 +336,19 @@ class PhysicsWorld(
     private fun narrowPhase(ps: Map<ActiveBody, List<ActiveBody>>) {
         val math = mathPool.get()
 
+        val neededLongs = (numPossibleContacts + 63) / 64
+
+        for (longs in math.secondaryMap.values) {
+            var i = 0
+
+            while (i < longs.size) {
+                longs[i] = 0L
+
+                i++
+            }
+        }
+
         val lcc = mutableListOf<Contact>()
-        val secondaryMap = mutableMapOf<ActiveBody, LongArray>()
 
         try {
             for ((first, ls) in ps) {
@@ -368,7 +389,13 @@ class PhysicsWorld(
                         first.contacts += contact
                         first.contactIDs[contact.id shr 6] = (first.contactIDs[contact.id shr 6] or (1L shl contact.id))
 
-                        val l = secondaryMap.getOrPut(second) { LongArray((numPossibleContacts + 63) / 64) }
+                        var l = math.secondaryMap.getOrPut(second) { LongArray(neededLongs) }
+                        if (l.size < neededLongs) {
+                            val n = LongArray(neededLongs)
+                            math.secondaryMap[second] = n
+                            l = n
+                        }
+
                         l[contact.id shr 6] = (l[contact.id shr 6] or (1L shl contact.id))
                     }
                 }
@@ -379,12 +406,12 @@ class PhysicsWorld(
 
         contacts += lcc
 
-        for ((key, ls) in secondaryMap) {
+        for ((key, ls) in math.secondaryMap) {
             secondaryContactMap.merge(key, ls) { a, b ->
                 a.apply {
-                    check(this.size == b.size)
+                    val common = kotlin.math.min(size, b.size)
                     var i = 0
-                    while (i < this.size) {
+                    while (i < common) {
                         this[i] = this[i] or b[i]
 
                         i++
