@@ -35,6 +35,13 @@ dependencies {
 val targetJavaVersion = 17
 kotlin {
     jvmToolchain(targetJavaVersion)
+    compilerOptions {
+        freeCompilerArgs.addAll(
+            "-Xno-call-assertions",
+            "-Xno-param-assertions",
+            "-Xno-receiver-assertions"
+        )
+    }
 }
 
 tasks.build {
