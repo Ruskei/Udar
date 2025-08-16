@@ -6,14 +6,21 @@ import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.collisiondetection.broadphase.aabb.AABBTree
 import com.ixume.udar.collisiondetection.mesh.Mesh
 import com.ixume.udar.collisiondetection.pool.MathPool
-import com.ixume.udar.physics.*
+import com.ixume.udar.graph.GraphUtil
+import com.ixume.udar.physics.Contact
+import com.ixume.udar.physics.ContactSolver
+import com.ixume.udar.physics.EntityUpdater
+import com.ixume.udar.physics.StatusUpdater
 import com.ixume.udar.testing.PhysicsWorldTestDebugData
 import kotlinx.coroutines.*
 import org.bukkit.Bukkit
 import org.bukkit.World
 import org.joml.Vector3d
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlin.system.measureNanoTime
 
@@ -28,7 +35,9 @@ class PhysicsWorld(
         return activeBodies.get()
     }
 
+    var numPossibleContacts = 0
     val contacts = ConcurrentLinkedQueue<Contact>()
+    val secondaryContactMap = ConcurrentHashMap<ActiveBody, LongArray>()
     val meshes: MutableList<Mesh> = mutableListOf()
 
     private val environmentBody = EnvironmentBody(this)
@@ -46,20 +55,24 @@ class PhysicsWorld(
 
     val realWorldHandler = RealWorldHandler(world)
 
+    private val graphUtil = GraphUtil(this)
+    val runningContactID = AtomicInteger(0)
+
     private val simTask = Bukkit.getScheduler().runTaskTimerAsynchronously(Udar.INSTANCE, Runnable { tick() }, 1, 1)
     private val entityTask = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { entityUpdater.tick() }, 1, 2)
 
     private val busy = AtomicBoolean(false)
 
     private val processors = 3//Runtime.getRuntime().availableProcessors()
-    private val mathPool = MathPool(processors)
+    private val mathPool = MathPool(this, processors)
     private val scope = CoroutineScope(Dispatchers.Default)
 
     private val dataInterval = 400
 
     private var rollingAverage = 0.0
-    private var rollingNarrowAverage = 0.0
     private var rollingBroadAverage = 0.0
+    private var rollingNarrowAverage = 0.0
+    private var rollingPopulationAverage = 0.0
     private var rollingEnvAverage = 0.0
     private var rollingContactAverage = 0.0
     private var rollingStepAverage = 0.0
@@ -107,16 +120,22 @@ class PhysicsWorld(
                 physicsTime++
 
                 debugData.reset()
-
+                runningContactID.set(0)
                 contacts.clear()
+                secondaryContactMap.clear()
                 meshes.clear()
 
                 val bodiesSnapshot = activeBodies.get()
 
-                statusUpdater.updateBodies()
+                statusUpdater.updateBodies(bodiesSnapshot)
 
                 val startBroadTime = System.nanoTime()
                 val activePairs = broadPhase(bodiesSnapshot, processors)
+
+                for (body in bodiesSnapshot) {
+                    body.contactIDs = LongArray((numPossibleContacts + 63) / 64)
+                }
+
                 val endBroadTime = System.nanoTime()
 
                 var job: Job? = null
@@ -139,48 +158,51 @@ class PhysicsWorld(
 
                     val endNarrowTime = System.nanoTime()
 
-                    val math = mathPool.get()
-
-                    val startEnvTime = System.nanoTime()
-                    try {
-                        for (body in bodiesSnapshot) {
-                            if (!body.awake.get()) {
-                                continue
-                            }
-
-                            if (body.capableCollision(environmentBody) < 0) continue
-
-                            val result = body.collides(environmentBody, math)
-
-                            debugData.totalEnvironmentCollisionChecks++
-
-                            if (result.isEmpty()) continue
-
-                            debugData.environmentCollisions++
-
-                            for (c in result) {
-                                val ourContacts =
-                                    body.previousContacts.filter { it.first is EnvironmentBody || it.second is EnvironmentBody }
-
-                                for (ourContact in ourContacts) {
-                                    if (ourContact.result.point.distance(c.result.point) < 1e-2) {
-                                        c.lambdaSum += ourContact.lambdaSum * Udar.CONFIG.collision.lambdaCarryover
-
-                                        break
-
-                                    }
-                                }
-
-                                body.contacts += c
-                                contacts += c
-                            }
-                        }
-
-                    } finally {
-                        mathPool.put(math)
+                    val populateEdgesDuration = measureNanoTime {
+                        graphUtil.process()
                     }
 
-                    val endEnvTime = System.nanoTime()
+                    val math = mathPool.get()
+
+                    val envDuration = measureNanoTime {
+                        try {
+                            for (body in bodiesSnapshot) {
+                                if (!body.awake.get()) {
+                                    continue
+                                }
+
+                                if (body.capableCollision(environmentBody) < 0) continue
+
+                                val result = body.collides(environmentBody, math)
+
+                                debugData.totalEnvironmentCollisionChecks++
+
+                                if (result.isEmpty()) continue
+
+                                debugData.environmentCollisions++
+
+                                for (c in result) {
+                                    val ourContacts =
+                                        body.previousContacts.filter { it.first is EnvironmentBody || it.second is EnvironmentBody }
+
+                                    for (ourContact in ourContacts) {
+                                        if (ourContact.result.point.distance(c.result.point) < 1e-2) {
+                                            c.lambdaSum += ourContact.lambdaSum * Udar.CONFIG.collision.lambdaCarryover
+
+                                            break
+
+                                        }
+                                    }
+
+                                    body.contacts += c
+                                    contacts += c
+                                }
+                            }
+
+                        } finally {
+                            mathPool.put(math)
+                        }
+                    }
 
                     for (body in bodiesSnapshot) {
                         if (body.awake.get() && body.hasGravity) body.velocity.add(
@@ -190,21 +212,18 @@ class PhysicsWorld(
                         )
                     }
 
-                    val startContactTime = System.nanoTime()
 
-                    ContactSolver.solve(contacts)
-
-                    val endContactTime = System.nanoTime()
-
-                    val startStepTime = System.nanoTime()
-
-                    for (body in bodiesSnapshot) {
-                        if (body.awake.get()) {
-                            body.step()
-                        }
+                    val contactDuration = measureNanoTime {
+                        ContactSolver.solve(contacts)
                     }
 
-                    val endStepTime = System.nanoTime()
+                    val stepDuration = measureNanoTime {
+                        for (body in bodiesSnapshot) {
+                            if (body.awake.get()) {
+                                body.step()
+                            }
+                        }
+                    }
 
                     if (untilCollision && contacts.isNotEmpty()) {
                         untilCollision = false
@@ -217,30 +236,31 @@ class PhysicsWorld(
                     val narrowDuration = (endNarrowTime - startNarrowTime).toDouble()
                     rollingNarrowAverage += narrowDuration / dataInterval.toDouble()
 
+                    rollingPopulationAverage += populateEdgesDuration / dataInterval.toDouble()
+
                     val broadDuration = (endBroadTime - startBroadTime).toDouble()
                     rollingBroadAverage += broadDuration / dataInterval.toDouble()
 
-                    val contactDuration = (endContactTime - startContactTime).toDouble()
                     rollingContactAverage += contactDuration / dataInterval.toDouble()
 
-                    val envDuration = (endEnvTime - startEnvTime).toDouble()
                     rollingEnvAverage += envDuration / dataInterval.toDouble()
 
-                    val stepDuration = (endStepTime - startStepTime).toDouble()
                     rollingStepAverage += stepDuration / dataInterval.toDouble()
 
                     if (physicsTime % dataInterval == 0) {
                         if (Udar.CONFIG.debug.timings) {
                             println("Total takes ${rollingAverage / 1_000.0}us on average")
-                            println("  - Broadphase takes ${rollingBroadAverage / 1_000.0}us on average")
-                            println("  - Narrowphase takes ${rollingNarrowAverage / 1_000.0}us on average")
-                            println("  - Env takes ${rollingEnvAverage / 1_000.0}us on average")
-                            println("  - Contact takes ${rollingContactAverage / 1_000.0}us on average")
-                            println("  - Step takes ${rollingStepAverage / 1_000.0}us on average")
-                            println("ACCOUNTED FOR ${(rollingNarrowAverage + rollingBroadAverage + rollingContactAverage + rollingEnvAverage + rollingStepAverage) / rollingAverage * 100.0}%")
+                            println("  - Broadphase takes ${rollingBroadAverage / 1_000.0}us (${rollingBroadAverage / rollingAverage * 100.0}%) on average")
+                            println("  - Narrowphase takes ${rollingNarrowAverage / 1_000.0}us (${rollingNarrowAverage / rollingAverage * 100.0}%) on average")
+                            println("  - Population takes ${rollingPopulationAverage / 1_000.0}us (${rollingPopulationAverage / rollingAverage * 100.0}%) on average")
+                            println("  - Env takes ${rollingEnvAverage / 1_000.0}us (${rollingEnvAverage / rollingAverage * 100.0}%) on average")
+                            println("  - Contact takes ${rollingContactAverage / 1_000.0}us (${rollingContactAverage / rollingAverage * 100.0}%) on average")
+                            println("  - Step takes ${rollingStepAverage / 1_000.0}us (${rollingStepAverage / rollingAverage * 100.0}%) on average")
+                            println("ACCOUNTED FOR ${(rollingNarrowAverage + rollingBroadAverage + rollingPopulationAverage + rollingContactAverage + rollingEnvAverage + rollingStepAverage) / rollingAverage * 100.0}%")
                         }
                         rollingAverage = 0.0
                         rollingNarrowAverage = 0.0
+                        rollingPopulationAverage = 0.0
                         rollingBroadAverage = 0.0
                         rollingContactAverage = 0.0
                         rollingEnvAverage = 0.0
@@ -288,6 +308,7 @@ class PhysicsWorld(
 
     private fun broadPhase(bodies: List<ActiveBody>, groups: Int): Array<MutableMap<ActiveBody, List<ActiveBody>>>? {
         require(groups > 0)
+        numPossibleContacts = 0
         if (bodies.size <= 1) return null
 
         val cs = aabbTree.collisions()
@@ -295,6 +316,7 @@ class PhysicsWorld(
         val groups = Array(groups) { mutableMapOf<ActiveBody, List<ActiveBody>>() }
 
         for ((a, bs) in cs) {
+            numPossibleContacts += bs.size
             groups.minBy { it.size }[a] = bs
         }
 
@@ -303,6 +325,9 @@ class PhysicsWorld(
 
     private fun narrowPhase(ps: Map<ActiveBody, List<ActiveBody>>) {
         val math = mathPool.get()
+
+        val lcc = mutableListOf<Contact>()
+        val secondaryMap = mutableMapOf<ActiveBody, LongArray>()
 
         try {
             for ((first, ls) in ps) {
@@ -325,11 +350,10 @@ class PhysicsWorld(
                     }
 
                     val ourContacts =
-                        first.previousContacts.filter { it.second.id == second.id }
+                        first.previousContacts.filter { it.second.id === second.id }
 
                     for (contact in result) {
-                        first.contacts += contact
-
+                        contact.id = runningContactID.andIncrement
                         for (ourContact in ourContacts) {
                             if (ourContact.result.point.distance(contact.result.point) < 1.0) {
                                 contact.lambdaSum = ourContact.lambdaSum * Udar.CONFIG.collision.lambdaCarryover
@@ -340,12 +364,33 @@ class PhysicsWorld(
                             }
                         }
 
-                        contacts += contact
+                        lcc += contact
+                        first.contacts += contact
+                        first.contactIDs[contact.id shr 6] = (first.contactIDs[contact.id shr 6] or (1L shl contact.id))
+
+                        val l = secondaryMap.getOrPut(second) { LongArray((numPossibleContacts + 63) / 64) }
+                        l[contact.id shr 6] = (l[contact.id shr 6] or (1L shl contact.id))
                     }
                 }
             }
         } finally {
             mathPool.put(math)
+        }
+
+        contacts += lcc
+
+        for ((key, ls) in secondaryMap) {
+            secondaryContactMap.merge(key, ls) { a, b ->
+                a.apply {
+                    check(this.size == b.size)
+                    var i = 0
+                    while (i < this.size) {
+                        this[i] = this[i] or b[i]
+
+                        i++
+                    }
+                }
+            }
         }
     }
 

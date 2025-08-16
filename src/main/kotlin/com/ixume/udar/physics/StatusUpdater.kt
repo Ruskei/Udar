@@ -2,18 +2,17 @@ package com.ixume.udar.physics
 
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.Udar
+import com.ixume.udar.body.active.ActiveBody
 
 class StatusUpdater(
     val physicsWorld: PhysicsWorld,
 ) {
-    fun updateBodies() {
+    fun updateBodies(snapshot: List<ActiveBody>) {
         val config = Udar.CONFIG
         val timeStep = config.timeStep
         val birthTime = config.birthTime
         val linear = config.sleepLinearVelocity
         val angular = config.sleepAngularVelocity
-
-        val snapshot = physicsWorld.bodiesSnapshot()
 
         for (obj in snapshot) {
             obj.age++

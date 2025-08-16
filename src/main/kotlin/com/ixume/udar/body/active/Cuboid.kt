@@ -12,13 +12,11 @@ import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentSATContact
 import com.ixume.udar.collisiondetection.contactgeneration.SATContactGenerator
 import com.ixume.udar.physics.Contact
 import com.ixume.udar.physicsWorld
-import org.bukkit.Location
+import it.unimi.dsi.fastutil.ints.IntArrayList
+import it.unimi.dsi.fastutil.ints.IntList
 import org.bukkit.Material
 import org.bukkit.World
-import org.bukkit.entity.BlockDisplay
-import org.bukkit.entity.EntityType
 import org.bukkit.entity.TextDisplay
-import org.bukkit.util.Transformation
 import org.joml.*
 import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
@@ -117,6 +115,8 @@ class Cuboid(
     override val isConvex: Boolean = true
 
     override val contacts: MutableList<Contact> = mutableListOf()
+    @Volatile
+    override var contactIDs: LongArray = LongArray(0)
     override val previousContacts: MutableList<Contact> = mutableListOf()
 
     private val envContactGen = EnvironmentSATContactGenerator(this)

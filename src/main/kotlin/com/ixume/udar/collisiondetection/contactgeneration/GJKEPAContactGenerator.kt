@@ -153,7 +153,7 @@ class GJKEPAContactGenerator<T>(
 //                                shape,
 //                                closestFace,
 //                                originals,
-                                    )
+                                    ),
                                 )
                             )
                         } else {
@@ -211,7 +211,7 @@ class GJKEPAContactGenerator<T>(
 //                            shape,
 //                            Triple(vertexClosest, vertexClosest, vertexClosest),
 //                            originals,
-                                )
+                                ),
                             )
                         )
                     }

@@ -64,6 +64,8 @@ class CompositeImpl(
     val comOffset: Vector3d
     override var pos: Vector3d
     override val contacts: MutableList<Contact> = mutableListOf()
+    @Volatile
+    override var contactIDs: LongArray = LongArray(0)
     override val previousContacts: MutableList<Contact> = mutableListOf()
 
     override val torque: Vector3d = Vector3d()

@@ -1,14 +1,18 @@
 package com.ixume.udar.collisiondetection
 
+import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.collisiondetection.pool.TrackingD3Pool
 import com.ixume.udar.physics.CollisionResult
 import org.joml.Vector3d
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
-class LocalMathUtil {
+class LocalMathUtil(
+    val world: PhysicsWorld
+) {
     private val d3Pool = TrackingD3Pool(15)
 
     private val _efa = Vector3d()
