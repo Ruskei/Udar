@@ -8,12 +8,15 @@ import com.ixume.udar.collisiondetection.mesh.Mesh
 import com.ixume.udar.collisiondetection.pool.MathPool
 import com.ixume.udar.graph.GraphUtil
 import com.ixume.udar.physics.*
+import com.ixume.udar.physics.constraint.ConstraintSolverManager
 import com.ixume.udar.testing.PhysicsWorldTestDebugData
 import kotlinx.coroutines.*
 import org.bukkit.Bukkit
 import org.bukkit.World
 import org.joml.Vector3d
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.roundToInt
@@ -62,7 +65,8 @@ class PhysicsWorld(
     private val CONSTRAINT_SOLVING_PROCESSORS = 1//Runtime.getRuntime().availableProcessors()
     private val mathPool = MathPool(this, NARROWPHASE_PROCESSORS)
     private val scope = CoroutineScope(Dispatchers.Default)
-    private val constraintSolverManager = ConstraintSolverManager(CONSTRAINT_SOLVING_PROCESSORS, scope)
+    private val executor = Executors.newFixedThreadPool(CONSTRAINT_SOLVING_PROCESSORS)
+    private val constraintSolverManager = ConstraintSolverManager(CONSTRAINT_SOLVING_PROCESSORS, executor)
 
     private val dataInterval = 400
 
@@ -387,5 +391,6 @@ class PhysicsWorld(
         realWorldHandler.kill()
         entityTask.cancel()
         scope.cancel()
+        executor.shutdown()
     }
 }

@@ -1,8 +1,9 @@
-package com.ixume.udar.physics
+package com.ixume.udar.physics.constraint
 
 import com.ixume.udar.Udar
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.graph.GraphUtil
+import com.ixume.udar.physics.Contact
 import org.joml.Matrix3d
 import org.joml.Quaterniond
 import org.joml.Vector3d

@@ -1,14 +1,16 @@
-package com.ixume.udar.physics
+package com.ixume.udar.physics.constraint
 
 import com.ixume.udar.Udar
 import com.ixume.udar.graph.GraphUtil
-import kotlinx.coroutines.CoroutineScope
+import com.ixume.udar.physics.Contact
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import java.util.concurrent.Callable
+import java.util.concurrent.ExecutorService
 
 class ConstraintSolverManager(
     val processors: Int,
-    val scope: CoroutineScope,
+    val executor: ExecutorService,
 ) {
     private val constraintSolvers = Array(processors) { LocalConstraintSolver() }
 
@@ -61,46 +63,31 @@ class ConstraintSolverManager(
             }
 
             val jobStart = System.nanoTime()
-            val job = scope.launch {
-                (0..<processors).forEach { proc ->
-                    launch {
-                        val start = ranges[rangeColorOffset + proc]
-                        var end = proc
-                        while (end < processors && ranges[rangeColorOffset + end + 1] != 0) {
-                            end++
-                        }
 
-                        end = ranges[rangeColorOffset + end]
-
-//                        println("start: $start, idx: ${rangeColorOffset + proc} end: $end, idx: ${rangeColorOffset + end}, ranges: ${ranges.joinToString { it.toString() }}")
-
-                        if (end == 0) {
-                            return@launch
-                        }
-
-                        constraintSolvers[proc].solve(
-                            graphUtil,
-                            color,
-                            start = start,
-                            end = end,
-                            normal = normal,
-                        )
-                    }
-                }
+            val tasks = ArrayList<Callable<Unit>>(processors)
+            (0..<processors).forEach { proc ->
+                tasks += ConstraintSolveTask(
+                    ranges = ranges,
+                    proc = proc,
+                    color = color,
+                    processors = processors,
+                    constraintSolver = constraintSolvers[proc],
+                    graphUtil = graphUtil,
+                    normal = true
+                )
             }
 
-            runBlocking {
-                job.join()
+            executor.invokeAll(tasks)
 
-                val jobDur = System.nanoTime() - jobStart
+            val jobDur = System.nanoTime() - jobStart
 
-                runningSolveTime += (jobDur.toDouble() / sum.toDouble()) / dataInterval.toDouble()
-                time++
+            runningSolveTime += (jobDur.toDouble() / sum.toDouble()) / dataInterval.toDouble()
+            time++
 
-                if (time % dataInterval == 0) {
-                    println("$runningSolveTime ns/constraint")
-                    runningSolveTime = 0.0
-                }
+            if (time % dataInterval == 0) {
+                println("$runningSolveTime ns/constraint")
+                runningSolveTime = 0.0
+            }
 
 
 //                if (sum > 10) {
@@ -108,32 +95,22 @@ class ConstraintSolverManager(
 //                    val min = times.minBy { it.first }
 //                    println("sum: $sum DIFF: ${max.first - min.first} first_time: ${max.first} first_amount: ${max.second} second_time: ${min.first} second_amount: ${min.second} average sub: ${(max.first + min.second).toDouble() / (max.second + min.second).toDouble()} ns/constraint total average: ${jobDur.toDouble() / sum.toDouble()} ns/constraint")
 //                }
-            }
 
             color++
         }
 
-        val job = scope.launch {
-            (0..<processors).forEach { i ->
-                launch {
-                    val start = (envConstraints.size / processors) * i
-                    val end = if (i == processors - 1) {
-                        envConstraints.size
-                    } else {
-                        (envConstraints.size / processors) * (i + 1)
-                    }
-
-                    constraintSolvers[i].solveEnv(
-                        envConstraints,
-                        start,
-                        end,
-                        normal = normal,
-                    )
-                }
-            }
+        val tasks = ArrayList<Callable<Unit>>(processors)
+        (0..<processors).forEach { proc ->
+            tasks += EnvConstraintSolveTask(
+                envConstraints = envConstraints,
+                processors = processors,
+                proc = proc,
+                constraintSolver = constraintSolvers[proc],
+                normal = normal
+            )
         }
 
-        runBlocking { job.join() }
+        executor.invokeAll(tasks)
     }
 
     private fun buildRanges(graphUtil: GraphUtil): IntArray {
