@@ -3,7 +3,6 @@ package com.ixume.udar.physics
 import com.ixume.udar.Udar
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.graph.GraphUtil
-import jdk.internal.vm.annotation.Contended
 import org.joml.Matrix3d
 import org.joml.Quaterniond
 import org.joml.Vector3d
@@ -50,7 +49,7 @@ class LocalConstraintSolver {
                     //Constraint!
                     val contact = idConstraintMap[i * 64 + k]
 
-                    val significant = solveConstraint(contact, normal)
+                    val significant = solveConstraint(contact, normal, false)
 
                     if (significant) itrSignificant = true
                 } else {
@@ -73,13 +72,25 @@ class LocalConstraintSolver {
     fun solveEnv(constraints: List<Contact>, start: Int, end: Int, normal: Boolean) {
         var i = start
         while (i < end) {
-            solveConstraint(constraints[i], normal)
+            solveConstraint(constraints[i], normal, true)
             i++
         }
     }
 
-    private fun solveConstraint(contact: Contact, normal: Boolean): Boolean {
-        return if (normal) solveNormal(contact) else solveFriction(contact)
+    private fun solveConstraint(contact: Contact, normal: Boolean, static: Boolean): Boolean {
+        return if(normal) {
+            if (static) {
+                solveNormalStatic(contact)
+            } else {
+                solveNormal(contact)
+            }
+        } else {
+            if (static) {
+                solveFrictionStatic(contact)
+            } else {
+                solveFriction(contact)
+            }
+        }
     }
 
     private fun solveNormal(contact: Contact): Boolean {
@@ -116,6 +127,37 @@ class LocalConstraintSolver {
             iMA = iMA, iIA = iIA, iMB = iMB, iIB = iIB,
             vA = vA, wA = wA, vB = vB, wB = wB,
             first.velocity, first.omega, second.velocity, second.omega,
+        )
+    }
+
+    private fun solveNormalStatic(contact: Contact): Boolean {
+        val first = contact.first
+
+        val point = contact.result.point
+        n.set(contact.result.norm)
+//                                //V = [ vA, wA, vB, wB ]
+//                                // vA and vB are given, wA and wB are js rotated w
+        vA.set(first.velocity)
+        wA.set(first.omega).rotate(first.q)
+//
+//                                //M^(-1) = [ iMA, iIA, iMB, iAB ]
+        iMA.set(first.inverseMass)
+        iIA.set(first.inverseInertia)
+
+        //lambda = -(JV - b) / (JM^(-1)J^(T))
+
+        //J = [ -n, (-rA x n), n, (rB x n) ]
+        // n is given, rA is point - center
+        nn.set(n).negate()
+        j1.set(first.pos).sub(point).cross(n)
+
+        return deltaVStatic(
+            contact = contact,
+            type = DeltaType.NORMAL,
+            j0 = nn, j1 = j1,
+            iMA = iMA, iIA = iIA,
+            vA = vA, wA = wA,
+            first.velocity, first.omega,
         )
     }
 
@@ -170,6 +212,56 @@ class LocalConstraintSolver {
                 iMA = iMA, iIA = iIA, iMB = iMB, iIB = iIB,
                 vA = vA, wA = wA, vB = vB, wB = wB,
                 first.velocity, first.omega, second.velocity, second.omega,
+            )
+
+            if (significant) itrSignificant = true
+        }
+
+        return itrSignificant
+    }
+
+    private fun solveFrictionStatic(contact: Contact): Boolean {
+        var itrSignificant = false
+        val first = contact.first
+
+        val point = contact.result.point
+        n.set(contact.result.norm)
+//                                //V = [ vA, wA, vB, wB ]
+//                                // vA and vB are given, wA and wB are js rotated w
+        vA.set(first.velocity)
+        wA.set(first.omega).rotate(first.q)
+//
+//                                //M^(-1) = [ iMA, iIA, iMB, iAB ]
+        iMA.set(first.inverseMass)
+        iIA.set(first.inverseInertia)
+
+        run t1@{
+            j0.set(contact.t1).negate()
+            j1.set(first.pos).sub(point).cross(contact.t1)
+
+            val significant = deltaVStatic(
+                contact = contact,
+                type = DeltaType.T1,
+                j0 = j0, j1 = j1,
+                iMA = iMA, iIA = iIA,
+                vA = vA, wA = wA,
+                first.velocity, first.omega,
+            )
+
+            if (significant) itrSignificant = true
+        }
+
+        run t2@{
+            j0.set(contact.t2).negate()
+            j1.set(first.pos).sub(point).cross(contact.t2)
+
+            val significant = deltaVStatic(
+                contact = contact,
+                type = DeltaType.T2,
+                j0 = j0, j1 = j1,
+                iMA = iMA, iIA = iIA,
+                vA = vA, wA = wA,
+                first.velocity, first.omega,
             )
 
             if (significant) itrSignificant = true
@@ -258,6 +350,70 @@ class LocalConstraintSolver {
         firstO.sub(dOA)
         secondV.sub(dVB)
         secondO.sub(dOB)
+
+        return lambda > Udar.CONFIG.significant
+    }
+
+    /**
+     * Assumes that 2nd object is static, for example the environment, has infinite inverse inertia and mass, 0 velocity
+     */
+    private fun deltaVStatic(
+        contact: Contact, type: DeltaType,
+        j0: Vector3d, j1: Vector3d,
+        iMA: Vector3d, iIA: Matrix3d,
+        vA: Vector3d, wA: Vector3d,
+        firstV: Vector3d, firstO: Vector3d,
+    ): Boolean {
+        val timestep = Udar.CONFIG.timeStep
+        val depth = contact.result.depth
+
+        val slop = Udar.CONFIG.collision.passiveSlop
+
+        val bias =
+            if (type == DeltaType.NORMAL) Udar.CONFIG.collision.bias / timestep * (abs(depth) - slop).coerceAtLeast(0.0) else 0.0
+
+        j0Temp.set(j0)
+        j1Temp.set(j1)
+
+        val den =
+            j0Temp.mul(j0).dot(iMA) + j1Temp.mul(iIA).dot(j1)
+
+        var lambda = (j0.dot(vA) + j1.dot(wA) + bias) / den
+
+        when (type) {
+            DeltaType.NORMAL -> {
+                val curLambdaSum = contact.lambdaSum
+                contact.lambdaSum = (curLambdaSum + lambda).coerceAtLeast(0.0)
+                lambda = contact.lambdaSum - curLambdaSum
+            }
+
+            DeltaType.T1 -> {
+                val curT1Sum = contact.t1Sum
+                contact.t1Sum =
+                    (curT1Sum + lambda).coerceIn(
+                        -Udar.CONFIG.collision.friction * contact.lambdaSum,
+                        Udar.CONFIG.collision.friction * contact.lambdaSum
+                    )
+                lambda = contact.t1Sum - curT1Sum
+            }
+
+            DeltaType.T2 -> {
+                val curT2Sum = contact.t2Sum
+                contact.t2Sum =
+                    (curT2Sum + lambda).coerceIn(
+                        -Udar.CONFIG.collision.friction * contact.lambdaSum,
+                        Udar.CONFIG.collision.friction * contact.lambdaSum
+                    )
+                lambda = contact.t2Sum - curT2Sum
+            }
+        }
+
+        //delta-V = M^(-1)J^T * lambda
+        val dVA = tempIMA.set(iMA).mul(j0).mul(lambda)
+        val dOA = j1Temp.set(j1).mul(iIA).mul(lambda).rotate(firstQ.set(contact.first.q).conjugate())
+
+        firstV.sub(dVA)
+        firstO.sub(dOA)
 
         return lambda > Udar.CONFIG.significant
     }

@@ -58,10 +58,11 @@ class PhysicsWorld(
 
     private val busy = AtomicBoolean(false)
 
-    private val processors = 2//Runtime.getRuntime().availableProcessors()
-    private val mathPool = MathPool(this, processors)
+    private val NARROWPHASE_PROCESSORS = 3//Runtime.getRuntime().availableProcessors()
+    private val CONSTRAINT_SOLVING_PROCESSORS = 1//Runtime.getRuntime().availableProcessors()
+    private val mathPool = MathPool(this, NARROWPHASE_PROCESSORS)
     private val scope = CoroutineScope(Dispatchers.Default)
-    private val constraintSolverManager = ConstraintSolverManager(processors, scope)
+    private val constraintSolverManager = ConstraintSolverManager(CONSTRAINT_SOLVING_PROCESSORS, scope)
 
     private val dataInterval = 400
 
@@ -126,7 +127,7 @@ class PhysicsWorld(
                 statusUpdater.updateBodies(bodiesSnapshot)
 
                 val startBroadTime = System.nanoTime()
-                val activePairs = broadPhase(bodiesSnapshot, processors)
+                val activePairs = broadPhase(bodiesSnapshot, NARROWPHASE_PROCESSORS)
 
                 val neededLongs = (numPossibleContacts + 63) / 64
                 for (body in bodiesSnapshot) {
@@ -149,10 +150,10 @@ class PhysicsWorld(
                 val startNarrowTime = System.nanoTime()
 
                 if (activePairs != null) {
-                    check(activePairs.size == processors)
+                    check(activePairs.size == NARROWPHASE_PROCESSORS)
 
                     job = scope.launch {
-                        (0..<processors).forEach { i ->
+                        (0..<NARROWPHASE_PROCESSORS).forEach { i ->
                             val ps = activePairs[i]
                             launch { narrowPhase(ps) }
                         }
