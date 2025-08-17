@@ -3,32 +3,36 @@ package com.ixume.udar.graph
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.physics.Contact
+import kotlin.math.max
 
 class GraphUtil(
     val physicsWorld: PhysicsWorld
 ) {
-    lateinit var idContactMap: Array<Contact>
+    lateinit var idConstraintMap: Array<Contact>
 
     lateinit var constraintBitGraph: LongArray //maps from contact.id (index) to a flattened bit set
-    private var necessaryLongs = 1
+    var necessaryLongs = 1
     var coloredContacts = IntArray(0) //maps from contact.id (index) to color
+
+    //for use in solving, create a bitset for each color and iterate through the bits;
+    //this means iteration might be slower, but it's probably not a big deal, since alternative is allocating creating lists, while this only requires bitsets
+    //this can be represented as a flattened LongArray, if we have N colors then the bitset for color n can be accessed with [n * necessaryLongs]..[n * necessaryLongs + necessaryLongs]
+    //resize if more colors needed
+    var colorSet = LongArray(1)
+
+    var maxColor = 0
+
     var contactsSize = 0
     private var colorArr = LongArray(1)
 
-    private var maxColor = 0
-
     fun process() {
+        maxColor = 0
         contactsSize = physicsWorld.contacts.size
         necessaryLongs = (contactsSize + 63) / 64
         constructIDMap()
         populateConstraintEdges()
         bitwiseGreedy()
 //        checkInvariants()
-        val m = coloredContacts.maxOrNull()
-        if (m != null && m > maxColor) {
-            println("MAX: $m")
-            maxColor = m
-        }
     }
 
     private fun constructIDMap() {
@@ -44,7 +48,7 @@ class GraphUtil(
 //            }
 //        }
 
-        idContactMap = Array(contactsSize) { sorted[it] }
+        idConstraintMap = Array(contactsSize) { sorted[it] }
     }
 
     private fun populateConstraintEdges() {
@@ -97,6 +101,13 @@ class GraphUtil(
 
     private fun bitwiseGreedy() {
         coloredContacts = IntArray(contactsSize) { -1 }
+
+        var n = 0
+        while (n < colorSet.size) {
+            colorSet[n] = 0L
+
+            n++
+        }
 
         var i = contactsSize - 1 // current node, so `i` is currentID
         while (i >= 0) {
@@ -166,9 +177,22 @@ class GraphUtil(
                 break
             }
 
-//            check(freeColor != -1)
+            if (freeColor == -1) {
+                //ran out of colors, make more space!
+                freeColor = colorArr.size * 64
+                colorArr = colorArr.copyOf(colorArr.size + 1)
+            }
+
+            check(freeColor != -1)
 
             coloredContacts[i] = freeColor
+            maxColor = max(freeColor, maxColor)
+
+            if (colorSet.size < ((freeColor + 1) * necessaryLongs + (i shr 6))) {
+                colorSet = colorSet.copyOf(colorSet.size * 2)
+            }
+
+            colorSet[freeColor * necessaryLongs + (i shr 6)] = (colorSet[freeColor * necessaryLongs + (i shr 6)] or (1L shl i))
 
             i--
         }
@@ -179,6 +203,7 @@ class GraphUtil(
         while (i < contactsSize) {
             val myColor = coloredContacts[i]
             check(myColor != -1)
+            check((colorSet[myColor * necessaryLongs + (i shr 6)] shr i) and 1 == 1L)
 
             var j = 0
             while (j < necessaryLongs) {

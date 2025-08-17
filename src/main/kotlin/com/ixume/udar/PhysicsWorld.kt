@@ -7,10 +7,7 @@ import com.ixume.udar.collisiondetection.broadphase.aabb.AABBTree
 import com.ixume.udar.collisiondetection.mesh.Mesh
 import com.ixume.udar.collisiondetection.pool.MathPool
 import com.ixume.udar.graph.GraphUtil
-import com.ixume.udar.physics.Contact
-import com.ixume.udar.physics.ContactSolver
-import com.ixume.udar.physics.EntityUpdater
-import com.ixume.udar.physics.StatusUpdater
+import com.ixume.udar.physics.*
 import com.ixume.udar.testing.PhysicsWorldTestDebugData
 import kotlinx.coroutines.*
 import org.bukkit.Bukkit
@@ -35,6 +32,7 @@ class PhysicsWorld(
 
     var numPossibleContacts = 0
     val contacts = ConcurrentLinkedQueue<Contact>()
+    private val envContacts = mutableListOf<Contact>()
     val meshes: MutableList<Mesh> = mutableListOf()
 
     private val environmentBody = EnvironmentBody(this)
@@ -60,9 +58,10 @@ class PhysicsWorld(
 
     private val busy = AtomicBoolean(false)
 
-    private val processors = 3//Runtime.getRuntime().availableProcessors()
+    private val processors = 2//Runtime.getRuntime().availableProcessors()
     private val mathPool = MathPool(this, processors)
     private val scope = CoroutineScope(Dispatchers.Default)
+    private val constraintSolverManager = ConstraintSolverManager(processors, scope)
 
     private val dataInterval = 400
 
@@ -71,7 +70,7 @@ class PhysicsWorld(
     private var rollingNarrowAverage = 0.0
     private var rollingPopulationAverage = 0.0
     private var rollingEnvAverage = 0.0
-    private var rollingContactAverage = 0.0
+    private var rollingParallelContactAverage = 0.0
     private var rollingStepAverage = 0.0
 
     private val aabbTree = AABBTree()
@@ -119,6 +118,7 @@ class PhysicsWorld(
                 debugData.reset()
                 runningContactID.set(0)
                 contacts.clear()
+                envContacts.clear()
                 meshes.clear()
 
                 val bodiesSnapshot = activeBodies.get()
@@ -161,120 +161,120 @@ class PhysicsWorld(
 
                 runBlocking {
                     job?.join()
-
-                    val endNarrowTime = System.nanoTime()
-
-                    val populateEdgesDuration = measureNanoTime {
-                        graphUtil.process()
-                    }
-
-                    val math = mathPool.get()
-
-                    val envDuration = measureNanoTime {
-                        try {
-                            for (body in bodiesSnapshot) {
-                                if (!body.awake.get()) {
-                                    continue
-                                }
-
-                                if (body.capableCollision(environmentBody) < 0) continue
-
-                                val result = body.collides(environmentBody, math)
-
-                                debugData.totalEnvironmentCollisionChecks++
-
-                                if (result.isEmpty()) continue
-
-                                debugData.environmentCollisions++
-
-                                for (c in result) {
-                                    val ourContacts =
-                                        body.previousContacts.filter { it.first is EnvironmentBody || it.second is EnvironmentBody }
-
-                                    for (ourContact in ourContacts) {
-                                        if (ourContact.result.point.distance(c.result.point) < 1e-2) {
-                                            c.lambdaSum += ourContact.lambdaSum * Udar.CONFIG.collision.lambdaCarryover
-
-                                            break
-
-                                        }
-                                    }
-
-                                    body.contacts += c
-                                    contacts += c
-                                }
-                            }
-
-                        } finally {
-                            mathPool.put(math)
-                        }
-                    }
-
-                    for (body in bodiesSnapshot) {
-                        if (body.awake.get() && body.hasGravity) body.velocity.add(
-                            Vector3d(Udar.CONFIG.gravity).mul(
-                                TIME_STEP
-                            )
-                        )
-                    }
-
-
-                    val contactDuration = measureNanoTime {
-                        ContactSolver.solve(contacts)
-                    }
-
-                    val stepDuration = measureNanoTime {
-                        for (body in bodiesSnapshot) {
-                            if (body.awake.get()) {
-                                body.step()
-                            }
-                        }
-                    }
-
-                    if (untilCollision && contacts.isNotEmpty()) {
-                        untilCollision = false
-                        frozen = true
-                    }
-
-                    val duration = (System.nanoTime() - startTime).toDouble()
-                    rollingAverage += duration / dataInterval.toDouble()
-
-                    val narrowDuration = (endNarrowTime - startNarrowTime).toDouble()
-                    rollingNarrowAverage += narrowDuration / dataInterval.toDouble()
-
-                    rollingPopulationAverage += populateEdgesDuration / dataInterval.toDouble()
-
-                    val broadDuration = (endBroadTime - startBroadTime).toDouble()
-                    rollingBroadAverage += broadDuration / dataInterval.toDouble()
-
-                    rollingContactAverage += contactDuration / dataInterval.toDouble()
-
-                    rollingEnvAverage += envDuration / dataInterval.toDouble()
-
-                    rollingStepAverage += stepDuration / dataInterval.toDouble()
-
-                    if (physicsTime % dataInterval == 0) {
-                        if (Udar.CONFIG.debug.timings) {
-                            println("Total takes ${rollingAverage / 1_000.0}us on average")
-                            println("  - Broadphase takes ${rollingBroadAverage / 1_000.0}us (${rollingBroadAverage / rollingAverage * 100.0}%) on average")
-                            println("  - Narrowphase takes ${rollingNarrowAverage / 1_000.0}us (${rollingNarrowAverage / rollingAverage * 100.0}%) on average")
-                            println("  - Population takes ${rollingPopulationAverage / 1_000.0}us (${rollingPopulationAverage / rollingAverage * 100.0}%) on average")
-                            println("  - Env takes ${rollingEnvAverage / 1_000.0}us (${rollingEnvAverage / rollingAverage * 100.0}%) on average")
-                            println("  - Contact takes ${rollingContactAverage / 1_000.0}us (${rollingContactAverage / rollingAverage * 100.0}%) on average")
-                            println("  - Step takes ${rollingStepAverage / 1_000.0}us (${rollingStepAverage / rollingAverage * 100.0}%) on average")
-                            println("ACCOUNTED FOR ${(rollingNarrowAverage + rollingBroadAverage + rollingPopulationAverage + rollingContactAverage + rollingEnvAverage + rollingStepAverage) / rollingAverage * 100.0}%")
-                        }
-                        rollingAverage = 0.0
-                        rollingNarrowAverage = 0.0
-                        rollingPopulationAverage = 0.0
-                        rollingBroadAverage = 0.0
-                        rollingContactAverage = 0.0
-                        rollingEnvAverage = 0.0
-                        rollingStepAverage = 0.0
-                    }
-
-                    busy.set(false)
                 }
+
+                val endNarrowTime = System.nanoTime()
+
+                val populateEdgesDuration = measureNanoTime {
+                    graphUtil.process()
+                }
+
+                val math = mathPool.get()
+
+                val envDuration = measureNanoTime {
+                    try {
+                        for (body in bodiesSnapshot) {
+                            if (!body.awake.get()) {
+                                continue
+                            }
+
+                            if (body.capableCollision(environmentBody) < 0) continue
+
+                            val result = body.collides(environmentBody, math)
+
+                            debugData.totalEnvironmentCollisionChecks++
+
+                            if (result.isEmpty()) continue
+
+                            debugData.environmentCollisions++
+
+                            for (c in result) {
+                                c.id = runningContactID.andIncrement
+                                val ourContacts =
+                                    body.previousContacts.filter { it.first is EnvironmentBody || it.second is EnvironmentBody }
+
+                                for (ourContact in ourContacts) {
+                                    if (ourContact.result.point.distance(c.result.point) < 1e-2) {
+                                        c.lambdaSum += ourContact.lambdaSum * Udar.CONFIG.collision.lambdaCarryover
+
+                                        break
+
+                                    }
+                                }
+
+                                body.contacts += c
+                                envContacts += c
+                            }
+                        }
+
+                    } finally {
+                        mathPool.put(math)
+                    }
+                }
+
+                for (body in bodiesSnapshot) {
+                    if (body.awake.get() && body.hasGravity) body.velocity.add(
+                        Vector3d(Udar.CONFIG.gravity).mul(
+                            TIME_STEP
+                        )
+                    )
+                }
+
+                val parallelConstraintDuration = measureNanoTime {
+                    constraintSolverManager.solve(graphUtil, envContacts)
+                }
+
+                val stepDuration = measureNanoTime {
+                    for (body in bodiesSnapshot) {
+                        if (body.awake.get()) {
+                            body.step()
+                        }
+                    }
+                }
+
+                if (untilCollision && contacts.isNotEmpty()) {
+                    untilCollision = false
+                    frozen = true
+                }
+
+                val duration = (System.nanoTime() - startTime).toDouble()
+                rollingAverage += duration / dataInterval.toDouble()
+
+                val narrowDuration = (endNarrowTime - startNarrowTime).toDouble()
+                rollingNarrowAverage += narrowDuration / dataInterval.toDouble()
+
+                rollingPopulationAverage += populateEdgesDuration / dataInterval.toDouble()
+
+                val broadDuration = (endBroadTime - startBroadTime).toDouble()
+                rollingBroadAverage += broadDuration / dataInterval.toDouble()
+
+                rollingEnvAverage += envDuration / dataInterval.toDouble()
+
+                rollingStepAverage += stepDuration / dataInterval.toDouble()
+
+                rollingParallelContactAverage += parallelConstraintDuration / dataInterval.toDouble()
+
+                if (physicsTime % dataInterval == 0) {
+                    if (Udar.CONFIG.debug.timings) {
+                        println("Total takes ${rollingAverage / 1_000.0}us on average")
+                        println("  - Broadphase takes ${rollingBroadAverage / 1_000.0}us (${rollingBroadAverage / rollingAverage * 100.0}%) on average")
+                        println("  - Narrowphase takes ${rollingNarrowAverage / 1_000.0}us (${rollingNarrowAverage / rollingAverage * 100.0}%) on average")
+                        println("  - Population takes ${rollingPopulationAverage / 1_000.0}us (${rollingPopulationAverage / rollingAverage * 100.0}%) on average")
+                        println("  - Env takes ${rollingEnvAverage / 1_000.0}us (${rollingEnvAverage / rollingAverage * 100.0}%) on average")
+                        println("  - Parallel Constraint takes ${rollingParallelContactAverage / 1_000.0}us (${rollingParallelContactAverage / rollingAverage * 100.0}%) on average")
+                        println("  - Step takes ${rollingStepAverage / 1_000.0}us (${rollingStepAverage / rollingAverage * 100.0}%) on average")
+                        println("ACCOUNTED FOR ${(rollingNarrowAverage + rollingBroadAverage + rollingPopulationAverage +rollingParallelContactAverage + rollingEnvAverage + rollingStepAverage) / rollingAverage * 100.0}%")
+                    }
+                    rollingAverage = 0.0
+                    rollingNarrowAverage = 0.0
+                    rollingPopulationAverage = 0.0
+                    rollingBroadAverage = 0.0
+                    rollingParallelContactAverage = 0.0
+                    rollingEnvAverage = 0.0
+                    rollingStepAverage = 0.0
+                }
+
+                busy.set(false)
             }
         }
     }
