@@ -189,7 +189,7 @@ class GraphUtil(
             maxColor = max(freeColor, maxColor)
 
             if (colorSet.size < ((freeColor + 1) * necessaryLongs + (i shr 6))) {
-                colorSet = colorSet.copyOf(colorSet.size * 2)
+                colorSet = colorSet.copyOf(max(colorSet.size * 2, (freeColor + 1) * necessaryLongs + (i shr 6)))
             }
 
             colorSet[freeColor * necessaryLongs + (i shr 6)] = (colorSet[freeColor * necessaryLongs + (i shr 6)] or (1L shl i))

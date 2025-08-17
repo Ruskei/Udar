@@ -285,8 +285,6 @@ class PhysicsWorld(
     }
 
     private fun processToAdd() {
-//        val start = System.nanoTime()
-
         val ss = bodiesToAdd.getAndClear()
         for (body in ss) {
             body.fatBB.body = body
@@ -294,23 +292,13 @@ class PhysicsWorld(
         }
 
         activeBodies += ss
-
-//        val finish = System.nanoTime()
-//
-//        println("Insertions took ${(finish - start).toDouble() / 1_000.0}us")
     }
 
     private fun processToRemove() {
-//        val start = System.nanoTime()
-
         val ss = bodiesToRemove.getAndClear()
         for (body in ss) {
             kill(body)
         }
-
-//        val finish = System.nanoTime()
-//
-//        println("Deletions took ${(finish - start).toDouble() / 1_000.0}us")
     }
 
     private fun broadPhase(bodies: List<ActiveBody>, groups: Int): Array<MutableMap<ActiveBody, List<ActiveBody>>>? {
