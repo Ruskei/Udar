@@ -269,6 +269,7 @@ class Cuboid(
     ) {
         awake.set(true)
         startled.set(true)
+
         val localNormal = Vector3d(normal).rotate(Quaterniond(q).conjugate()).normalize()!!
         val localPoint = globalToLocal(point)
 

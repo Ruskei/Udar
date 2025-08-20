@@ -54,6 +54,11 @@ class LocalMathUtil(
             var i = 0
             while (i < _myAxiss.size) {
                 val axis = _myAxiss[i]
+                if (!axis.isFinite) {
+                    ++i
+                    continue
+                }
+
                 val my = activeBody.project(axis)
                 otherVertices.project(axis)
 
@@ -79,6 +84,11 @@ class LocalMathUtil(
             var k = 0
             while (k < _edgeArr.size) {
                 val axis = _edgeArr[k]
+                if (!axis.isFinite) {
+                    ++k
+                    continue
+                }
+
                 val my = activeBody.project(axis)
                 otherVertices.project(axis)
 
@@ -89,6 +99,7 @@ class LocalMathUtil(
 
                 if (!cr) {
                     d3Pool.clearTracked()
+                    println("failed on edge $axis")
                     return null
                 }
 
@@ -105,6 +116,11 @@ class LocalMathUtil(
         var j = 0
         while (j < otherAxiss.size) {
             val axis = otherAxiss[j]
+            if (!axis.isFinite) {
+                ++j
+                continue
+            }
+
             val my = activeBody.project(axis)
             otherVertices.project(axis)
 
@@ -115,6 +131,7 @@ class LocalMathUtil(
 
             if (!cr) {
                 d3Pool.clearTracked()
+                println("failed on other $axis")
                 return null
             }
 
