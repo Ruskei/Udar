@@ -35,7 +35,8 @@ class CompositeImpl(
         require(parts.isNotEmpty())
     }
 
-    override val id: UUID = UUID.randomUUID()
+    override val uuid: UUID = UUID.randomUUID()
+    override var id: Int = -1
     override val physicsWorld: PhysicsWorld = world.physicsWorld!!
 
     override var isChild: Boolean = false
@@ -64,8 +65,6 @@ class CompositeImpl(
     val comOffset: Vector3d
     override var pos: Vector3d
     override val contacts: MutableList<Contact> = mutableListOf()
-    @Volatile
-    override var contactIDs: LongArray = LongArray(0)
     override val previousContacts: MutableList<Contact> = mutableListOf()
 
     override val torque: Vector3d = Vector3d()
@@ -164,7 +163,7 @@ class CompositeImpl(
     override val radius: Double = calcRadius()
 
     private val relativePoses: Map<UUID, RelativePose> = parts.associateBy(
-        keySelector = { it.id },
+        keySelector = { it.uuid },
         valueTransform = { RelativePose(Vector3d(it.pos).sub(pos), Quaterniond(it.q)) }
     )
 
@@ -234,7 +233,7 @@ class CompositeImpl(
         rotationIntegrator.process()
 
         for (part in parts) {
-            val pose = relativePoses[part.id]!!
+            val pose = relativePoses[part.uuid]!!
             val np = Vector3d(pos).add(Vector3d(pose.pos).rotate(q))
             val v = Vector3d(np).sub(part.pos).div(TIME_STEP)
             part.pos.set(np)
@@ -373,10 +372,10 @@ class CompositeImpl(
     }
 
     override fun equals(other: Any?): Boolean {
-        return other != null && other is CompositeImpl && other.id == id
+        return other != null && other is CompositeImpl && other.uuid == uuid
     }
 
     override fun hashCode(): Int {
-        return id.hashCode()
+        return uuid.hashCode()
     }
 }

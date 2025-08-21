@@ -5,7 +5,6 @@ import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.collisiondetection.pool.TrackingD3Pool
 import com.ixume.udar.physics.CollisionResult
 import org.joml.Vector3d
-import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -99,7 +98,6 @@ class LocalMathUtil(
 
                 if (!cr) {
                     d3Pool.clearTracked()
-                    println("failed on edge $axis")
                     return null
                 }
 
@@ -131,7 +129,6 @@ class LocalMathUtil(
 
             if (!cr) {
                 d3Pool.clearTracked()
-                println("failed on other $axis")
                 return null
             }
 

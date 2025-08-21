@@ -12,13 +12,12 @@ import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentSATContact
 import com.ixume.udar.collisiondetection.contactgeneration.SATContactGenerator
 import com.ixume.udar.physics.Contact
 import com.ixume.udar.physicsWorld
-import it.unimi.dsi.fastutil.ints.IntArrayList
-import it.unimi.dsi.fastutil.ints.IntList
-import jdk.internal.vm.annotation.Contended
 import org.bukkit.Material
 import org.bukkit.World
 import org.bukkit.entity.TextDisplay
-import org.joml.*
+import org.joml.Matrix3d
+import org.joml.Quaterniond
+import org.joml.Vector3d
 import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.*
@@ -38,7 +37,8 @@ class Cuboid(
     val density: Double,
     override var hasGravity: Boolean,
 ) : ActiveBody, GJKCapable, SDFCapable {
-    override val id = UUID.randomUUID()!!
+    override val uuid = UUID.randomUUID()!!
+    override var id: Int = -1
     override val physicsWorld: PhysicsWorld = world.physicsWorld!!
 
     override var isChild: Boolean = false
@@ -116,8 +116,6 @@ class Cuboid(
     override val isConvex: Boolean = true
 
     override val contacts: MutableList<Contact> = mutableListOf()
-    @Volatile
-    override var contactIDs: LongArray = LongArray(0)
     override val previousContacts: MutableList<Contact> = mutableListOf()
 
     private val envContactGen = EnvironmentSATContactGenerator(this)
@@ -408,7 +406,7 @@ class Cuboid(
 
     override fun ensureNonAligned() {
         val tiny = 1e-14
-        val perturbation = 1e-10
+        val perturbation = 1e-13
 
         _naTemp[0].set(1.0, 0.0, 0.0).rotate(q).normalize()
         _naTemp[1].set(0.0, 1.0, 0.0).rotate(q).normalize()
@@ -428,11 +426,11 @@ class Cuboid(
 //    private val contactGenerator: ContactGenerator = SATContactGenerator(this)
 
     override fun equals(other: Any?): Boolean {
-        return other != null && other is Cuboid && other.id == id
+        return other != null && other is Cuboid && other.uuid == uuid
     }
 
     override fun hashCode(): Int {
-        return id.hashCode()
+        return uuid.hashCode()
     }
 
     companion object {

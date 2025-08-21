@@ -1,7 +1,6 @@
 package com.ixume.udar.body
 
 import com.ixume.udar.PhysicsWorld
-import com.ixume.udar.physicsWorld
 import org.bukkit.World
 import org.joml.Matrix3d
 import org.joml.Quaterniond
@@ -12,7 +11,7 @@ class EnvironmentBody(
     override val physicsWorld: PhysicsWorld,
 ) : Body {
     override val world: World = physicsWorld.world
-    override val id: UUID = UUID.randomUUID()
+    override val uuid: UUID = UUID.randomUUID()
     override val pos: Vector3d = Vector3d()
     override val q: Quaterniond = Quaterniond()
     override val velocity: Vector3d = Vector3d()

@@ -1,6 +1,7 @@
 package com.ixume.udar.model
 
-import com.google.gson.*
+import com.google.gson.JsonParseException
+import com.google.gson.JsonParser
 import com.ixume.udar.model.element.InvalidJsonException
 import com.ixume.udar.model.element.WrongFileTypeException
 import com.ixume.udar.model.element.array

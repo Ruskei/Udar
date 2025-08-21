@@ -1,13 +1,8 @@
 package com.ixume.udar.model.element.type
 
 import com.google.gson.JsonObject
-import com.ixume.udar.model.element.InvalidJsonException
-import com.ixume.udar.model.element.asNumber
-import com.ixume.udar.model.element.axis
+import com.ixume.udar.model.element.*
 import com.ixume.udar.model.element.instance.CubeElement
-import com.ixume.udar.model.element.obj
-import com.ixume.udar.model.element.str
-import com.ixume.udar.model.element.vec3d
 
 object CubeElementType {
     fun parse(o: JsonObject): Result<CubeElement> {

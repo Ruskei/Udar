@@ -1,421 +1,342 @@
 package com.ixume.udar.physics.constraint
 
-import com.ixume.udar.Udar
 import com.ixume.udar.body.active.ActiveBody
-import com.ixume.udar.graph.GraphUtil
 import com.ixume.udar.physics.Contact
-import org.joml.Matrix3d
 import org.joml.Quaterniond
+import org.joml.Quaternionf
 import org.joml.Vector3d
-import kotlin.math.abs
+import org.joml.Vector3f
+import java.nio.FloatBuffer
+import kotlin.math.max
 
 class LocalConstraintSolver {
-    private val vA = Vector3d()
-    private val wA = Vector3d()
-    private val vB = Vector3d()
-    private val wB = Vector3d()
+    private val j1 = Vector3f()
+    private val j3 = Vector3f()
 
-    private val iMA = Vector3d()
-    private val iIA = Matrix3d()
-    private val iMB = Vector3d()
-    private val iIB = Matrix3d()
+    private val _vec3 = Vector3f()
+    private val _quat = Quaternionf()
 
-    private val n = Vector3d()
-    private val nn = Vector3d()
+    private lateinit var idMap: Array<ActiveBody>
+    private var flatBodyData: FloatArray = FloatArray(1)
+    private var bodyCount = 0
 
-    private val j0 = Vector3d()
-    private val j1 = Vector3d()
-    private val j2 = Vector3d()
-    private val j3 = Vector3d()
+    private lateinit var constraintMap: Array<Contact>
+    private lateinit var flatContactData: FloatArray
 
-    fun solve(graphUtil: GraphUtil, color: Int, start: Int, end: Int, normal: Boolean): Int {
-        var itrSignificant = false
-
-        val idConstraintMap = graphUtil.idConstraintMap
-        val colorSet = graphUtil.colorSet
-        val necessaryLongs = graphUtil.necessaryLongs
-
-        var i = start shr 6
-        var first = 0.inv()
-
-        var solved = 0
-
-        while (i < necessaryLongs) {
-            val l = colorSet[color * necessaryLongs + i]
-            var k = (l shr (start and first)).countTrailingZeroBits() + (start and 0b111111 and first)
-            first = 0
-            while (k < 64) {
-                if (i * 64 + k < end) {
-                    solved++
-                    //Constraint!
-                    val contact = idConstraintMap[i * 64 + k]
-
-                    val significant = solveConstraint(contact, normal, false)
-
-                    if (significant) itrSignificant = true
-                } else {
-                    //we're out of range, so we're done!
-                    return solved
-                }
-
-                k += ((l shr (k + 1)).countTrailingZeroBits() + 1)
-            }
-
-            i++
-        }
-
-        return solved
-    }
+    private lateinit var envConstraintMap: Array<Contact>
+    private lateinit var envContactData: FloatArray
 
     /**
-     * @param normal Whether we're solving the normal or for friction
+     * @param map The id -> ActiveBody map
+     * @param flatData Flattened body data structs
      */
-    fun solveEnv(constraints: List<Contact>, start: Int, end: Int, normal: Boolean) {
-        var i = start
-        while (i < end) {
-            solveConstraint(constraints[i], normal, true)
+    fun setup(
+        map: Array<ActiveBody>,
+
+        flatData: FloatArray,
+        constraintMap: Array<Contact>,
+
+        flatEnvData: FloatArray,
+        envConstraintMap: Array<Contact>,
+    ) {
+        this.flatContactData = flatData
+        bodyCount = map.size
+
+        this.idMap = map
+        this.constraintMap = constraintMap
+        this.envContactData = flatEnvData
+        this.envConstraintMap = envConstraintMap
+
+        buildFlatBodyData(map)
+    }
+
+    private fun buildFlatBodyData(arr: Array<ActiveBody>) {
+        val n = arr.size
+        if (flatBodyData.size < n * BASE_SIZE) { // resizing is fine, since all the valid bodies should set their data anyway
+            flatBodyData = FloatArray(max(flatBodyData.size * 2, n * BASE_SIZE))
+        }
+
+        val buf = FloatBuffer.wrap(flatBodyData)
+
+        var i = 0
+        while (i < bodyCount) {
+            val b = arr[i]
+
+            buf.putVector3f(_vec3.set(b.velocity))
+            buf.putVector3f(_vec3.set(b.omega).rotate(_quat.set(b.q)))
+
             i++
         }
     }
 
-    private fun solveConstraint(contact: Contact, normal: Boolean, static: Boolean): Boolean {
-        return if(normal) {
-            if (static) {
-                solveNormalStatic(contact)
-            } else {
-                solveNormal(contact)
-            }
-        } else {
-            if (static) {
-                solveFrictionStatic(contact)
-            } else {
-                solveFriction(contact)
-            }
+    private val j0Temp = Vector3f()
+    private val j2Temp = Vector3f()
+
+    private val _quatd = Quaterniond()
+
+    fun solveNormal() {
+        var i = 0
+        val n = flatContactData.size
+
+        while (i < n) {
+            solveA2AContact(i)
+
+            i += A2A_CONTACT_DATA_FLOATS
+        }
+
+        var j = 0
+        val e = envContactData.size
+
+        while (j < e) {
+            solveA2SContact(j)
+
+            j += A2S_CONTACT_DATA_FLOATS
         }
     }
 
-    private fun solveNormal(contact: Contact): Boolean {
-        val first = contact.first
-        val second = contact.second
+    fun solveFriction() {
+        var i = 0
+        val n = flatContactData.size
 
-        val point = contact.result.point
-        n.set(contact.result.norm)
-//                                //V = [ vA, wA, vB, wB ]
-//                                // vA and vB are given, wA and wB are js rotated w
-        vA.set(first.velocity)
-        wA.set(first.omega).rotate(first.q)
-        vB.set(second.velocity)
-        wB.set(second.omega).rotate(second.q)
-//
-//                                //M^(-1) = [ iMA, iIA, iMB, iAB ]
-        iMA.set(first.inverseMass)
-        iIA.set(first.inverseInertia)
-        iMB.set(second.inverseMass)
-        iIB.set(second.inverseInertia)
+        while (i < n) {
+            solveA2AContact(i)
 
-        //lambda = -(JV - b) / (JM^(-1)J^(T))
-
-        //J = [ -n, (-rA x n), n, (rB x n) ]
-        // n is given, rA is point - center
-        nn.set(n).negate()
-        j1.set(first.pos).sub(point).cross(n)
-        j3.set(point).sub(second.pos).cross(n)
-
-        return deltaV(
-            contact = contact,
-            type = DeltaType.NORMAL,
-            j0 = nn, j1 = j1, j2 = n, j3 = j3,
-            iMA = iMA, iIA = iIA, iMB = iMB, iIB = iIB,
-            vA = vA, wA = wA, vB = vB, wB = wB,
-            first.velocity, first.omega, second.velocity, second.omega,
-        )
-    }
-
-    private fun solveNormalStatic(contact: Contact): Boolean {
-        val first = contact.first
-
-        val point = contact.result.point
-        n.set(contact.result.norm)
-//                                //V = [ vA, wA, vB, wB ]
-//                                // vA and vB are given, wA and wB are js rotated w
-        vA.set(first.velocity)
-        wA.set(first.omega).rotate(first.q)
-//
-//                                //M^(-1) = [ iMA, iIA, iMB, iAB ]
-        iMA.set(first.inverseMass)
-        iIA.set(first.inverseInertia)
-
-        //lambda = -(JV - b) / (JM^(-1)J^(T))
-
-        //J = [ -n, (-rA x n), n, (rB x n) ]
-        // n is given, rA is point - center
-        nn.set(n).negate()
-        j1.set(first.pos).sub(point).cross(n)
-
-        return deltaVStatic(
-            contact = contact,
-            type = DeltaType.NORMAL,
-            j0 = nn, j1 = j1,
-            iMA = iMA, iIA = iIA,
-            vA = vA, wA = wA,
-            first.velocity, first.omega,
-        )
-    }
-
-    private fun solveFriction(contact: Contact): Boolean {
-        var itrSignificant = false
-        val first = contact.first
-        val second = contact.second
-
-        val point = contact.result.point
-        n.set(contact.result.norm)
-//                                //V = [ vA, wA, vB, wB ]
-//                                // vA and vB are given, wA and wB are js rotated w
-        vA.set(first.velocity)
-        wA.set(first.omega).rotate(first.q)
-        vB.set(second.velocity)
-        wB.set(second.omega).rotate(second.q)
-//
-//                                //M^(-1) = [ iMA, iIA, iMB, iAB ]
-        iMA.set(first.inverseMass)
-        iIA.set(first.inverseInertia)
-        iMB.set(second.inverseMass)
-        iIB.set(second.inverseInertia)
-
-        run t1@{
-            j0.set(contact.t1).negate()
-            j1.set(first.pos).sub(point).cross(contact.t1)
-            j2.set(contact.t1)
-            j3.set(point).sub(second.pos).cross(contact.t1)
-
-            val significant = deltaV(
-                contact = contact,
-                type = DeltaType.T1,
-                j0 = j0, j1 = j1, j2 = j2, j3 = j3,
-                iMA = iMA, iIA = iIA, iMB = iMB, iIB = iIB,
-                vA = vA, wA = wA, vB = vB, wB = wB,
-                first.velocity, first.omega, second.velocity, second.omega,
-            )
-
-            if (significant) itrSignificant = true
+            i += A2A_CONTACT_DATA_FLOATS
         }
 
-        run t2@{
-            j0.set(contact.t2).negate()
-            j1.set(first.pos).sub(point).cross(contact.t2)
-            j2.set(contact.t2)
-            j3.set(point).sub(second.pos).cross(contact.t2)
+        var j = 0
+        val e = envContactData.size
 
-            val significant = deltaV(
-                contact = contact,
-                type = DeltaType.T2,
-                j0 = j0, j1 = j1, j2 = j2, j3 = j3,
-                iMA = iMA, iIA = iIA, iMB = iMB, iIB = iIB,
-                vA = vA, wA = wA, vB = vB, wB = wB,
-                first.velocity, first.omega, second.velocity, second.omega,
-            )
+        while (j < e) {
+            solveA2SContact(j)
 
-            if (significant) itrSignificant = true
+            j += A2S_CONTACT_DATA_FLOATS
         }
-
-        return itrSignificant
-    }
-
-    private fun solveFrictionStatic(contact: Contact): Boolean {
-        var itrSignificant = false
-        val first = contact.first
-
-        val point = contact.result.point
-        n.set(contact.result.norm)
-//                                //V = [ vA, wA, vB, wB ]
-//                                // vA and vB are given, wA and wB are js rotated w
-        vA.set(first.velocity)
-        wA.set(first.omega).rotate(first.q)
-//
-//                                //M^(-1) = [ iMA, iIA, iMB, iAB ]
-        iMA.set(first.inverseMass)
-        iIA.set(first.inverseInertia)
-
-        run t1@{
-            j0.set(contact.t1).negate()
-            j1.set(first.pos).sub(point).cross(contact.t1)
-
-            val significant = deltaVStatic(
-                contact = contact,
-                type = DeltaType.T1,
-                j0 = j0, j1 = j1,
-                iMA = iMA, iIA = iIA,
-                vA = vA, wA = wA,
-                first.velocity, first.omega,
-            )
-
-            if (significant) itrSignificant = true
-        }
-
-        run t2@{
-            j0.set(contact.t2).negate()
-            j1.set(first.pos).sub(point).cross(contact.t2)
-
-            val significant = deltaVStatic(
-                contact = contact,
-                type = DeltaType.T2,
-                j0 = j0, j1 = j1,
-                iMA = iMA, iIA = iIA,
-                vA = vA, wA = wA,
-                first.velocity, first.omega,
-            )
-
-            if (significant) itrSignificant = true
-        }
-
-        return itrSignificant
-    }
-
-    private enum class DeltaType {
-        NORMAL, T1, T2
-    }
-
-    private val tempIMA = Vector3d()
-    private val tempIMB = Vector3d()
-
-    private val j1Temp = Vector3d()
-    private val j2Temp = Vector3d()
-    private val j3Temp = Vector3d()
-    private val j0Temp = Vector3d()
-
-    private val firstQ = Quaterniond()
-    private val secondQ = Quaterniond()
-
-    private fun deltaV(
-        contact: Contact, type: DeltaType,
-        j0: Vector3d, j1: Vector3d, j2: Vector3d, j3: Vector3d,
-        iMA: Vector3d, iIA: Matrix3d, iMB: Vector3d, iIB: Matrix3d,
-        vA: Vector3d, wA: Vector3d, vB: Vector3d, wB: Vector3d,
-        firstV: Vector3d, firstO: Vector3d, secondV: Vector3d, secondO: Vector3d
-    ): Boolean {
-        val timestep = Udar.CONFIG.timeStep
-        val depth = contact.result.depth
-
-        val slop =
-            if (contact.first is ActiveBody && contact.second is ActiveBody) Udar.CONFIG.collision.activeSlop else Udar.CONFIG.collision.passiveSlop
-
-        val bias =
-            if (type == DeltaType.NORMAL) Udar.CONFIG.collision.bias / timestep * (abs(depth) - slop).coerceAtLeast(0.0) else 0.0
-
-        j0Temp.set(j0)
-        j1Temp.set(j1)
-        j2Temp.set(j2)
-        j3Temp.set(j3)
-
-        val den =
-            j0Temp.mul(j0).dot(iMA) + j1Temp.mul(iIA).dot(j1) + j2Temp.mul(j2)
-                .dot(iMB) + j3Temp.mul(iIB).dot(j3)
-
-        var lambda = (j0.dot(vA) + j1.dot(wA) + j2.dot(vB) + j3.dot(wB) + bias) / den
-
-        when (type) {
-            DeltaType.NORMAL -> {
-                val curLambdaSum = contact.lambdaSum
-                contact.lambdaSum = (curLambdaSum + lambda).coerceAtLeast(0.0)
-                lambda = contact.lambdaSum - curLambdaSum
-            }
-
-            DeltaType.T1 -> {
-                val curT1Sum = contact.t1Sum
-                contact.t1Sum =
-                    (curT1Sum + lambda).coerceIn(
-                        -Udar.CONFIG.collision.friction * contact.lambdaSum,
-                        Udar.CONFIG.collision.friction * contact.lambdaSum
-                    )
-                lambda = contact.t1Sum - curT1Sum
-            }
-
-            DeltaType.T2 -> {
-                val curT2Sum = contact.t2Sum
-                contact.t2Sum =
-                    (curT2Sum + lambda).coerceIn(
-                        -Udar.CONFIG.collision.friction * contact.lambdaSum,
-                        Udar.CONFIG.collision.friction * contact.lambdaSum
-                    )
-                lambda = contact.t2Sum - curT2Sum
-            }
-        }
-
-        //delta-V = M^(-1)J^T * lambda
-        val dVA = tempIMA.set(iMA).mul(j0).mul(lambda)
-        val dOA = j1Temp.set(j1).mul(iIA).mul(lambda).rotate(firstQ.set(contact.first.q).conjugate())
-        val dVB = tempIMB.set(iMB).mul(j2).mul(lambda)
-        val dOB = j3Temp.set(j3).mul(iIB).mul(lambda).rotate(secondQ.set(contact.second.q).conjugate())
-
-        firstV.sub(dVA)
-        firstO.sub(dOA)
-        secondV.sub(dVB)
-        secondO.sub(dOB)
-
-        return lambda > Udar.CONFIG.significant
     }
 
     /**
-     * Assumes that 2nd object is static, for example the environment, has infinite inverse inertia and mass, 0 velocity
+     * For a contact between active objects
      */
-    private fun deltaVStatic(
-        contact: Contact, type: DeltaType,
-        j0: Vector3d, j1: Vector3d,
-        iMA: Vector3d, iIA: Matrix3d,
-        vA: Vector3d, wA: Vector3d,
-        firstV: Vector3d, firstO: Vector3d,
-    ): Boolean {
-        val timestep = Udar.CONFIG.timeStep
-        val depth = contact.result.depth
+    private fun solveA2AContact(contactIdx: Int) {
+        val nx = flatContactData[contactIdx + A2A_NORMAL_OFFSET]
+        val ny = flatContactData[contactIdx + A2A_NORMAL_OFFSET + 1]
+        val nz = flatContactData[contactIdx + A2A_NORMAL_OFFSET + 2]
 
-        val slop = Udar.CONFIG.collision.passiveSlop
+        //set nn, j1, and j3
+        j0Temp.set(-nx, -ny, -nz)
+        j1.from(contactIdx + A2A_J1_OFFSET, flatContactData)
+        j2Temp.set(nx, ny, nz)
+        j3.from(contactIdx + A2A_J3_OFFSET, flatContactData)
 
-        val bias =
-            if (type == DeltaType.NORMAL) Udar.CONFIG.collision.bias / timestep * (abs(depth) - slop).coerceAtLeast(0.0) else 0.0
+        val bias = flatContactData[contactIdx + A2A_BIAS_OFFSET]
 
-        j0Temp.set(j0)
-        j1Temp.set(j1)
+        val den = flatContactData[contactIdx + A2A_DEN_OFFSET]
 
-        val den =
-            j0Temp.mul(j0).dot(iMA) + j1Temp.mul(iIA).dot(j1)
+        val myIdx = flatContactData[contactIdx + A2A_MY_IDX_OFFSET].toBits() * BASE_SIZE
 
-        var lambda = (j0.dot(vA) + j1.dot(wA) + bias) / den
+        val vAx = flatBodyData[myIdx + V_OFFSET]
+        val vAy = flatBodyData[myIdx + V_OFFSET + 1]
+        val vAz = flatBodyData[myIdx + V_OFFSET + 2]
 
-        when (type) {
-            DeltaType.NORMAL -> {
-                val curLambdaSum = contact.lambdaSum
-                contact.lambdaSum = (curLambdaSum + lambda).coerceAtLeast(0.0)
-                lambda = contact.lambdaSum - curLambdaSum
-            }
+        val oAx = flatBodyData[myIdx + O_OFFSET]
+        val oAy = flatBodyData[myIdx + O_OFFSET + 1]
+        val oAz = flatBodyData[myIdx + O_OFFSET + 2]
 
-            DeltaType.T1 -> {
-                val curT1Sum = contact.t1Sum
-                contact.t1Sum =
-                    (curT1Sum + lambda).coerceIn(
-                        -Udar.CONFIG.collision.friction * contact.lambdaSum,
-                        Udar.CONFIG.collision.friction * contact.lambdaSum
+        val otherIdx = flatContactData[contactIdx + A2A_OTHER_IDX_OFFSET].toBits() * BASE_SIZE
+
+        val vBx = flatBodyData[otherIdx + V_OFFSET]
+        val vBy = flatBodyData[otherIdx + V_OFFSET + 1]
+        val vBz = flatBodyData[otherIdx + V_OFFSET + 2]
+
+        val oBx = flatBodyData[otherIdx + O_OFFSET]
+        val oBy = flatBodyData[otherIdx + O_OFFSET + 1]
+        val oBz = flatBodyData[otherIdx + O_OFFSET + 2]
+
+        var lambda =
+            Math.fma(
+                -nx,
+                vAx,
+                Math.fma(
+                    -ny,
+                    vAy,
+                    Math.fma(
+                        -nz,
+                        vAz,
+                        Math.fma(
+                            flatContactData[contactIdx + A2A_J1_OFFSET],
+                            oAx,
+                            Math.fma(
+                                flatContactData[contactIdx + A2A_J1_OFFSET + 1],
+                                oAy,
+                                Math.fma(
+                                    flatContactData[contactIdx + A2A_J1_OFFSET + 2],
+                                    oAz,
+                                    Math.fma(
+                                        nx,
+                                        vBx,
+                                        Math.fma(
+                                            ny,
+                                            vBy,
+                                            Math.fma(
+                                                nz,
+                                                vBz,
+                                                Math.fma(
+                                                    flatContactData[contactIdx + A2A_J3_OFFSET],
+                                                    oBx,
+                                                    Math.fma(
+                                                        flatContactData[contactIdx + A2A_J3_OFFSET + 1],
+                                                        oBy,
+                                                        Math.fma(
+                                                            flatContactData[contactIdx + A2A_J3_OFFSET + 2],
+                                                            oBz,
+                                                            bias
+                                                        )
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
                     )
-                lambda = contact.t1Sum - curT1Sum
-            }
+                )
+            ) / den
 
-            DeltaType.T2 -> {
-                val curT2Sum = contact.t2Sum
-                contact.t2Sum =
-                    (curT2Sum + lambda).coerceIn(
-                        -Udar.CONFIG.collision.friction * contact.lambdaSum,
-                        Udar.CONFIG.collision.friction * contact.lambdaSum
+        val l = flatContactData[contactIdx + A2A_LAMBDA_OFFSET]
+
+        val cls = l
+        flatContactData[contactIdx + A2A_LAMBDA_OFFSET] = max(0f, cls + lambda)
+        lambda = flatContactData[contactIdx + A2A_LAMBDA_OFFSET] - cls
+
+        flatBodyData[myIdx] -= (flatContactData[contactIdx + A2A_DELTA_OFFSET] * lambda)
+        flatBodyData[myIdx + 1] -= (flatContactData[contactIdx + A2A_DELTA_OFFSET + 1] * lambda)
+        flatBodyData[myIdx + 2] -= (flatContactData[contactIdx + A2A_DELTA_OFFSET + 2] * lambda)
+
+        flatBodyData[myIdx + 3] -= (flatContactData[contactIdx + A2A_DELTA_OFFSET + 3] * lambda)
+        flatBodyData[myIdx + 4] -= (flatContactData[contactIdx + A2A_DELTA_OFFSET + 4] * lambda)
+        flatBodyData[myIdx + 5] -= (flatContactData[contactIdx + A2A_DELTA_OFFSET + 5] * lambda)
+
+        flatBodyData[otherIdx] -= (flatContactData[contactIdx + A2A_DELTA_OFFSET + 6] * lambda)
+        flatBodyData[otherIdx + 1] -= (flatContactData[contactIdx + A2A_DELTA_OFFSET + 7] * lambda)
+        flatBodyData[otherIdx + 2] -= (flatContactData[contactIdx + A2A_DELTA_OFFSET + 8] * lambda)
+
+        flatBodyData[otherIdx + 3] -= (flatContactData[contactIdx + A2A_DELTA_OFFSET + 9] * lambda)
+        flatBodyData[otherIdx + 4] -= (flatContactData[contactIdx + A2A_DELTA_OFFSET + 10] * lambda)
+        flatBodyData[otherIdx + 5] -= (flatContactData[contactIdx + A2A_DELTA_OFFSET + 11] * lambda)
+    }
+
+    /**
+     * For a contact between an active body and a static object
+     */
+    private fun solveA2SContact(contactIdx: Int) {
+        val nx = envContactData[contactIdx + A2S_NORMAL_OFFSET]
+        val ny = envContactData[contactIdx + A2S_NORMAL_OFFSET + 1]
+        val nz = envContactData[contactIdx + A2S_NORMAL_OFFSET + 2]
+
+        //set nn, j1, and j3
+        j0Temp.set(-nx, -ny, -nz)
+        j1.from(contactIdx + A2S_J1_OFFSET, envContactData)
+
+        val bias = envContactData[contactIdx + A2S_BIAS_OFFSET]
+
+        val den = envContactData[contactIdx + A2S_DEN_OFFSET]
+
+        val myIdx = envContactData[contactIdx + A2S_MY_IDX_OFFSET].toBits() * BASE_SIZE
+
+        val vAx = flatBodyData[myIdx + V_OFFSET]
+        val vAy = flatBodyData[myIdx + V_OFFSET + 1]
+        val vAz = flatBodyData[myIdx + V_OFFSET + 2]
+
+        val oAx = flatBodyData[myIdx + O_OFFSET]
+        val oAy = flatBodyData[myIdx + O_OFFSET + 1]
+        val oAz = flatBodyData[myIdx + O_OFFSET + 2]
+
+        var lambda =
+            Math.fma(
+                -nx,
+                vAx,
+                Math.fma(
+                    -ny,
+                    vAy,
+                    Math.fma(
+                        -nz,
+                        vAz,
+                        Math.fma(
+                            envContactData[contactIdx + A2S_J1_OFFSET],
+                            oAx,
+                            Math.fma(
+                                envContactData[contactIdx + A2S_J1_OFFSET + 1],
+                                oAy,
+                                Math.fma(
+                                    envContactData[contactIdx + A2S_J1_OFFSET + 2],
+                                    oAz,
+                                    bias
+                                )
+                            )
+                        )
                     )
-                lambda = contact.t2Sum - curT2Sum
-            }
+                )
+            ) / den
+
+        val l = envContactData[contactIdx + A2S_LAMBDA_OFFSET]
+
+        val cls = l
+        envContactData[contactIdx + A2S_LAMBDA_OFFSET] = max(0f, cls + lambda)
+        lambda = envContactData[contactIdx + A2S_LAMBDA_OFFSET] - cls
+
+        flatBodyData[myIdx] -= (envContactData[contactIdx + A2S_DELTA_OFFSET] * lambda)
+        flatBodyData[myIdx + 1] -= (envContactData[contactIdx + A2S_DELTA_OFFSET + 1] * lambda)
+        flatBodyData[myIdx + 2] -= (envContactData[contactIdx + A2S_DELTA_OFFSET + 2] * lambda)
+
+        flatBodyData[myIdx + 3] -= (envContactData[contactIdx + A2S_DELTA_OFFSET + 3] * lambda)
+        flatBodyData[myIdx + 4] -= (envContactData[contactIdx + A2S_DELTA_OFFSET + 4] * lambda)
+        flatBodyData[myIdx + 5] -= (envContactData[contactIdx + A2S_DELTA_OFFSET + 5] * lambda)
+    }
+
+    fun write() {
+        var i = 0
+        val n = bodyCount * BASE_SIZE
+        while (i < n) {
+            val body = idMap[i / BASE_SIZE]
+
+            body.velocity.from(i + V_OFFSET, flatBodyData)
+            body.omega.from(i + O_OFFSET, flatBodyData).rotate(_quatd.set(body.q).conjugate())
+
+            i += BASE_SIZE
         }
 
-        //delta-V = M^(-1)J^T * lambda
-        val dVA = tempIMA.set(iMA).mul(j0).mul(lambda)
-        val dOA = j1Temp.set(j1).mul(iIA).mul(lambda).rotate(firstQ.set(contact.first.q).conjugate())
+        var j = 0
+        while (j < flatContactData.size) {
+            val contact = constraintMap[j / A2A_CONTACT_DATA_FLOATS]
 
-        firstV.sub(dVA)
-        firstO.sub(dOA)
+            contact.lambdaSum = flatContactData[j + A2A_LAMBDA_OFFSET].toDouble()
 
-        return lambda > Udar.CONFIG.significant
+            j += A2A_CONTACT_DATA_FLOATS
+        }
     }
+}
+
+fun FloatBuffer.putVector3f(v: Vector3f): FloatBuffer {
+    put(v.x)
+    put(v.y)
+    put(v.z)
+
+    return this
+}
+
+inline fun Vector3f.from(idx: Int, arr: FloatArray): Vector3f {
+    x = arr[idx]
+    y = arr[idx + 1]
+    z = arr[idx + 2]
+
+    return this
+}
+
+inline fun Vector3d.from(idx: Int, arr: FloatArray): Vector3d {
+    x = arr[idx].toDouble()
+    y = arr[idx + 1].toDouble()
+    z = arr[idx + 2].toDouble()
+
+    return this
 }

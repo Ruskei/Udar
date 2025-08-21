@@ -1,7 +1,6 @@
 package com.ixume.udar.physics
 
 import com.ixume.udar.body.active.ActiveBody
-import java.util.HashMap
 
 class UnionFind(
     elems: Collection<ActiveBody>,

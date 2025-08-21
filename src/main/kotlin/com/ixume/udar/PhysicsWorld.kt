@@ -6,19 +6,22 @@ import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.collisiondetection.broadphase.aabb.AABBTree
 import com.ixume.udar.collisiondetection.mesh.Mesh
 import com.ixume.udar.collisiondetection.pool.MathPool
-import com.ixume.udar.graph.GraphUtil
-import com.ixume.udar.physics.*
+import com.ixume.udar.graph.ContactMap
+import com.ixume.udar.physics.BodyIDMap
+import com.ixume.udar.physics.Contact
+import com.ixume.udar.physics.EntityUpdater
+import com.ixume.udar.physics.StatusUpdater
 import com.ixume.udar.physics.constraint.ConstraintSolverManager
 import com.ixume.udar.testing.PhysicsWorldTestDebugData
 import kotlinx.coroutines.*
 import org.bukkit.Bukkit
 import org.bukkit.World
 import org.joml.Vector3d
+import java.nio.FloatBuffer
 import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.roundToInt
 import kotlin.system.measureNanoTime
 
@@ -29,13 +32,18 @@ class PhysicsWorld(
     private val bodiesToRemove = AtomicList<ActiveBody>()
 
     private val activeBodies = AtomicList<ActiveBody>()
+
+    private val bodyIDMap = BodyIDMap(this)
+
     fun bodiesSnapshot(): List<ActiveBody> {
         return activeBodies.get()
     }
 
     var numPossibleContacts = 0
     val contacts = ConcurrentLinkedQueue<Contact>()
-    private val envContacts = mutableListOf<Contact>()
+    val envContacts = mutableListOf<Contact>()
+    val flattenedContacts = AtomicReference(FloatBuffer.allocate(0))
+
     val meshes: MutableList<Mesh> = mutableListOf()
 
     private val environmentBody = EnvironmentBody(this)
@@ -53,7 +61,7 @@ class PhysicsWorld(
 
     val realWorldHandler = RealWorldHandler(world)
 
-    private val graphUtil = GraphUtil(this)
+    private val contactMap = ContactMap(this)
     val runningContactID = AtomicInteger(0)
 
     private val simTask = Bukkit.getScheduler().runTaskTimerAsynchronously(Udar.INSTANCE, Runnable { tick() }, 1, 1)
@@ -62,18 +70,15 @@ class PhysicsWorld(
     private val busy = AtomicBoolean(false)
 
     private val NARROWPHASE_PROCESSORS = 3//Runtime.getRuntime().availableProcessors()
-    private val CONSTRAINT_SOLVING_PROCESSORS = 1//Runtime.getRuntime().availableProcessors()
     private val mathPool = MathPool(this, NARROWPHASE_PROCESSORS)
     private val scope = CoroutineScope(Dispatchers.Default)
-    private val executor = Executors.newFixedThreadPool(CONSTRAINT_SOLVING_PROCESSORS)
-    private val constraintSolverManager = ConstraintSolverManager(CONSTRAINT_SOLVING_PROCESSORS, executor)
+    private val constraintSolverManager = ConstraintSolverManager()
 
     private val dataInterval = 400
 
     private var rollingAverage = 0.0
     private var rollingBroadAverage = 0.0
     private var rollingNarrowAverage = 0.0
-    private var rollingPopulationAverage = 0.0
     private var rollingEnvAverage = 0.0
     private var rollingParallelContactAverage = 0.0
     private var rollingStepAverage = 0.0
@@ -118,11 +123,14 @@ class PhysicsWorld(
                 processToAdd()
                 processToRemove()
 
+                bodyIDMap.update()
+
                 physicsTime++
 
                 debugData.reset()
                 runningContactID.set(0)
                 contacts.clear()
+                flattenedContacts.set(FloatBuffer.allocate(0))
                 envContacts.clear()
                 meshes.clear()
 
@@ -132,20 +140,6 @@ class PhysicsWorld(
 
                 val startBroadTime = System.nanoTime()
                 val activePairs = broadPhase(bodiesSnapshot, NARROWPHASE_PROCESSORS)
-
-                val neededLongs = (numPossibleContacts + 63) / 64
-                for (body in bodiesSnapshot) {
-                    if (body.contactIDs.size < neededLongs) {
-                        body.contactIDs = LongArray(neededLongs)
-                    } else {
-                        var i = 0
-                        while (i < body.contactIDs.size) {
-                            body.contactIDs[i] = 0L
-
-                            i++
-                        }
-                    }
-                }
 
                 val endBroadTime = System.nanoTime()
 
@@ -159,6 +153,7 @@ class PhysicsWorld(
                     job = scope.launch {
                         (0..<NARROWPHASE_PROCESSORS).forEach { i ->
                             val ps = activePairs[i]
+
                             launch { narrowPhase(ps) }
                         }
                     }
@@ -169,10 +164,6 @@ class PhysicsWorld(
                 }
 
                 val endNarrowTime = System.nanoTime()
-
-                val populateEdgesDuration = measureNanoTime {
-                    graphUtil.process()
-                }
 
                 val math = mathPool.get()
 
@@ -225,8 +216,10 @@ class PhysicsWorld(
                     )
                 }
 
+                contactMap.process()
+
                 val parallelConstraintDuration = measureNanoTime {
-                    constraintSolverManager.solve(graphUtil, envContacts)
+                    constraintSolverManager.solve(bodyIDMap.bodyIDMap, contactMap.flatConstraintData, contactMap.idConstraintMap, contactMap.envConstraintData, contactMap.envIDConstraintMap)
                 }
 
                 val stepDuration = measureNanoTime {
@@ -248,8 +241,6 @@ class PhysicsWorld(
                 val narrowDuration = (endNarrowTime - startNarrowTime).toDouble()
                 rollingNarrowAverage += narrowDuration / dataInterval.toDouble()
 
-                rollingPopulationAverage += populateEdgesDuration / dataInterval.toDouble()
-
                 val broadDuration = (endBroadTime - startBroadTime).toDouble()
                 rollingBroadAverage += broadDuration / dataInterval.toDouble()
 
@@ -264,15 +255,13 @@ class PhysicsWorld(
                         println("Total takes ${rollingAverage / 1_000.0}us on average")
                         println("  - Broadphase takes ${rollingBroadAverage / 1_000.0}us (${rollingBroadAverage / rollingAverage * 100.0}%) on average")
                         println("  - Narrowphase takes ${rollingNarrowAverage / 1_000.0}us (${rollingNarrowAverage / rollingAverage * 100.0}%) on average")
-                        println("  - Population takes ${rollingPopulationAverage / 1_000.0}us (${rollingPopulationAverage / rollingAverage * 100.0}%) on average")
                         println("  - Env takes ${rollingEnvAverage / 1_000.0}us (${rollingEnvAverage / rollingAverage * 100.0}%) on average")
                         println("  - Parallel Constraint takes ${rollingParallelContactAverage / 1_000.0}us (${rollingParallelContactAverage / rollingAverage * 100.0}%) on average")
                         println("  - Step takes ${rollingStepAverage / 1_000.0}us (${rollingStepAverage / rollingAverage * 100.0}%) on average")
-                        println("ACCOUNTED FOR ${(rollingNarrowAverage + rollingBroadAverage + rollingPopulationAverage +rollingParallelContactAverage + rollingEnvAverage + rollingStepAverage) / rollingAverage * 100.0}%")
+                        println("ACCOUNTED FOR ${(rollingNarrowAverage + rollingBroadAverage + rollingParallelContactAverage + rollingEnvAverage + rollingStepAverage) / rollingAverage * 100.0}%")
                     }
                     rollingAverage = 0.0
                     rollingNarrowAverage = 0.0
-                    rollingPopulationAverage = 0.0
                     rollingBroadAverage = 0.0
                     rollingParallelContactAverage = 0.0
                     rollingEnvAverage = 0.0
@@ -348,7 +337,7 @@ class PhysicsWorld(
                     }
 
                     val ourContacts =
-                        first.previousContacts.filter { it.second.id === second.id }
+                        first.previousContacts.filter { it.second.uuid === second.uuid }
 
                     for (contact in result) {
                         contact.id = runningContactID.andIncrement
@@ -364,7 +353,6 @@ class PhysicsWorld(
 
                         lcc += contact
                         first.contacts += contact
-                        first.contactIDs[contact.id shr 6] = (first.contactIDs[contact.id shr 6] or (1L shl contact.id))
                     }
                 }
             }
@@ -391,6 +379,5 @@ class PhysicsWorld(
         realWorldHandler.kill()
         entityTask.cancel()
         scope.cancel()
-        executor.shutdown()
     }
 }

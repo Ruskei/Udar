@@ -11,6 +11,8 @@ import kotlin.math.max
 import kotlin.math.min
 
 interface ActiveBody : CollidableBody, Projectable {
+    var id: Int
+
     var age: Int
     var isChild: Boolean
 

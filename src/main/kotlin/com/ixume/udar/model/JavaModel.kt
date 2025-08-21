@@ -1,8 +1,8 @@
 package com.ixume.udar.model
 
 import com.ixume.udar.PhysicsWorld
-import com.ixume.udar.model.element.instance.ModelElement
 import com.ixume.udar.body.active.CompositeImpl
+import com.ixume.udar.model.element.instance.ModelElement
 import org.joml.Quaterniond
 import org.joml.Vector3d
 

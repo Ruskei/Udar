@@ -8,7 +8,7 @@ import org.joml.Vector3d
 import java.util.*
 
 interface Body {
-    val id: UUID
+    val uuid: UUID
     val world: World
     val physicsWorld: PhysicsWorld
 

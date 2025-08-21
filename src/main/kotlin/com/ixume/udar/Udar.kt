@@ -1,7 +1,6 @@
 package com.ixume.udar
 
 import com.ixume.proverka.Proverka
-import com.ixume.udar.model.JavaModel
 import com.ixume.udar.rp.RPManager
 import com.ixume.udar.testing.Config
 import com.ixume.udar.testing.ConfigLoader
