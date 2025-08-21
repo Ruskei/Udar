@@ -6,7 +6,6 @@ import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.collisiondetection.broadphase.aabb.AABBTree
 import com.ixume.udar.collisiondetection.mesh.Mesh
 import com.ixume.udar.collisiondetection.pool.MathPool
-import com.ixume.udar.graph.ContactMap
 import com.ixume.udar.physics.BodyIDMap
 import com.ixume.udar.physics.Contact
 import com.ixume.udar.physics.EntityUpdater
@@ -61,7 +60,6 @@ class PhysicsWorld(
 
     val realWorldHandler = RealWorldHandler(world)
 
-    private val contactMap = ContactMap(this)
     val runningContactID = AtomicInteger(0)
 
     private val simTask = Bukkit.getScheduler().runTaskTimerAsynchronously(Udar.INSTANCE, Runnable { tick() }, 1, 1)
@@ -72,7 +70,7 @@ class PhysicsWorld(
     private val NARROWPHASE_PROCESSORS = 3//Runtime.getRuntime().availableProcessors()
     private val mathPool = MathPool(this, NARROWPHASE_PROCESSORS)
     private val scope = CoroutineScope(Dispatchers.Default)
-    private val constraintSolverManager = ConstraintSolverManager()
+    private val constraintSolverManager = ConstraintSolverManager(this)
 
     private val dataInterval = 400
 
@@ -216,10 +214,8 @@ class PhysicsWorld(
                     )
                 }
 
-                contactMap.process()
-
                 val parallelConstraintDuration = measureNanoTime {
-                    constraintSolverManager.solve(bodyIDMap.bodyIDMap, contactMap.flatConstraintData, contactMap.idConstraintMap, contactMap.envConstraintData, contactMap.envIDConstraintMap)
+                    constraintSolverManager.solve()
                 }
 
                 val stepDuration = measureNanoTime {

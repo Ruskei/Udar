@@ -1,12 +1,13 @@
 package com.ixume.udar.physics.constraint
 
+import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.Udar
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.physics.Contact
 
-class ConstraintSolverManager() {
-    private val constraintSolver = LocalConstraintSolver()
-    private val envConstraintSolver = EnvConstraintSolver()
+class ConstraintSolverManager(val physicsWorld: PhysicsWorld) {
+    private val constraintSolver = LocalConstraintSolver(physicsWorld)
+
 
     /**
      * for A in bodies:
@@ -48,16 +49,8 @@ class ConstraintSolverManager() {
      *  sparse takes up ~32 (could vary?) bits per contact
      *  let's just use bitset for now, it's simple and likely better since many objects tend to be colliding with the ground
      */
-    fun solve(
-        map: Array<ActiveBody>,
-        flatData: FloatArray,
-        constraintMap: Array<Contact>,
-        envFlatData: FloatArray,
-        envConstraintMap: Array<Contact>,
-    ) {
-        if (flatData.isEmpty() && envFlatData.isEmpty()) return
-
-        constraintSolver.setup(map, flatData, constraintMap, envFlatData, envConstraintMap)
+    fun solve() {
+        constraintSolver.setup()
 
         var normalItrs = 1
         while (normalItrs <= Udar.CONFIG.collision.normalIterations) {
@@ -68,7 +61,7 @@ class ConstraintSolverManager() {
 
         var frictionItrs = 1
         while (frictionItrs <= Udar.CONFIG.collision.frictionIterations) {
-            constraintSolver.solveNormal()
+            constraintSolver.solveFriction()
 
             frictionItrs++
         }
@@ -77,28 +70,28 @@ class ConstraintSolverManager() {
     }
 }
 
-const val BASE_SIZE = 6
+const val BODY_DATA_FLOATS = 6
 const val V_OFFSET = 0
 const val O_OFFSET = 3
 
-const val A2A_CONTACT_DATA_FLOATS = 26
+const val A2A_N_CONTACT_DATA_FLOATS = 26
 
-const val A2A_NORMAL_OFFSET = 0
-const val A2A_J1_OFFSET = 3
-const val A2A_J3_OFFSET = 6
-const val A2A_BIAS_OFFSET = 9
-const val A2A_DEN_OFFSET = 10
-const val A2A_LAMBDA_OFFSET = 11
-const val A2A_DELTA_OFFSET = 12
-const val A2A_MY_IDX_OFFSET = 24
-const val A2A_OTHER_IDX_OFFSET = 25
+const val A2A_N_NORMAL_OFFSET = 0
+const val A2A_N_J1_OFFSET = 3
+const val A2A_N_J3_OFFSET = 6
+const val A2A_N_BIAS_OFFSET = 9
+const val A2A_N_DEN_OFFSET = 10
+const val A2A_N_LAMBDA_OFFSET = 11
+const val A2A_N_DELTA_OFFSET = 12
+const val A2A_N_MY_IDX_OFFSET = 24
+const val A2A_N_OTHER_IDX_OFFSET = 25
 
-const val A2S_CONTACT_DATA_FLOATS = 16
+const val A2S_N_CONTACT_DATA_FLOATS = 16
 
-const val A2S_NORMAL_OFFSET = 0
-const val A2S_J1_OFFSET = 3
-const val A2S_BIAS_OFFSET = 6
-const val A2S_DEN_OFFSET = 7
-const val A2S_LAMBDA_OFFSET = 8
-const val A2S_DELTA_OFFSET = 9
-const val A2S_MY_IDX_OFFSET = 15
+const val A2S_N_NORMAL_OFFSET = 0
+const val A2S_N_J1_OFFSET = 3
+const val A2S_N_BIAS_OFFSET = 6
+const val A2S_N_DEN_OFFSET = 7
+const val A2S_N_LAMBDA_OFFSET = 8
+const val A2S_N_DELTA_OFFSET = 9
+const val A2S_N_MY_IDX_OFFSET = 15

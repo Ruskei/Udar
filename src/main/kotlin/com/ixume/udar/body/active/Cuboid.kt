@@ -24,8 +24,8 @@ import kotlin.math.*
 
 class Cuboid(
     override val world: World,
-    override var pos: Vector3d,
-    override var velocity: Vector3d,
+    override val pos: Vector3d,
+    override val velocity: Vector3d,
 
     override val q: Quaterniond,
 
@@ -141,7 +141,7 @@ class Cuboid(
     private val volume = width * height * length
     override val mass: Double = volume * density
     override val inverseMass = 1.0 / (volume * density)
-    override var torque = Vector3d()
+    override val torque = Vector3d()
 
     private fun calcInertia(): Vector3d {
         val f = density * volume / 12.0
@@ -169,19 +169,22 @@ class Cuboid(
 
     private val rotationIntegrator = RigidbodyRotationIntegrator(this)
 
-    override var prevQ = Quaterniond(q)
+    override val prevQ = Quaterniond(q)
     private val prevP = Vector3d(pos)
     override val linearDelta: Vector3d = Vector3d()
     override var angularDelta: Double = 0.0
 
+    private val _quat = Quaterniond()
+    private val _quat2 = Quaterniond()
+
     override fun step() {
-        prevQ = Quaterniond(q)
+        prevQ.set(q)
         prevP.set(pos)
 
         pos.add(Vector3d(velocity).mul(TIME_STEP))
         rotationIntegrator.process()
 
-        torque = Vector3d()
+        torque.set(0.0)
 
         update()
 
@@ -191,7 +194,7 @@ class Cuboid(
 
         linearDelta.set(pos).sub(prevP)
 
-        val dQ = Quaterniond(q).mul(Quaterniond(prevQ).conjugate())
+        val dQ = _quat.set(q).mul(_quat2.set(prevQ).conjugate())
         if (dQ.w < 0.0) dQ.mul(-1.0)
         dQ.normalize()
         angularDelta = 2.0 * acos(dQ.w.coerceIn(-1.0, 1.0))
