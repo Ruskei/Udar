@@ -7,6 +7,7 @@ import com.ixume.udar.collisiondetection.mesh.aabbtree2d.AABB2D.Companion.MIN_A
 import com.ixume.udar.collisiondetection.mesh.aabbtree2d.AABB2D.Companion.MIN_B
 import com.ixume.udar.collisiondetection.mesh.aabbtree2d.AABBTree2D
 import com.ixume.udar.collisiondetection.mesh.quadtree.EdgeQuadtree
+import com.ixume.udar.collisiondetection.mesh.quadtree.QuadtreeEdge
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.dynamicaabb.AABBTree
 import org.bukkit.World
@@ -59,13 +60,13 @@ class LocalMesher {
 
         println("bbs: ${_bbs.size}")
 
-        val meshFaces = mutableListOf<MeshFace>().apply {
-            this += createMeshFaces(AxisD.X, meshStart, meshEnd)
-            this += createMeshFaces(AxisD.Y, meshStart, meshEnd)
-            this += createMeshFaces(AxisD.Z, meshStart, meshEnd)
-        }
+        val meshFaces = MeshFaces(
+            createMeshFaces(AxisD.X, meshStart, meshEnd),
+            createMeshFaces(AxisD.Y, meshStart, meshEnd),
+            createMeshFaces(AxisD.Z, meshStart, meshEnd),
+        )
 
-        createMeshEdges(meshStart, meshEnd)
+        createMeshEdges(meshStart, meshEnd, meshFaces)
 
         return Mesh2(
             start = meshStart,
@@ -81,7 +82,7 @@ class LocalMesher {
         axis: AxisD,
         meshStart: Vector3i,
         meshEnd: Vector3i,
-    ): List<MeshFace> {
+    ): MeshFaceSortedList {
         /*
         iterate through all bb's, and add holes and anti-holes
         terminology: a face F points in axis A (A in [X, Y, Z]). the A'th component of F is its 'level'
@@ -106,10 +107,10 @@ class LocalMesher {
         while (i < _bbs.size) {
             _bbs.get(i, _bb)
 
-            val minFace = faces.faceAt(_bb.minLevel(axis))
+            val minFace = faces.placeFaceAt(_bb.minLevel(axis))
             minFace.stamp(_bb, false)
 
-            val maxFace = faces.faceAt(_bb.maxLevel(axis))
+            val maxFace = faces.placeFaceAt(_bb.maxLevel(axis))
             maxFace.stamp(_bb, true)
 
             i++
@@ -117,7 +118,7 @@ class LocalMesher {
 
         faces.constructAntiHoles()
 
-        return faces.ls
+        return faces
     }
 
     private fun MeshFace.stamp(bb: DoubleArray, inDir: Boolean) {
@@ -162,6 +163,7 @@ class LocalMesher {
     private fun createMeshEdges(
         meshStart: Vector3i,
         meshEnd: Vector3i,
+        meshFaces: MeshFaces,
     ) {
         _xAxiss = EdgeQuadtree(
             Vector2d(meshStart.y.toDouble() - 2.0, meshStart.z.toDouble() - 2.0),
@@ -188,19 +190,19 @@ class LocalMesher {
 
             val x0aStart = _bb[BB_MIN_Y]
             val x0bStart = _bb[BB_MIN_Z]
-            _xAxiss.insertEdge(x0aStart, x0bStart, xStart, xEnd)
+            _xAxiss.insertEdge(x0aStart, x0bStart, xStart, xEnd, AxisD.X, meshFaces)
 
             val x1aStart = _bb[BB_MAX_Y]
             val x1bStart = _bb[BB_MIN_Z]
-            _xAxiss.insertEdge(x1aStart, x1bStart, xStart, xEnd)
+            _xAxiss.insertEdge(x1aStart, x1bStart, xStart, xEnd, AxisD.X, meshFaces)
 
             val x2aStart = _bb[BB_MAX_Y]
             val x2bStart = _bb[BB_MAX_Z]
-            _xAxiss.insertEdge(x2aStart, x2bStart, xStart, xEnd)
+            _xAxiss.insertEdge(x2aStart, x2bStart, xStart, xEnd, AxisD.X, meshFaces)
 
             val x3aStart = _bb[BB_MIN_Y]
             val x3bStart = _bb[BB_MAX_Z]
-            _xAxiss.insertEdge(x3aStart, x3bStart, xStart, xEnd)
+            _xAxiss.insertEdge(x3aStart, x3bStart, xStart, xEnd, AxisD.X, meshFaces)
 
             //y axis
             val yStart = _bb[BB_MIN_Y]
@@ -208,19 +210,19 @@ class LocalMesher {
 
             val y0aStart = _bb[BB_MIN_X]
             val y0bStart = _bb[BB_MIN_Z]
-            _yAxiss.insertEdge(y0aStart, y0bStart, yStart, yEnd)
+            _yAxiss.insertEdge(y0aStart, y0bStart, yStart, yEnd, AxisD.Y, meshFaces)
 
             val y1aStart = _bb[BB_MAX_X]
             val y1bStart = _bb[BB_MIN_Z]
-            _yAxiss.insertEdge(y1aStart, y1bStart, yStart, yEnd)
+            _yAxiss.insertEdge(y1aStart, y1bStart, yStart, yEnd, AxisD.Y, meshFaces)
 
             val y2aStart = _bb[BB_MAX_X]
             val y2bStart = _bb[BB_MAX_Z]
-            _yAxiss.insertEdge(y2aStart, y2bStart, yStart, yEnd)
+            _yAxiss.insertEdge(y2aStart, y2bStart, yStart, yEnd, AxisD.Y, meshFaces)
 
             val y3aStart = _bb[BB_MIN_X]
             val y3bStart = _bb[BB_MAX_Z]
-            _yAxiss.insertEdge(y3aStart, y3bStart, yStart, yEnd)
+            _yAxiss.insertEdge(y3aStart, y3bStart, yStart, yEnd, AxisD.Y, meshFaces)
 
             //z axis
             val zStart = _bb[BB_MIN_Z]
@@ -228,19 +230,19 @@ class LocalMesher {
 
             val z0aStart = _bb[BB_MIN_X]
             val z0bStart = _bb[BB_MIN_Y]
-            _zAxiss.insertEdge(z0aStart, z0bStart, zStart, zEnd)
+            _zAxiss.insertEdge(z0aStart, z0bStart, zStart, zEnd, AxisD.Z, meshFaces)
 
             val z1aStart = _bb[BB_MAX_X]
             val z1bStart = _bb[BB_MIN_Y]
-            _zAxiss.insertEdge(z1aStart, z1bStart, zStart, zEnd)
+            _zAxiss.insertEdge(z1aStart, z1bStart, zStart, zEnd, AxisD.Z, meshFaces)
 
             val z2aStart = _bb[BB_MAX_X]
             val z2bStart = _bb[BB_MAX_Y]
-            _zAxiss.insertEdge(z2aStart, z2bStart, zStart, zEnd)
+            _zAxiss.insertEdge(z2aStart, z2bStart, zStart, zEnd, AxisD.Z, meshFaces)
 
             val z3aStart = _bb[BB_MIN_X]
             val z3bStart = _bb[BB_MAX_Y]
-            _zAxiss.insertEdge(z3aStart, z3bStart, zStart, zEnd)
+            _zAxiss.insertEdge(z3aStart, z3bStart, zStart, zEnd, AxisD.Z, meshFaces)
 
             i++
         }
@@ -253,30 +255,50 @@ class LocalMesher {
     class Mesh2(
         val start: Vector3i,
         val end: Vector3i,
-        val faces: List<MeshFace>,
+        val faces: MeshFaces,
         val xEdges: EdgeQuadtree,
         val yEdges: EdgeQuadtree,
         val zEdges: EdgeQuadtree,
     ) {
         fun visualize(world: World) {
-            faces.forEach { it.visualize(world) }
+            faces.xFaces.ls.forEach { it.visualize(world) }
+            faces.yFaces.ls.forEach { it.visualize(world) }
+            faces.zFaces.ls.forEach { it.visualize(world) }
+
             xEdges.visualize(world, AxisD.X)
             yEdges.visualize(world, AxisD.Y)
             zEdges.visualize(world, AxisD.Z)
         }
     }
 
+    class MeshFaces(
+        val xFaces: MeshFaceSortedList,
+        val yFaces: MeshFaceSortedList,
+        val zFaces: MeshFaceSortedList,
+    )
+
     class MeshFace(
         val axis: AxisD,
         val level: Double,
 
         val holes: AABBTree2D,
-    ) {
+    ): Comparable<MeshFace> {
         lateinit var antiHoles: AABBTree2D
+        val edges = ArrayList<QuadtreeEdge>()
 
         fun visualize(world: World) {
 //            holes.visualize(world, level, axis, true)
             antiHoles.visualize(world, level, axis, false)
+        }
+
+        override fun compareTo(other: MeshFace): Int {
+            return if (level > other.level) {
+                1
+            } else if (level == other.level) {
+                0
+            } else {
+                -1
+            }
         }
     }
 

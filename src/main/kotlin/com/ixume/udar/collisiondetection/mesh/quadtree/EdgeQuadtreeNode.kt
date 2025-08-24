@@ -33,12 +33,19 @@ class EdgeQuadtreeNode(
 
     var isLeaf = true
 
-    fun contains(x: Double, y: Double): Boolean {
-        return x >= min.x && x < max.x && y >= min.y && y < max.y
+    fun contains(a: Double, b: Double): Boolean {
+        return a >= min.x && a < max.x && b >= min.y && b < max.y
     }
 
-    fun insertEdge(x: Double, y: Double, start: Double, end: Double): Boolean {
-        if (!contains(x, y)) return false
+    fun insertEdge(
+        a: Double,
+        b: Double,
+        start: Double,
+        end: Double,
+        axis: LocalMesher.AxisD,
+        meshFaces: LocalMesher.MeshFaces
+    ): Boolean {
+        if (!contains(a, b)) return false
 
         if (isLeaf) {
             var i = 0
@@ -46,7 +53,7 @@ class EdgeQuadtreeNode(
                 val nx = points[i * 2]
                 val ny = points[i * 2 + 1]
 
-                if (nx == x && ny == y) { // found matching edge!
+                if (nx == a && ny == b) { // found matching edge!
                     pointData[i]!!.xor(start, end)
 
                     return true
@@ -58,10 +65,26 @@ class EdgeQuadtreeNode(
             // didn't find a matching edge, so we need to create new point or subdivide
 
             if (numPoints < MAX_POINTS_PER_NODE) {
-                points[numPoints * 2] = x
-                points[numPoints * 2 + 1] = y
+                points[numPoints * 2] = a
+                points[numPoints * 2 + 1] = b
 
-                val edge = QuadtreeEdge()
+                val f1 = when (axis) {
+                    LocalMesher.AxisD.X -> meshFaces.yFaces.getFaceAt(a)
+                    LocalMesher.AxisD.Y -> meshFaces.xFaces.getFaceAt(a)
+                    LocalMesher.AxisD.Z -> meshFaces.xFaces.getFaceAt(a)
+                }
+
+                checkNotNull(f1)
+
+                val f2 = when (axis) {
+                    LocalMesher.AxisD.X -> meshFaces.zFaces.getFaceAt(b)
+                    LocalMesher.AxisD.Y -> meshFaces.zFaces.getFaceAt(b)
+                    LocalMesher.AxisD.Z -> meshFaces.yFaces.getFaceAt(b)
+                }
+
+                checkNotNull(f2)
+
+                val edge = QuadtreeEdge(f1, f2)
                 edge.xor(start, end)
                 pointData[numPoints] = edge
 
@@ -72,10 +95,10 @@ class EdgeQuadtreeNode(
             subdivide()
         }
 
-        return (children!![0].insertEdge(x, y, start, end)
-                || children!![1].insertEdge(x, y, start, end)
-                || children!![2].insertEdge(x, y, start, end)
-                || children!![3].insertEdge(x, y, start, end))
+        return (children!![0].insertEdge(a, b, start, end, axis, meshFaces)
+                || children!![1].insertEdge(a, b, start, end, axis, meshFaces)
+                || children!![2].insertEdge(a, b, start, end, axis, meshFaces)
+                || children!![3].insertEdge(a, b, start, end, axis, meshFaces))
     }
 
     /**

@@ -14,8 +14,8 @@ class EdgeQuadtree(
 ) {
     val root = EdgeQuadtreeNode(min, max)
 
-    fun insertEdge(x: Double, y: Double, start: Double, end: Double) {
-        check(root.insertEdge(x, y, start, end - ASYMMETRY_EPSILON)) { "Failed to insert ($x, $y) , $start -> $end "}
+    fun insertEdge(x: Double, y: Double, start: Double, end: Double, axis: LocalMesher.AxisD, meshFaces: LocalMesher.MeshFaces) {
+        check(root.insertEdge(x, y, start, end - ASYMMETRY_EPSILON, axis, meshFaces)) { "Failed to insert ($x, $y) , $start -> $end "}
     }
 
     fun fixUp(bbTree: AABBTree, axis: LocalMesher.AxisD) {

@@ -12,7 +12,7 @@ class RealWorldHandler(
     private val realWorldTask =
         Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable {
             getter.tick()
-            PlayerInteractListener.tick(world)
+//            PlayerInteractListener.tick(world)
         }, 1, 1)
 
     fun kill() {

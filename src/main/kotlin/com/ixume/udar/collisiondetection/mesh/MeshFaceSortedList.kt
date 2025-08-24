@@ -8,7 +8,7 @@ class MeshFaceSortedList(
 ) {
     val ls = mutableListOf<LocalMesher.MeshFace>()
 
-    fun faceAt(level: Double): LocalMesher.MeshFace {
+    fun placeFaceAt(level: Double): LocalMesher.MeshFace {
         var low = 0
         var high = ls.size - 1
 
@@ -36,6 +36,28 @@ class MeshFaceSortedList(
         ls.add(low, face)
 
         return face
+    }
+
+    fun getFaceAt(level: Double): LocalMesher.MeshFace? {
+        var low = 0
+        var high = ls.size - 1
+
+        while (low <= high) {
+            val mid = (low + high) ushr 1
+            val midFace = ls[mid]
+
+            if (abs(midFace.level - level) < FACE_EPSILON) {
+                return midFace
+            }
+
+            if (midFace.level < level) {
+                low = mid + 1
+            } else {
+                high = mid - 1
+            }
+        }
+
+        return null
     }
 
     fun constructAntiHoles() {
