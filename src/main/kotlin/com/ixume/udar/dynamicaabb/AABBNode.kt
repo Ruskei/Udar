@@ -1,6 +1,7 @@
-package com.ixume.udar.collisiondetection.broadphase.aabb
+package com.ixume.udar.dynamicaabb
 
 import com.ixume.udar.body.active.ActiveBody
+import com.ixume.udar.collisiondetection.broadphase.BoundAABB
 import org.bukkit.World
 import kotlin.math.max
 import kotlin.math.min
@@ -54,13 +55,14 @@ class AABBNode(
         bb.maxZ = max(bb.maxZ, b.maxZ)
     }
 
+    private var _inherited = 0.0
     fun insertionCost(b: AABB): Double {
-        val inherited = if (parent == null) 0.0 else parent!!.recursiveRefittingCost(b)
-        return AABB.unifiedCost(bb, b) + inherited
+        _inherited = if (parent == null) 0.0 else parent!!.recursiveRefittingCost(b)
+        return AABB.unifiedCost(bb, b) + _inherited
     }
 
     fun minChildrenCost(b: AABB): Double {
-        return b.volume + recursiveRefittingCost(b)
+        return b.volume + refittingCost(b) + _inherited
     }
 
     fun visualize(world: World, depth: Int) {
@@ -78,12 +80,21 @@ class AABBNode(
         return sign(other.exploredCost - exploredCost).toInt()
     }
 
+    fun contains(x: Double, y: Double, z: Double): Boolean {
+        if (!bb.contains(x, y, z)) return false
+        if (isLeaf) return false
+        return child1!!.contains(x, y, z) || child2!!.contains(x, y, z)
+    }
+
     companion object {
         fun pairs(a: AABBNode, b: AABBNode, ls: MutableMap<ActiveBody, MutableList<ActiveBody>>) {
             if (a.isLeaf) {
                 if (b.isLeaf) {
-                    if (a.bb.overlaps(b.bb) && a.bb.body!!.tightBB.overlaps(b.bb.body!!.tightBB)) {
-                        ls.getOrPut(a.bb.body!!) { mutableListOf() } += b.bb.body!!
+                    val abb = a.bb as BoundAABB
+                    val bbb = b.bb as BoundAABB
+
+                    if (a.bb.overlaps(b.bb) && abb.body!!.tightBB.overlaps(bbb.body!!.tightBB)) {
+                        ls.getOrPut(abb.body!!) { mutableListOf() } += bbb.body!!
                     }
 
                     return

@@ -1,6 +1,6 @@
 package com.ixume.udar.physics
 
-import com.ixume.udar.collisiondetection.broadphase.aabb.AABB
+import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.collisiondetection.mesh.Mesh
 import org.bukkit.World
 import java.util.concurrent.ConcurrentLinkedQueue

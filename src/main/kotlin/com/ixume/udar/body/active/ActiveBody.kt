@@ -1,7 +1,8 @@
 package com.ixume.udar.body.active
 
 import com.ixume.udar.body.CollidableBody
-import com.ixume.udar.collisiondetection.broadphase.aabb.AABB
+import com.ixume.udar.collisiondetection.broadphase.BoundAABB
+import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.collisiondetection.capability.Projectable
 import org.joml.Quaterniond
 import org.joml.Vector2d
@@ -18,7 +19,7 @@ interface ActiveBody : CollidableBody, Projectable {
 
     val vertices: Array<Vector3d>
     val radius: Double
-    val fatBB: AABB
+    val fatBB: BoundAABB
     val tightBB: AABB
 
     var awake: AtomicBoolean

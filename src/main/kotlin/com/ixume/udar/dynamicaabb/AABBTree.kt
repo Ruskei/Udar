@@ -1,7 +1,6 @@
-package com.ixume.udar.collisiondetection.broadphase.aabb
+package com.ixume.udar.dynamicaabb
 
 import com.ixume.udar.body.active.ActiveBody
-import com.ixume.udar.collisiondetection.broadphase.aabb.AABBNode.Companion.pairs
 import org.bukkit.World
 import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
@@ -32,7 +31,7 @@ class AABBTree {
         }
 
         val m = mutableMapOf<ActiveBody, MutableList<ActiveBody>>()
-        pairs(r.child1!!, r.child2!!, m)
+        AABBNode.Companion.pairs(r.child1!!, r.child2!!, m)
 
         status.set(0)
         blocked.set(false)
@@ -243,6 +242,15 @@ class AABBTree {
 
         status.set(0)
         blocked.set(false)
+    }
+
+    fun clear() {
+        root = null // and let GC do the rest :)
+        //TODO: use cleaner api maybe to help this along...
+    }
+
+    fun contains(x: Double, y: Double, z: Double): Boolean {
+        return root?.contains(x, y, z) ?: false
     }
 
     fun visualize(world: World) {

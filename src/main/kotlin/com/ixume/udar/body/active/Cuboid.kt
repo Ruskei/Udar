@@ -5,7 +5,8 @@ import com.ixume.udar.body.Body
 import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.collisiondetection.LocalMathUtil
-import com.ixume.udar.collisiondetection.broadphase.aabb.AABB
+import com.ixume.udar.collisiondetection.broadphase.BoundAABB
+import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.collisiondetection.capability.GJKCapable
 import com.ixume.udar.collisiondetection.capability.SDFCapable
 import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentSATContactGenerator
@@ -109,7 +110,7 @@ class Cuboid(
     }
 
     override val tightBB: AABB = AABB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-    override val fatBB: AABB = AABB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    override val fatBB: BoundAABB = BoundAABB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
     private var debugDisplay: TextDisplay? = null
 

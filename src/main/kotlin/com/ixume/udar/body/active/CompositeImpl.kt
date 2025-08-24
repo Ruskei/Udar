@@ -4,7 +4,8 @@ import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.collisiondetection.LocalMathUtil
-import com.ixume.udar.collisiondetection.broadphase.aabb.AABB
+import com.ixume.udar.collisiondetection.broadphase.BoundAABB
+import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.collisiondetection.contactgeneration.CompositeCompositeContactGenerator
 import com.ixume.udar.jacobiEigenDecomposition
 import com.ixume.udar.physics.Contact
@@ -212,7 +213,7 @@ class CompositeImpl(
     }
 
     override val tightBB: AABB = AABB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-    override val fatBB: AABB = AABB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    override val fatBB: BoundAABB = BoundAABB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
     override val prevQ: Quaterniond = Quaterniond(q)
     private val prevP = Vector3d(pos)

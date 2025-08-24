@@ -3,7 +3,7 @@ package com.ixume.udar
 import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
-import com.ixume.udar.collisiondetection.broadphase.aabb.AABBTree
+import com.ixume.udar.dynamicaabb.AABBTree
 import com.ixume.udar.collisiondetection.mesh.Mesh
 import com.ixume.udar.collisiondetection.pool.MathPool
 import com.ixume.udar.physics.BodyIDMap

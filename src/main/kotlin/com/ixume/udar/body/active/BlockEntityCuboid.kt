@@ -42,6 +42,7 @@ class BlockEntityCuboid(
     }
 
     override fun visualize() {
+        cuboid.visualize()
         display.transformation = createTransformation()
         display.teleport(Location(world, pos.x, pos.y, pos.z))
     }

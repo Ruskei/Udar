@@ -1,6 +1,5 @@
-package com.ixume.udar.collisiondetection.broadphase.aabb
+package com.ixume.udar.dynamicaabb
 
-import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.testing.debugConnect
 import org.bukkit.Color
 import org.bukkit.Particle
@@ -9,7 +8,7 @@ import org.joml.Vector3d
 import kotlin.math.max
 import kotlin.math.min
 
-class AABB(
+open class AABB(
     var minX: Double,
     var minY: Double,
     var minZ: Double,
@@ -22,8 +21,6 @@ class AABB(
         get() {
             return (maxX - minX) * (maxY - minY) * (maxZ - minZ)
         }
-
-    var body: ActiveBody? = null
 
     fun setUnion(a: AABB, b: AABB) {
         minX = min(a.minX, b.minX)
@@ -67,6 +64,12 @@ class AABB(
         }
 
         tree.insert(this)
+    }
+
+    fun contains(x: Double, y: Double, z: Double): Boolean {
+        return x >= minX && x <= maxX &&
+                y >= minY && y <= maxY &&
+                z >= minZ && z <= maxZ
     }
 
     fun visualize(world: World, depth: Int) {

@@ -37,9 +37,9 @@ kotlin {
     jvmToolchain(targetJavaVersion)
     compilerOptions {
         freeCompilerArgs.addAll(
-//            "-Xno-call-assertions",
-//            "-Xno-param-assertions",
-//            "-Xno-receiver-assertions"
+            "-Xno-call-assertions",
+            "-Xno-param-assertions",
+            "-Xno-receiver-assertions"
         )
     }
 }

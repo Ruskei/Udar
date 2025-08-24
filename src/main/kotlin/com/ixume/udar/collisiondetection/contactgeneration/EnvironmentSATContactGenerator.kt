@@ -67,6 +67,9 @@ class EnvironmentSATContactGenerator(
         }
     }
 
+    private val faceCollisions = mutableListOf<Vector3d>()
+    private val edgeCollisions = mutableListOf<Vector3d>()
+
     private fun maxChange(): Double {
         val bb = activeBody.fatBB
         val p = activeBody.pos
@@ -86,6 +89,9 @@ class EnvironmentSATContactGenerator(
         require(capableCollision(other) >= 0)
 
         val mesh = getMesh()
+
+        faceCollisions.clear()
+        edgeCollisions.clear()
 //        mesh.visualize(
 //            world = activeBody.world,
 //            visualizeFaces = true,
@@ -241,7 +247,9 @@ class EnvironmentSATContactGenerator(
                     if (p.depth > prevMaxDepth) {
                         prevMaxDepth = p.depth
                     }
-//
+
+                    faceCollisions += p.point
+
                     collisions += p
                 }
             }
@@ -257,6 +265,8 @@ class EnvironmentSATContactGenerator(
             if (r.depth > prevMaxDepth) {
                 prevMaxDepth = r.depth
             }
+
+            edgeCollisions += r.point
 
             collisions += r
         }

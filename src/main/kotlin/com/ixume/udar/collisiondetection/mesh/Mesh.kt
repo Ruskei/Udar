@@ -1,6 +1,6 @@
 package com.ixume.udar.collisiondetection.mesh
 
-import com.ixume.udar.collisiondetection.broadphase.aabb.AABB
+import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.testing.debugConnect
 import org.bukkit.Color.*
 import org.bukkit.Particle.DustOptions
