@@ -147,42 +147,43 @@ class EnvironmentContactGenerator2(
 
         for (face in faces) {
             testedFaces++
-            val r = math.collidePlane(
+            val collisions = math.collidePlane(
                 axis = axis,
                 level = face.level,
                 vertices = vertices
             ) ?: continue
 
             val overlappingAntiHoles = face.antiHoles.overlaps(bb2d)
-
-            var valid = true
-            for (antiHole in overlappingAntiHoles) {
-                if (antiHole.contains(r.pointA.get(axis.aOffset), r.pointA.get(axis.bOffset))) {
-                    valid = false
-                    break
-                }
-            }
-
-            if (!valid) continue
-
-            valid = false
-
             val overlappingHoles = face.holes.overlaps(bb2d)
 
-            for (hole in overlappingHoles) {
-                if (hole.contains(r.pointA.get(axis.aOffset), r.pointA.get(axis.bOffset))) {
-                    valid = true
-                    break
+            for (collision in collisions) {
+                var valid = true
+                for (antiHole in overlappingAntiHoles) {
+                    if (antiHole.contains(collision.pointA.get(axis.aOffset), collision.pointA.get(axis.bOffset))) {
+                        valid = false
+                        break
+                    }
                 }
+
+                if (!valid) continue
+
+                valid = false
+
+                for (hole in overlappingHoles) {
+                    if (hole.contains(collision.pointA.get(axis.aOffset), collision.pointA.get(axis.bOffset))) {
+                        valid = true
+                        break
+                    }
+                }
+
+                if (!valid) continue
+
+                out += Contact(
+                    first = activeBody,
+                    second = other,
+                    result = collision,
+                )
             }
-
-            if (!valid) continue
-
-            out += Contact(
-                first = activeBody,
-                second = other,
-                result = r,
-            )
         }
     }
 

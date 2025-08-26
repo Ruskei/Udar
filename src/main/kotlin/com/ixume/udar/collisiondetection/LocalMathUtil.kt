@@ -376,7 +376,7 @@ class LocalMathUtil(
         axis: LocalMesher.AxisD,
         level: Double,
         vertices: Array<Vector3d>,
-    ): CollisionResult? {
+    ): List<CollisionResult>? {
         val (min, max) = axis.project(vertices)
 
         if (level < min || level > max) {
@@ -393,61 +393,51 @@ class LocalMathUtil(
         |  .
         |
 
-        then we find the deepest penetrating vertex in that direction, and that's our point!
+        find all penetrating points
          */
+
+        val collisions = mutableListOf<CollisionResult>()
 
         if (level - min < max - level) {
             //approached from top, so find vertex with smallest projection
-            var minProj = axis.project(vertices[0])
-            var minVertex = vertices[0]
-
-            var i = 1
+            var i = 0
             while (i < vertices.size) {
                 val v = vertices[i]
                 val p = axis.project(v)
-                if (p < minProj) {
-                    minProj = p
-                    minVertex = v
+
+                if (p < level) {
+                    collisions += CollisionResult(
+                        pointA = v,
+                        pointB = _empty,
+                        norm = axis.vec,
+                        depth = level - p,
+                    )
                 }
 
                 i++
             }
-
-            val depth = level - min
-
-            return CollisionResult(
-                pointA = minVertex,
-                pointB = Vector3d(minVertex).add(axis.vec.x * depth, axis.vec.y * depth, axis.vec.z * depth),
-                norm = axis.vec,
-                depth = depth
-            )
         } else {
+            val negatedAxis = Vector3d(axis.vec).normalize()
             //approached from bottom
-            var maxProj = axis.project(vertices[0])
-            var maxVertex = vertices[0]
-
-            var i = 1
+            var i = 0
             while (i < vertices.size) {
                 val v = vertices[i]
                 val p = axis.project(v)
 
-                if (p > maxProj) {
-                    maxProj = p
-                    maxVertex = v
+                if (p > level) {
+                    collisions += CollisionResult(
+                        pointA = v,
+                        pointB = _empty,
+                        norm = negatedAxis,
+                        depth = p - level,
+                    )
                 }
 
                 i++
             }
-
-            val depth = max - level
-
-            return CollisionResult(
-                pointA = maxVertex,
-                pointB = Vector3d(maxVertex).add(-axis.vec.x * depth, -axis.vec.y * depth, -axis.vec.z * depth),
-                norm = Vector3d(axis.vec).negate(),
-                depth = depth
-            )
         }
+
+        return collisions
     }
 
     private val _empty = Vector3d()
