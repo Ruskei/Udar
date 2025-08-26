@@ -49,8 +49,8 @@ class AABB2D(
     }
 
     fun overlaps(minX: Double, minY: Double, maxX: Double, maxY: Double): Boolean {
-        return data[MIN_A] < maxX && data[MAX_A] > minX
-                && data[MIN_B] < maxY && data[MAX_B] > minY
+        return data[MIN_A] < maxX && data[MAX_A] > minX &&
+                data[MIN_B] < maxY && data[MAX_B] > minY
     }
 
     fun contains(other: AABB2D): Boolean {

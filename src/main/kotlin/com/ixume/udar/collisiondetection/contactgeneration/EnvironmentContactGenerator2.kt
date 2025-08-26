@@ -69,6 +69,7 @@ class EnvironmentContactGenerator2(
         return contacts
     }
 
+    private val _bb2d = AABB2D(doubleArrayOf(0.0, 0.0, 0.0, 0.0))
     private fun collideFaces(
         faces: List<MeshFace>,
         axis: LocalMesher.AxisD,
@@ -78,75 +79,103 @@ class EnvironmentContactGenerator2(
     ) {
 //        println("COLLIDING $axis FACES!")
         val bb = activeBody.tightBB
-        val arr = DoubleArray(4)
         //faces are guaranteed to be inside BB
-        val bb2d = when (axis) {
+        when (axis) {
             LocalMesher.AxisD.X -> {
-                arr[0] = bb.minY
-                arr[1] = bb.minZ
-                arr[2] = bb.maxY
-                arr[3] = bb.maxZ
-                AABB2D(arr)
+                _bb2d.data[0] = bb.minY
+                _bb2d.data[1] = bb.minZ
+                _bb2d.data[2] = bb.maxY
+                _bb2d.data[3] = bb.maxZ
             }
 
             LocalMesher.AxisD.Y -> {
-                arr[0] = bb.minX
-                arr[1] = bb.minZ
-                arr[2] = bb.maxX
-                arr[3] = bb.maxZ
-                AABB2D(arr)
+                _bb2d.data[0] = bb.minX
+                _bb2d.data[1] = bb.minZ
+                _bb2d.data[2] = bb.maxX
+                _bb2d.data[3] = bb.maxZ
             }
 
             LocalMesher.AxisD.Z -> {
-                arr[0] = bb.minX
-                arr[1] = bb.minY
-                arr[2] = bb.maxX
-                arr[3] = bb.maxY
-                AABB2D(arr)
+                _bb2d.data[0] = bb.minX
+                _bb2d.data[1] = bb.minY
+                _bb2d.data[2] = bb.maxX
+                _bb2d.data[3] = bb.maxY
             }
         }
 
         val vertices = activeBody.vertices
 
-        for (face in faces) {
+        var i = 0
+        while (i < faces.size) {
+            val face = faces[i]
             testedFaces++
             val collisions = math.collidePlane(
                 axis = axis,
                 level = face.level,
                 vertices = vertices
-            ) ?: continue
+            )
+            
+            if (collisions == null) {
+                i++
+                continue
+            }
 
-            val overlappingAntiHoles = face.antiHoles.overlaps(bb2d)
-            val overlappingHoles = face.holes.overlaps(bb2d)
+            val overlappingHoles = face.holes.overlaps(_bb2d)
+            if (overlappingHoles.isEmpty()) {
+                i++
+                continue
+            }
+            
+            val overlappingAntiHoles = face.antiHoles.overlaps(_bb2d)
 
-            for (collision in collisions) {
+            var j = 0
+            while (j < collisions.size) {
+                val collision = collisions[j]
+                
                 var valid = true
-                for (antiHole in overlappingAntiHoles) {
+                var k = 0
+                while (k < overlappingAntiHoles.size) {
+                    val antiHole = overlappingAntiHoles[k]
                     if (antiHole.contains(collision.pointA.get(axis.aOffset), collision.pointA.get(axis.bOffset))) {
                         valid = false
                         break
                     }
+                    k++
                 }
 
-                if (!valid) continue
+                if (!valid) {
+                    j++
+                    continue
+                }
 
                 valid = false
 
-                for (hole in overlappingHoles) {
+                var l = 0
+                while (l < overlappingHoles.size) {
+                    val hole = overlappingHoles[l]
                     if (hole.contains(collision.pointA.get(axis.aOffset), collision.pointA.get(axis.bOffset))) {
                         valid = true
                         break
                     }
+                    
+                    l++
                 }
-
-                if (!valid) continue
+                
+                if (!valid) {
+                    j++
+                    continue
+                }
 
                 out += Contact(
                     first = activeBody,
                     second = other,
                     result = collision,
                 )
+                
+                j++
             }
+            
+            i++
         }
     }
 
