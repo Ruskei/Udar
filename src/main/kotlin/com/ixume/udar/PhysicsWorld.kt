@@ -3,6 +3,7 @@ package com.ixume.udar
 import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
+import com.ixume.udar.collisiondetection.contactgeneration.worldmesh.WorldMeshesManager
 import com.ixume.udar.collisiondetection.mesh.Mesh
 import com.ixume.udar.collisiondetection.pool.MathPool
 import com.ixume.udar.dynamicaabb.AABBTree
@@ -59,6 +60,7 @@ class PhysicsWorld(
     private val statusUpdater = StatusUpdater(this)
 
     val realWorldHandler = RealWorldHandler(world)
+    val worldMeshesManager = WorldMeshesManager(this)
 
     val runningContactID = AtomicInteger(0)
 
@@ -407,5 +409,7 @@ class PhysicsWorld(
         realWorldHandler.kill()
         entityTask.cancel()
         scope.cancel()
+        
+        worldMeshesManager.kill()
     }
 }

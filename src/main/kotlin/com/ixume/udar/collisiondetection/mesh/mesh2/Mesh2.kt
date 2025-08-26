@@ -42,9 +42,9 @@ class LocalMesher {
         _bbTree.clear()
         _bbs.clear()
 
-        for (x in (meshStart.x)..(meshEnd.x)) {
-            for (y in (meshStart.y)..(meshEnd.y)) {
-                for (z in (meshStart.z)..(meshEnd.z)) {
+        for (x in (meshStart.x - 1)..(meshEnd.x + 1)) {
+            for (y in (meshStart.y - 1)..(meshEnd.y + 1)) {
+                for (z in (meshStart.z - 1)..(meshEnd.z + 1)) {
                     val block = world.getBlockAt(x, y, z)
                     if (block.isPassable) continue
                     for (boundingBox in block.collisionShape.boundingBoxes) {
@@ -172,20 +172,27 @@ class LocalMesher {
         meshEnd: Vector3i,
         meshFaces: MeshFaces,
     ) {
+        //TODO: Dont put out of bounds points on edges
         _xAxiss = EdgeQuadtree(
             AxisD.X,
-            Vector2d(meshStart.y.toDouble() - 2.0, meshStart.z.toDouble() - 2.0),
+            Vector2d(meshStart.y.toDouble(), meshStart.z.toDouble()),
             Vector2d(meshEnd.y.toDouble() + 2.0, meshEnd.z.toDouble() + 2.0),
+            levelMin = meshStart.x.toDouble(),
+            levelMax = meshEnd.x.toDouble() + 1.0,
         )
         _yAxiss = EdgeQuadtree(
             AxisD.Y,
-            Vector2d(meshStart.x.toDouble() - 2.0, meshStart.z.toDouble() - 2.0),
+            Vector2d(meshStart.x.toDouble(), meshStart.z.toDouble()),
             Vector2d(meshEnd.x.toDouble() + 2.0, meshEnd.z.toDouble() + 2.0),
+            levelMin = meshStart.y.toDouble(),
+            levelMax = meshEnd.y.toDouble() + 1.0,
         )
         _zAxiss = EdgeQuadtree(
             AxisD.Z,
-            Vector2d(meshStart.x.toDouble() - 2.0, meshStart.y.toDouble() - 2.0),
+            Vector2d(meshStart.x.toDouble(), meshStart.y.toDouble()),
             Vector2d(meshEnd.x.toDouble() + 2.0, meshEnd.y.toDouble() + 2.0),
+            levelMin = meshStart.z.toDouble(),
+            levelMax = meshEnd.z.toDouble() + 1.0,
         )
 
         val _bb = DoubleArray(6) // [ minX, minY, minZ, maxX, maxY, maxZ ]

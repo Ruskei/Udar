@@ -244,6 +244,13 @@ class AABBTree {
         blocked.set(false)
     }
 
+    fun overlaps(bb: AABB): List<AABB> {
+        val ls = mutableListOf<AABB>()
+        root?.overlaps(bb, ls)
+
+        return ls
+    }
+
     fun clear() {
         root = null // and let GC do the rest :)
         //TODO: use cleaner api maybe to help this along...

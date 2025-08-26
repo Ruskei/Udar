@@ -14,15 +14,17 @@ class EdgeQuadtree(
     val axis: LocalMesher.AxisD,
     val min: Vector2d,
     val max: Vector2d,
+    val levelMin: Double,
+    val levelMax: Double,
 ) {
     val root = EdgeQuadtreeNode(min, max)
 
     fun insertEdge(x: Double, y: Double, start: Double, end: Double, meshFaces: MeshFaces) {
-        check(root.insertEdge(x, y, start, end - ASYMMETRY_EPSILON, axis, meshFaces)) { "Failed to insert ($x, $y) , $start -> $end "}
+        root.insertEdge(x, y, start, end - ASYMMETRY_EPSILON, axis, meshFaces)
     }
 
     fun fixUp(bbTree: AABBTree) {
-        root.fixUp(bbTree, axis)
+        root.fixUp(bbTree, axis, levelMin, levelMax)
     }
 
     fun overlaps(bb: AABB): List<QuadtreeEdge> {

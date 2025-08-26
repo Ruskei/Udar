@@ -86,6 +86,17 @@ class AABBNode(
         return child1!!.contains(x, y, z) || child2!!.contains(x, y, z)
     }
 
+    fun overlaps(bb: AABB, out: MutableList<AABB>) {
+        if (!bb.overlaps(this.bb)) return
+        if (isLeaf) {
+            out += this.bb
+            return
+        }
+
+        child1!!.overlaps(bb, out)
+        child2!!.overlaps(bb, out)
+    }
+
     companion object {
         fun pairs(a: AABBNode, b: AABBNode, ls: MutableMap<ActiveBody, MutableList<ActiveBody>>) {
             if (a.isLeaf) {

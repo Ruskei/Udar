@@ -9,10 +9,10 @@ import com.ixume.udar.collisiondetection.mesh.aabbtree2d.AABB2D
 import com.ixume.udar.collisiondetection.mesh.mesh2.EdgeMountAllowedNormals
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFace
+import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFaceSortedList
 import com.ixume.udar.collisiondetection.mesh.quadtree.EdgeQuadtree
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.physics.Contact
-import com.ixume.udar.physics.MeshRequest
 import org.joml.Vector3d
 import java.util.concurrent.atomic.AtomicReference
 
@@ -23,34 +23,10 @@ class EnvironmentContactGenerator2(
         return if (other is EnvironmentBody) 0 else -1
     }
 
-    private val mesher = LocalMesher()
+    val meshFaces = AtomicReference<List<MeshFaceSortedList>>(emptyList())
+    val meshEdges = AtomicReference<List<EdgeQuadtree>>(emptyList())
 
-    private val cachedMesh: AtomicReference<LocalMesher.Mesh2?> = AtomicReference(null)
-
-    private fun getMesh(): LocalMesher.Mesh2? {
-//        val bb = activeBody.fatBB
-        val pos = activeBody.pos
-
-        val meshBB = AABB(
-            minX = pos.x - 8.0,
-            minY = pos.y - 8.0,
-            minZ = pos.z - 8.0,
-            maxX = pos.x + 8.0,
-            maxY = pos.y + 8.0,
-            maxZ = pos.z + 8.0,
-        )
-
-        val cm = cachedMesh.get()
-        if (cm == null) {
-            activeBody.physicsWorld.realWorldHandler.getter2.fetchBBs(
-                MeshRequest(
-                    meshBB,
-                    mesher
-                ) { cachedMesh.set(it) })
-        }
-
-        return cm
-    }
+    private val prevBB: AABB = AABB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
     private var testedFaces = 0
 
@@ -58,50 +34,37 @@ class EnvironmentContactGenerator2(
         other: Body,
         math: LocalMathUtil,
     ): List<Contact> {
-//        println("COLLIDING ENV!")
-        val mesh = getMesh() ?: return emptyList()
-//        mesh.visualize(activeBody.world)
         val bb = activeBody.tightBB
 
         val contacts = mutableListOf<Contact>()
 
         testedFaces = 0
 
-        mesh.faces?.xFaces?.facesIn(bb)?.let { collideFaces(it, LocalMesher.AxisD.X, math, other, contacts) }
-        mesh.faces?.yFaces?.facesIn(bb)?.let { collideFaces(it, LocalMesher.AxisD.Y, math, other, contacts) }
-        mesh.faces?.zFaces?.facesIn(bb)?.let { collideFaces(it, LocalMesher.AxisD.Z, math, other, contacts) }
+        activeBody.physicsWorld.worldMeshesManager.request(
+            prevBB = prevBB,
+            currentBB = bb,
+            envContactGenerator = this
+        )
+
+        val mfs = meshFaces.get()
+        val mes = meshEdges.get()
+
+        for (mf in mfs) {
+            collideFaces(mf.facesIn(bb), mf.axis, math, other, contacts)
+        }
 
         setupBodyAxiss()
 
-//        println("X EDGES!")
-        mesh.xEdges?.let {
+        for (me in mes) {
             collideEdges(
-                tree = it,
+                tree = me,
                 math = math,
                 other = other,
-                out = contacts,
+                out = contacts
             )
         }
 
-//        println("Y EDGES!")
-        mesh.yEdges?.let {
-            collideEdges(
-                tree = it,
-                math = math,
-                other = other,
-                out = contacts,
-            )
-        }
-
-//        println("Z EDGES!")
-        mesh.zEdges?.let {
-            collideEdges(
-                tree = it,
-                math = math,
-                other = other,
-                out = contacts,
-            )
-        }
+        bb.writeTo(prevBB)
 
         return contacts
     }
@@ -280,6 +243,15 @@ class EnvironmentContactGenerator2(
 //                println("  - allowedNormals[0]: ${_allowedNormals[0]}")
 //                println("  - allowedNormals[1]: ${_allowedNormals[1]}")
 //                println("  - mount: $mount")
+
+                check(true) { """
+                    Edge Contact:
+                    | norm: ${r.norm}
+                    | point: ${r.pointA}
+                    | allowedNormal[0]: ${_allowedNormals[0]}
+                    | allowedNormal[1]: ${_allowedNormals[1]}
+                    | mount: $mount
+                """.trimIndent() }
 
                 out += Contact(
                     first = activeBody,

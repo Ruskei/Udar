@@ -16,7 +16,7 @@ class RealWorldHandler(
         Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable {
             getter.tick()
             getter2.tick()
-//            PlayerInteractListener.tick(world)
+            PlayerInteractListener.tick(world)
         }, 1, 1)
 
     fun kill() {

@@ -196,7 +196,12 @@ class EdgeQuadtreeNode(
 
     private val _vec3Mounts = DoubleArray(12)
 
-    fun fixUp(tree: AABBTree, axis: LocalMesher.AxisD) {
+    fun fixUp(
+        tree: AABBTree,
+        axis: LocalMesher.AxisD,
+        levelMin: Double,
+        levelMax: Double,
+    ) {
         if (isLeaf) {
             // go through every edge in every axis and check if its center is mounted to more than 1 block; if so, it's concave and should be removed
             var i = 0
@@ -236,6 +241,13 @@ class EdgeQuadtreeNode(
 
                     val d0 = itr.nextDouble()
                     val d1 = itr.nextDouble()
+
+                    val d0Valid = d0 >= levelMin && d0 <= levelMax
+                    val d1Valid = d1 >= levelMin && d1 <= levelMax
+
+                    if (!d0Valid || !d1Valid) {
+                        continue
+                    }
 
                     val center = d0 / 2.0 + d1 / 2.0
 
@@ -321,7 +333,7 @@ class EdgeQuadtreeNode(
         } else {
             var i = 0
             while (i < 4) {
-                children!![i].fixUp(tree, axis)
+                children!![i].fixUp(tree, axis, levelMin, levelMax)
                 i++
             }
         }

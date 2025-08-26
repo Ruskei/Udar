@@ -71,6 +71,15 @@ open class AABB(
                 y >= minY && y <= maxY &&
                 z >= minZ && z <= maxZ
     }
+    
+    fun writeTo(other: AABB) {
+        other.minX = minX
+        other.minY = minY
+        other.minZ = minZ
+        other.maxX = maxX
+        other.maxY = maxY
+        other.maxZ = maxZ
+    }
 
     fun visualize(world: World, depth: Int) {
         val options = options(depth)
