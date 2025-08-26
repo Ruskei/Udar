@@ -82,7 +82,7 @@ class AABBNode(
 
     fun contains(x: Double, y: Double, z: Double): Boolean {
         if (!bb.contains(x, y, z)) return false
-        if (isLeaf) return false
+        if (isLeaf) return true
         return child1!!.contains(x, y, z) || child2!!.contains(x, y, z)
     }
 

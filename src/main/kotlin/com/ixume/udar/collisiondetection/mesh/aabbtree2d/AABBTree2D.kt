@@ -1,6 +1,6 @@
 package com.ixume.udar.collisiondetection.mesh.aabbtree2d
 
-import com.ixume.udar.collisiondetection.mesh.LocalMesher
+import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import org.bukkit.World
 import java.util.PriorityQueue
 
@@ -211,8 +211,11 @@ class AABBTree2D {
         other.parent = cpp
     }
 
-    fun contains(x: Double, y: Double): Boolean {
-        return root?.isFilledAt(x, y) ?: false
+    fun overlaps(bb: AABB2D): List<AABB2D> {
+        val ls = mutableListOf<AABB2D>()
+        root?.overlaps(bb, ls)
+
+        return ls
     }
 
     fun visualize(world: World, level: Double, axis: LocalMesher.AxisD, isHole: Boolean) {

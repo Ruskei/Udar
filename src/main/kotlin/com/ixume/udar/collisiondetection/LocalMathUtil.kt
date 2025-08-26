@@ -2,6 +2,7 @@ package com.ixume.udar.collisiondetection
 
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.body.active.ActiveBody
+import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.collisiondetection.pool.TrackingD3Pool
 import com.ixume.udar.physics.CollisionResult
 import org.joml.Vector3d
@@ -10,7 +11,7 @@ import kotlin.math.max
 import kotlin.math.min
 
 class LocalMathUtil(
-    val world: PhysicsWorld
+    val world: PhysicsWorld,
 ) {
     private val d3Pool = TrackingD3Pool(15)
 
@@ -251,7 +252,8 @@ class LocalMathUtil(
             d3Pool.clearTracked()
             return mutableListOf(
                 CollisionResult(
-                    Vector3d(r.first).mul(0.5).add(_tv.set(r.second).mul(0.5)),
+                    Vector3d(r.first),
+                    Vector3d(r.second),
                     Vector3d(if (minOrder) minAxis else minAxis.negate()),
                     r.third
                 )
@@ -295,6 +297,7 @@ class LocalMathUtil(
                 val r = mutableListOf(
                     CollisionResult(
                         furtherVertex!!,
+                        Vector3d(furtherVertex).add(Vector3d(_trueAxis).mul(minOverlap)),
                         Vector3d(_trueAxis),
                         minOverlap,
                     )
@@ -306,6 +309,7 @@ class LocalMathUtil(
                         if (abs(d - furthestDistance) <= minOverlap) {
                             r += CollisionResult(
                                 vertex,
+                                Vector3d(vertex).add(Vector3d(_trueAxis).mul(minOverlap - abs(d - furthestDistance))),
                                 Vector3d(_trueAxis),
                                 minOverlap - abs(d - furthestDistance),
                             )
@@ -342,6 +346,7 @@ class LocalMathUtil(
                 val r = mutableListOf(
                     CollisionResult(
                         furtherVertex!!,
+                        Vector3d(furtherVertex).add(Vector3d(_trueAxis).mul(minOverlap)),
                         Vector3d(_trueAxis),
                         minOverlap,
                     )
@@ -353,6 +358,7 @@ class LocalMathUtil(
                         if (abs(d - furthestDistance) <= minOverlap) {
                             r += CollisionResult(
                                 vertex,
+                                Vector3d(vertex).add(Vector3d(_trueAxis).mul(minOverlap - abs(d - furthestDistance))),
                                 Vector3d(_trueAxis),
                                 minOverlap - abs(d - furthestDistance),
                             )
@@ -364,6 +370,472 @@ class LocalMathUtil(
                 return r
             }
         }
+    }
+
+    fun collidePlane(
+        axis: LocalMesher.AxisD,
+        level: Double,
+        vertices: Array<Vector3d>,
+    ): CollisionResult? {
+        val (min, max) = axis.project(vertices)
+
+        if (level < min || level > max) {
+            return null
+        }
+
+        /*
+        now find the overlap and from which direction it's from.
+        min, max, projected look something like this:
+        |
+        |
+        |
+        |
+        |  .
+        |
+
+        then we find the deepest penetrating vertex in that direction, and that's our point!
+         */
+
+        if (level - min < max - level) {
+            //approached from top, so find vertex with smallest projection
+            var minProj = axis.project(vertices[0])
+            var minVertex = vertices[0]
+
+            var i = 1
+            while (i < vertices.size) {
+                val v = vertices[i]
+                val p = axis.project(v)
+                if (p < minProj) {
+                    minProj = p
+                    minVertex = v
+                }
+
+                i++
+            }
+
+            val depth = level - min
+
+            return CollisionResult(
+                pointA = minVertex,
+                pointB = Vector3d(minVertex).add(axis.vec.x * depth, axis.vec.y * depth, axis.vec.z * depth),
+                norm = axis.vec,
+                depth = depth
+            )
+        } else {
+            //approached from bottom
+            var maxProj = axis.project(vertices[0])
+            var maxVertex = vertices[0]
+
+            var i = 1
+            while (i < vertices.size) {
+                val v = vertices[i]
+                val p = axis.project(v)
+
+                if (p > maxProj) {
+                    maxProj = p
+                    maxVertex = v
+                }
+
+                i++
+            }
+
+            val depth = max - level
+
+            return CollisionResult(
+                pointA = maxVertex,
+                pointB = Vector3d(maxVertex).add(-axis.vec.x * depth, -axis.vec.y * depth, -axis.vec.z * depth),
+                norm = Vector3d(axis.vec).negate(),
+                depth = depth
+            )
+        }
+    }
+
+    private val _empty = Vector3d()
+
+    /**
+     * MUST NOT BE PARALLEL TO EDGE!! USE DIFFERENT METHOD IF THEY ARE!
+     */
+    fun collideCuboidEdge(
+        edgeStart: Vector3d,
+        edgeEnd: Vector3d,
+
+        bodyAxiss: Array<Vector3d>,
+
+        crossAxiss: Array<Vector3d>,
+
+        vertices: Array<Vector3d>,
+
+        allowedNormals: Array<Vector3d>,
+    ): CollisionResult? {
+//        println("collideCuboidEdge")
+        var minBodyOverlap = Double.MAX_VALUE
+        var minBodyAxis: Vector3d? = null
+        var minBodyInDirOfAxis = true
+
+        var minCrossOverlap = Double.MAX_VALUE
+        var minCrossAxis: Vector3d? = null
+        var minCrossInDirOfAxis = true
+
+        var i = 0
+        while (i < bodyAxiss.size) {
+            val axis = bodyAxiss[i]
+
+//            println("TESTING BODY AXIS: $axis")
+
+            var bodyMin = Double.MAX_VALUE
+            var bodyMax = -Double.MAX_VALUE
+
+            var j = 0
+            while (j < vertices.size) {
+                val v = vertices[j]
+                val d = v.dot(axis)
+
+                bodyMin = min(d, bodyMin)
+                bodyMax = max(d, bodyMax)
+
+                j++
+            }
+
+            val es1 = edgeStart.dot(axis)
+            val es2 = edgeEnd.dot(axis)
+
+            val edgeMin = min(es1, es2)
+            val edgeMax = max(es1, es2)
+
+            if (!checkOverlap(bodyMin, bodyMax, edgeMin, edgeMax)) {
+                //if no overlap, we found a non-overlapping axis between the edge and the cuboid, meaning they don't collide
+//                println(
+//                    """
+//                    NOT COLLIDING ON BOXY $axis
+//                    | edgeStart: $edgeStart
+//                    | edgeEnd: $edgeEnd
+//                    | edgeMin: $edgeMin
+//                    | edgeMax: $edgeMax
+//                    | bodyMin: $bodyMin
+//                    | bodyMax: $bodyMax
+//                """.trimIndent()
+//                )
+                return null
+            }
+
+            /*
+            we have 2 lines A and B that overlap in some way, let's consider the cases:
+
+            1:   *     2:   *     3:     *
+                 |          |            |
+                 |          |  *      *  |
+                 |  *       |  |      |  |
+                 *  |       |  |      |  |
+                    |       |  *      *  |
+                    |       |            |
+                    *       *            *
+
+                 A  B       A  B      A  B
+
+            case 1 is a proper collision; cases 2 and 3 are either due to extremely high velocity or numerical error; for let's not try any special handling
+             */
+
+            if ((edgeMin < bodyMin && edgeMax > bodyMax) || (bodyMin < edgeMin && bodyMax > edgeMax)) {
+//                println("CONTAINMENT OF BODY AXIS!")
+                i++
+                continue
+            }
+
+            val overlapLow =
+                edgeMax - bodyMin // if this is smaller, then edge must be under body, thus we should use positive axis as normal
+            val overlapHigh =
+                bodyMax - edgeMin // if this is smaller, then edge must be over body, thus we should use negative axis as normal
+
+            if (overlapLow < overlapHigh) {
+                if (overlapLow < minBodyOverlap) {
+                    minBodyOverlap = overlapLow
+                    minBodyAxis = axis
+                    minBodyInDirOfAxis = true
+                }
+            } else {
+                if (overlapHigh < minBodyOverlap) {
+                    minBodyOverlap = overlapHigh
+                    minBodyAxis = axis
+                    minBodyInDirOfAxis = false
+                }
+            }
+
+            i++
+        }
+
+        var j = 0
+        while (j < crossAxiss.size) {
+            val axis = crossAxiss[j]
+
+            if (axis.length() < 1e-5) { // edge axis aligned with body axis; this can't be the minimum collision vector so just ignore it
+                j++
+                continue
+            }
+
+            check(abs(axis.length() - 1.0) < 1e-5) {
+                """
+                axis: $axis
+                length: ${axis.length()}
+            """.trimIndent()
+            }
+
+//            println("TESTING CROSS AXIS: $axis")
+//
+            var crossMin = Double.MAX_VALUE
+            var crossMax = -Double.MAX_VALUE
+
+            var k = 0
+            while (k < vertices.size) {
+                val v = vertices[k]
+                val d = v.dot(axis)
+
+                crossMin = min(d, crossMin)
+                crossMax = max(d, crossMax)
+
+                k++
+            }
+
+            val es =
+                edgeStart.dot(axis) // since this is a cross between the edge normal and the body, min and max are equal
+
+            if (es > crossMax || es < crossMin) {
+//                println(
+//                    """
+//                    NOT COLLIDING ON BOXY $axis
+//                    | edgeStart: $edgeStart
+//                    | edgeEnd: $edgeEnd
+//                    | es: $es
+//                    | crossMin: $crossMin
+//                    | crossMax: $crossMax
+//                """.trimIndent()
+//                )
+                return null
+            }
+
+            /*
+            since es is just a single number, then overlap is simply side closest to es. if closer from minimum, then body must be above and we should use positive axis for normal, otherwise, use negative axis
+             */
+
+            val overlapLow = es - crossMin
+            val overlapHigh = crossMax - es
+
+            if (overlapLow < overlapHigh) {
+                if (overlapLow < minCrossOverlap) {
+                    minCrossOverlap = overlapLow
+                    minCrossAxis = axis
+                    minCrossInDirOfAxis = true
+                }
+            } else {
+                if (overlapHigh < minCrossOverlap) {
+                    minCrossOverlap = overlapHigh
+                    minCrossAxis = axis
+                    minCrossInDirOfAxis = false
+                }
+            }
+
+            j++
+        }
+
+//        check(abs(minCrossAxis!!.length() - 1.0) < 1e-5)
+
+        /*
+        check if the min axis is even allowed; if not, then we're on the wrong side of the edge
+
+        check this for both edge-edge and face-vertex since we don't want edges acting as points from behind, even if in theory this should never happen
+         */
+
+        if (minCrossOverlap < minBodyOverlap) {
+            minCrossAxis!!
+
+            val norm = if (minCrossInDirOfAxis) {
+                Vector3d(minCrossAxis).normalize()
+            } else {
+                Vector3d(minCrossAxis).negate().normalize()
+            }
+
+            check(abs(norm.length() - 1.0) < 1e-5)
+
+            if (norm.dot(allowedNormals[0]) < 0.0) {
+//                println(
+//                    """
+//                    DISALLOWED NORMAL
+//                    | norm: $norm
+//                    | failed allowed: ${allowedNormals[0]}
+//                    | edgeStart: $edgeStart
+//                    | edgeEnd: $edgeEnd
+//                """.trimIndent()
+//                )
+                return null
+            }
+            if (norm.dot(allowedNormals[1]) < 0.0) {
+//                println(
+//                    """
+//                    DISALLOWED NORMAL
+//                    | norm: $norm
+//                    | failed allowed: ${allowedNormals[1]}
+//                    | edgeStart: $edgeStart
+//                    | edgeEnd: $edgeEnd
+//                """.trimIndent()
+//                )
+                return null
+            }
+
+            /*
+            collision is edge-edge
+
+            since this is along an axis which is perpendicular to both edges, we just find the closest points on both edges; use overlap as depth still;
+
+            edge start and end are given,
+            just go through all the edges on cuboid and choose the closest
+             */
+
+            var closestEdgeDistance = Double.MAX_VALUE
+            val closestA = Vector3d()
+
+            var l = 0
+            while (l < vertices.size) {
+                val v1 = vertices[l]
+                var next = l + 1
+
+                if (next >= vertices.size) next = 0
+
+                val v2 = vertices[next]
+
+                val (cA, _, distance) = closestPointsBetweenSegments(
+                    a0 = v1,
+                    a1 = v2,
+                    b0 = edgeStart,
+                    b1 = edgeEnd
+                )
+
+                if (distance < closestEdgeDistance) {
+                    closestEdgeDistance = distance
+                    closestA.set(cA)
+                }
+
+                l++
+            }
+
+            check(closestEdgeDistance != Double.MAX_VALUE)
+
+            return CollisionResult(
+                pointA = closestA,
+                pointB = _empty,
+                norm = norm,
+                depth = minCrossOverlap,
+            )
+        } else {
+            minBodyAxis!!
+
+            val norm = if (minBodyInDirOfAxis) {
+                Vector3d(minBodyAxis).normalize()
+            } else {
+                Vector3d(minBodyAxis).negate().normalize()
+            }
+
+            if (norm.dot(allowedNormals[0]) < 0.0) {
+//                println(
+//                    """
+//                    DISALLOWED NORMAL
+//                    | norm: $norm
+//                    | failed allowed: ${allowedNormals[0]}
+//                    | edgeStart: $edgeStart
+//                    | edgeEnd: $edgeEnd
+//                """.trimIndent()
+//                )
+                return null
+            }
+            if (norm.dot(allowedNormals[1]) < 0.0) {
+//                println(
+//                    """
+//                    DISALLOWED NORMAL
+//                    | norm: $norm
+//                    | failed allowed: ${allowedNormals[1]}
+//                    | edgeStart: $edgeStart
+//                    | edgeEnd: $edgeEnd
+//                """.trimIndent()
+//                )
+                return null
+            }
+
+
+            /*
+            collision is face-vertex, except here the vertex is one of the edge points; this means point of deepest collision is simply the part of the edge closer to the cuboid
+
+            so just project the edge again onto the axis, then depending on the order, choose one
+
+            figure out which edge vertex is the min and max
+             */
+
+            val es1 = edgeStart.dot(minBodyAxis)
+            val es2 = edgeEnd.dot(minBodyAxis)
+
+            if (es1 < es2) {
+                // edgeStart is min, edgeEnd is max
+                return if (minBodyInDirOfAxis) {
+                    check(abs(norm.length() - 1.0) < 1e-5)
+                    CollisionResult(
+                        pointA = Vector3d(edgeEnd).sub(
+                            minBodyAxis.x * minBodyOverlap,
+                            minBodyAxis.y * minBodyOverlap,
+                            minBodyAxis.z * minBodyOverlap
+                        ),
+                        pointB = _empty, // since this is a collision with a static body, pointB doesn't even matter ( see LocalConstraintSolver )
+                        norm = norm,
+                        depth = minBodyOverlap,
+                    )
+                } else {
+                    check(abs(norm.length() - 1.0) < 1e-5)
+                    CollisionResult(
+                        pointA = Vector3d(edgeStart).add(
+                            minBodyAxis.x * minBodyOverlap,
+                            minBodyAxis.y * minBodyOverlap,
+                            minBodyAxis.z * minBodyOverlap
+                        ),
+                        pointB = _empty,
+                        norm = norm,
+                        depth = minBodyOverlap,
+                    )
+                }
+            } else {
+                // edgeStart is max, edgeEnd is min
+                return if (minBodyInDirOfAxis) {
+                    check(abs(norm.length() - 1.0) < 1e-5)
+                    CollisionResult(
+                        pointA = Vector3d(edgeStart).sub(
+                            minBodyAxis.x * minBodyOverlap,
+                            minBodyAxis.y * minBodyOverlap,
+                            minBodyAxis.z * minBodyOverlap
+                        ),
+                        pointB = _empty,
+                        norm = norm,
+                        depth = minBodyOverlap,
+                    )
+                } else {
+                    check(abs(norm.length() - 1.0) < 1e-5)
+                    CollisionResult(
+                        pointA = Vector3d(edgeEnd).add(
+                            minBodyAxis.x * minBodyOverlap,
+                            minBodyAxis.y * minBodyOverlap,
+                            minBodyAxis.z * minBodyOverlap
+                        ),
+                        pointB = _empty,
+                        norm = norm,
+                        depth = minBodyOverlap,
+                    )
+                }
+            }
+        }
+    }
+
+    private inline fun checkOverlap(
+        a: Double,
+        b: Double,
+
+        x: Double,
+        y: Double,
+    ): Boolean {
+        return a < y && b > x
     }
 
     private var _pmin = 0.0
@@ -450,7 +922,7 @@ class LocalMathUtil(
         a0: Vector3d,
         a1: Vector3d,
         b0: Vector3d,
-        b1: Vector3d
+        b1: Vector3d,
     ): Triple<Vector3d, Vector3d, Double> {
         val epsilon = 1e-10
 

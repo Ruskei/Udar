@@ -1,9 +1,12 @@
 package com.ixume.udar.collisiondetection.mesh.quadtree
 
-import com.ixume.udar.collisiondetection.mesh.LocalMesher
+import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
+import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFaces
+import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.dynamicaabb.AABBTree
 import com.ixume.udar.testing.debugConnect
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
+import it.unimi.dsi.fastutil.ints.IntArrayList
 import org.bukkit.Color
 import org.bukkit.Particle
 import org.bukkit.World
@@ -43,7 +46,7 @@ class EdgeQuadtreeNode(
         start: Double,
         end: Double,
         axis: LocalMesher.AxisD,
-        meshFaces: LocalMesher.MeshFaces
+        meshFaces: MeshFaces,
     ): Boolean {
         if (!contains(a, b)) return false
 
@@ -84,7 +87,7 @@ class EdgeQuadtreeNode(
 
                 checkNotNull(f2)
 
-                val edge = QuadtreeEdge(f1, f2)
+                val edge = QuadtreeEdge(f1, f2, a, b)
                 edge.xor(start, end)
                 pointData[numPoints] = edge
 
@@ -193,22 +196,23 @@ class EdgeQuadtreeNode(
 
     private val _vec3Mounts = DoubleArray(12)
 
-    fun clearConcave(tree: AABBTree, axis: LocalMesher.AxisD) {
+    fun fixUp(tree: AABBTree, axis: LocalMesher.AxisD) {
         if (isLeaf) {
             // go through every edge in every axis and check if its center is mounted to more than 1 block; if so, it's concave and should be removed
             var i = 0
             while (i < numPoints) {
+                val pts = DoubleArrayList()
+                val ptMounts = IntArrayList()
+
                 val data = pointData[i]!!
-                val s = data.points.size
+                val s = data._points.size
                 check(s % 2 == 0) {
                     """
                         | Axis: $axis
-                        | Edge points: ${data.points.joinToString { it.toString() }}
+                        | Edge points: ${data._points.joinToString { it.toString() }}
                         | Axis point: (${points[i * 2]}, ${points[i * 2 + 1]})
                     """.trimMargin()
                 }
-
-                val removedPoints = DoubleArrayList()
 
                 _vec3Mounts[axis.aOffset] = points[i * 2] + MOUNT_EPSILON
                 _vec3Mounts[axis.bOffset] = points[i * 2 + 1] + MOUNT_EPSILON
@@ -224,10 +228,11 @@ class EdgeQuadtreeNode(
 
                 val lvlOffset = axis.levelOffset
 
-                val itr = data.points.iterator()
+                val itr = data._points.iterator()
 
                 while (itr.hasNext()) {
                     var mounted = false
+                    var mount = -1
 
                     val d0 = itr.nextDouble()
                     val d1 = itr.nextDouble()
@@ -240,29 +245,167 @@ class EdgeQuadtreeNode(
                         if (tree.contains(_vec3Mounts[j * 3], _vec3Mounts[j * 3 + 1], _vec3Mounts[j * 3 + 2])) {
                             if (mounted) {
                                 // concave...
-                                removedPoints.add(d0)
-                                removedPoints.add(d1)
+                                mounted = false
                                 break
                             } else {
                                 mounted = true
+                                mount = j
                             }
                         }
 
                         j++
                     }
+
+                    if (mounted) {
+                        pts.add(d0)
+                        pts.add(d1)
+                        // since _points is sorted, then this operation is stable, thus pointMounts will also be in the right order
+                        ptMounts.add(mount)
+                    }
                 }
 
-                data.points.removeAll(removedPoints)
+                if (pts.isEmpty) {
+                    i++
+                    continue
+                }
+
+                /*
+                now all the remaining edges are valid and just need to be merged; edges can only be merged if they are consecutive and mounted in the same way
+                edges A and B starting at a1, a2 and b1, b2 respectively can be merged by removing a2 and b1
+
+                edge i has its data in pts[i * 2] and pts[i * 2 + 1], and its mount is in pointMounts[i]
+                 */
+
+                if (pts.isEmpty) {
+                    i++
+                    continue
+                }
+
+                check(pts.size % 2 == 0)
+                check(ptMounts.isNotEmpty())
+                check(ptMounts.size * 2 == pts.size)
+
+                var currentStart = pts.getDouble(0)
+                var latestEnd: Double = pts.getDouble(1)
+                var currentEdgeMount = ptMounts.getInt(0)
+
+                var j = 1
+                while (j < ptMounts.size) {
+                    val s = pts.getDouble(j * 2)
+                    check(s > latestEnd)
+                    val m = ptMounts.getInt(j)
+
+                    if (m == currentEdgeMount && s - latestEnd < ABOVE_ASYMMETRY_EPSILON) {
+                        latestEnd = pts.getDouble(j * 2 + 1)
+                    } else {
+                        data.points.add(currentStart)
+                        data.points.add(latestEnd)
+                        data.pointMounts.add(currentEdgeMount)
+
+                        val e = pts.getDouble(j * 2 + 1)
+
+                        currentStart = s
+                        latestEnd = e
+                        currentEdgeMount = m
+                    }
+
+                    j++
+                }
+
+                data.points.add(currentStart)
+                data.points.add(latestEnd)
+                data.pointMounts.add(currentEdgeMount)
 
                 i++
             }
         } else {
             var i = 0
             while (i < 4) {
-                children!![i].clearConcave(tree, axis)
+                children!![i].fixUp(tree, axis)
                 i++
             }
         }
+    }
+
+    fun overlaps(bb: AABB, axis: LocalMesher.AxisD, out: MutableList<QuadtreeEdge>) {
+        when (axis) {
+            LocalMesher.AxisD.X -> {
+                if (!(max.x >= bb.minY && min.x < bb.maxY &&
+                      max.y >= bb.minZ && min.y < bb.maxZ)
+                ) return
+
+                if (isLeaf) {
+                    var i = 0
+                    while (i < numPoints) {
+                        val a = points[i * 2]
+                        val b = points[i * 2 + 1]
+
+                        if (a >= bb.minY && a <= bb.maxY &&
+                            b >= bb.minZ && b <= bb.maxZ
+                        ) {
+                            out += pointData[i]!!
+                        }
+
+                        i++
+                    }
+
+                    return
+                }
+            }
+
+            LocalMesher.AxisD.Y -> {
+                if (!(max.x >= bb.minX && min.x < bb.maxX &&
+                      max.y >= bb.minZ && min.y < bb.maxZ)
+                ) return
+
+                if (isLeaf) {
+                    var i = 0
+                    while (i < numPoints) {
+                        val a = points[i * 2]
+                        val b = points[i * 2 + 1]
+
+                        if (a >= bb.minX && a <= bb.maxX &&
+                            b >= bb.minZ && b <= bb.maxZ
+                        ) {
+                            out += pointData[i]!!
+                        }
+
+                        i++
+                    }
+
+                    return
+                }
+            }
+
+            LocalMesher.AxisD.Z -> {
+                if (!(max.x >= bb.minX && min.x < bb.maxX &&
+                      max.y >= bb.minY && min.y < bb.maxY)
+                ) return
+
+                if (isLeaf) {
+                    var i = 0
+                    while (i < numPoints) {
+                        val a = points[i * 2]
+                        val b = points[i * 2 + 1]
+
+                        if (a >= bb.minX && a <= bb.maxX &&
+                            b >= bb.minY && b <= bb.maxY
+                        ) {
+                            out += pointData[i]!!
+                        }
+
+                        i++
+                    }
+
+                    return
+                }
+            }
+        }
+
+        children!![0].overlaps(bb, axis, out)
+        children!![1].overlaps(bb, axis, out)
+        children!![2].overlaps(bb, axis, out)
+        children!![3].overlaps(bb, axis, out)
     }
 
     fun visualize(world: World, axis: LocalMesher.AxisD) {

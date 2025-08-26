@@ -148,6 +148,7 @@ class GJKEPAContactGenerator<T>(
                                 Contact(
                                     activeBody, other, CollisionResult(
                                         myInt,
+                                        otherInt,
                                         Vector3d(norm).negate(),
                                         dis2,
 //                                shape,
@@ -200,12 +201,13 @@ class GJKEPAContactGenerator<T>(
                         }
 
                         if (dNorm == Vector3d() || !dNorm.isFinite) return emptyList()
-                        val (closestMine, _) = originals[vertexClosest!!]!!
+                        val (closestMine, closestOther) = originals[vertexClosest!!]!!
 
                         return listOf(
                             Contact(
                                 activeBody, other, CollisionResult(
                                     closestMine,
+                                    closestOther,
                                     Vector3d(dNorm).negate(),
                                     dClosest,
 //                            shape,

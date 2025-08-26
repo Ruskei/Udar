@@ -1,6 +1,6 @@
 package com.ixume.udar.collisiondetection.mesh.aabbtree2d
 
-import com.ixume.udar.collisiondetection.mesh.LocalMesher
+import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.testing.debugConnect
 import org.bukkit.Color
 import org.bukkit.Particle
@@ -96,6 +96,10 @@ class AABB2D(
             end = withLevel(axis, data[MIN_A], data[MIN_B], level),
             options = options,
         )
+    }
+
+    override fun toString(): String {
+        return "{[${data[MIN_A]}, ${data[MIN_B]}] -> [${data[MAX_A]}, ${data[MAX_B]}]}"
     }
 
     companion object {

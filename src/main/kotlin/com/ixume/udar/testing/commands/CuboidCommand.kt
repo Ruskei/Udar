@@ -40,7 +40,7 @@ object CuboidCommand : com.ixume.udar.testing.commands.Command {
             hasGravity = opts.hasGravity,
         )
 
-        sender.world.physicsWorld?.registerBody(BlockEntityCuboid(rb, Material.CHERRY_LEAVES))
+        sender.world.physicsWorld?.registerBody(BlockEntityCuboid(rb, Material.GLASS))
 
         return true
     }

@@ -1,13 +1,11 @@
-package com.ixume.udar.collisiondetection.mesh
+package com.ixume.udar.collisiondetection.mesh.mesh2
 
 import com.ixume.udar.collisiondetection.mesh.aabbtree2d.AABB2D
 import com.ixume.udar.collisiondetection.mesh.aabbtree2d.AABB2D.Companion.MAX_A
 import com.ixume.udar.collisiondetection.mesh.aabbtree2d.AABB2D.Companion.MAX_B
 import com.ixume.udar.collisiondetection.mesh.aabbtree2d.AABB2D.Companion.MIN_A
 import com.ixume.udar.collisiondetection.mesh.aabbtree2d.AABB2D.Companion.MIN_B
-import com.ixume.udar.collisiondetection.mesh.aabbtree2d.AABBTree2D
 import com.ixume.udar.collisiondetection.mesh.quadtree.EdgeQuadtree
-import com.ixume.udar.collisiondetection.mesh.quadtree.QuadtreeEdge
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.dynamicaabb.AABBTree
 import org.bukkit.World
@@ -15,6 +13,8 @@ import org.joml.Vector2d
 import org.joml.Vector3d
 import org.joml.Vector3i
 import kotlin.math.floor
+import kotlin.math.max
+import kotlin.math.min
 
 class LocalMesher {
     private val _bbTree = AABBTree()
@@ -58,7 +58,14 @@ class LocalMesher {
             }
         }
 
-        println("bbs: ${_bbs.size}")
+        if (_bbs.size == 0) {
+            return Mesh2(
+                start = meshStart,
+                end = meshEnd,
+            )
+        }
+
+//        println("BBs: ${_bbs.size}")
 
         val meshFaces = MeshFaces(
             createMeshFaces(AxisD.X, meshStart, meshEnd),
@@ -166,14 +173,17 @@ class LocalMesher {
         meshFaces: MeshFaces,
     ) {
         _xAxiss = EdgeQuadtree(
+            AxisD.X,
             Vector2d(meshStart.y.toDouble() - 2.0, meshStart.z.toDouble() - 2.0),
             Vector2d(meshEnd.y.toDouble() + 2.0, meshEnd.z.toDouble() + 2.0),
         )
         _yAxiss = EdgeQuadtree(
+            AxisD.Y,
             Vector2d(meshStart.x.toDouble() - 2.0, meshStart.z.toDouble() - 2.0),
             Vector2d(meshEnd.x.toDouble() + 2.0, meshEnd.z.toDouble() + 2.0),
         )
         _zAxiss = EdgeQuadtree(
+            AxisD.Z,
             Vector2d(meshStart.x.toDouble() - 2.0, meshStart.y.toDouble() - 2.0),
             Vector2d(meshEnd.x.toDouble() + 2.0, meshEnd.y.toDouble() + 2.0),
         )
@@ -190,19 +200,19 @@ class LocalMesher {
 
             val x0aStart = _bb[BB_MIN_Y]
             val x0bStart = _bb[BB_MIN_Z]
-            _xAxiss.insertEdge(x0aStart, x0bStart, xStart, xEnd, AxisD.X, meshFaces)
+            _xAxiss.insertEdge(x0aStart, x0bStart, xStart, xEnd, meshFaces)
 
             val x1aStart = _bb[BB_MAX_Y]
             val x1bStart = _bb[BB_MIN_Z]
-            _xAxiss.insertEdge(x1aStart, x1bStart, xStart, xEnd, AxisD.X, meshFaces)
+            _xAxiss.insertEdge(x1aStart, x1bStart, xStart, xEnd, meshFaces)
 
             val x2aStart = _bb[BB_MAX_Y]
             val x2bStart = _bb[BB_MAX_Z]
-            _xAxiss.insertEdge(x2aStart, x2bStart, xStart, xEnd, AxisD.X, meshFaces)
+            _xAxiss.insertEdge(x2aStart, x2bStart, xStart, xEnd, meshFaces)
 
             val x3aStart = _bb[BB_MIN_Y]
             val x3bStart = _bb[BB_MAX_Z]
-            _xAxiss.insertEdge(x3aStart, x3bStart, xStart, xEnd, AxisD.X, meshFaces)
+            _xAxiss.insertEdge(x3aStart, x3bStart, xStart, xEnd, meshFaces)
 
             //y axis
             val yStart = _bb[BB_MIN_Y]
@@ -210,19 +220,19 @@ class LocalMesher {
 
             val y0aStart = _bb[BB_MIN_X]
             val y0bStart = _bb[BB_MIN_Z]
-            _yAxiss.insertEdge(y0aStart, y0bStart, yStart, yEnd, AxisD.Y, meshFaces)
+            _yAxiss.insertEdge(y0aStart, y0bStart, yStart, yEnd, meshFaces)
 
             val y1aStart = _bb[BB_MAX_X]
             val y1bStart = _bb[BB_MIN_Z]
-            _yAxiss.insertEdge(y1aStart, y1bStart, yStart, yEnd, AxisD.Y, meshFaces)
+            _yAxiss.insertEdge(y1aStart, y1bStart, yStart, yEnd, meshFaces)
 
             val y2aStart = _bb[BB_MAX_X]
             val y2bStart = _bb[BB_MAX_Z]
-            _yAxiss.insertEdge(y2aStart, y2bStart, yStart, yEnd, AxisD.Y, meshFaces)
+            _yAxiss.insertEdge(y2aStart, y2bStart, yStart, yEnd, meshFaces)
 
             val y3aStart = _bb[BB_MIN_X]
             val y3bStart = _bb[BB_MAX_Z]
-            _yAxiss.insertEdge(y3aStart, y3bStart, yStart, yEnd, AxisD.Y, meshFaces)
+            _yAxiss.insertEdge(y3aStart, y3bStart, yStart, yEnd, meshFaces)
 
             //z axis
             val zStart = _bb[BB_MIN_Z]
@@ -230,75 +240,44 @@ class LocalMesher {
 
             val z0aStart = _bb[BB_MIN_X]
             val z0bStart = _bb[BB_MIN_Y]
-            _zAxiss.insertEdge(z0aStart, z0bStart, zStart, zEnd, AxisD.Z, meshFaces)
+            _zAxiss.insertEdge(z0aStart, z0bStart, zStart, zEnd, meshFaces)
 
             val z1aStart = _bb[BB_MAX_X]
             val z1bStart = _bb[BB_MIN_Y]
-            _zAxiss.insertEdge(z1aStart, z1bStart, zStart, zEnd, AxisD.Z, meshFaces)
+            _zAxiss.insertEdge(z1aStart, z1bStart, zStart, zEnd, meshFaces)
 
             val z2aStart = _bb[BB_MAX_X]
             val z2bStart = _bb[BB_MAX_Y]
-            _zAxiss.insertEdge(z2aStart, z2bStart, zStart, zEnd, AxisD.Z, meshFaces)
+            _zAxiss.insertEdge(z2aStart, z2bStart, zStart, zEnd, meshFaces)
 
             val z3aStart = _bb[BB_MIN_X]
             val z3bStart = _bb[BB_MAX_Y]
-            _zAxiss.insertEdge(z3aStart, z3bStart, zStart, zEnd, AxisD.Z, meshFaces)
+            _zAxiss.insertEdge(z3aStart, z3bStart, zStart, zEnd, meshFaces)
 
             i++
         }
 
-        _xAxiss.fixUp(_bbTree, AxisD.X)
-        _yAxiss.fixUp(_bbTree, AxisD.Y)
-        _zAxiss.fixUp(_bbTree, AxisD.Z)
+        _xAxiss.fixUp(_bbTree)
+        _yAxiss.fixUp(_bbTree)
+        _zAxiss.fixUp(_bbTree)
     }
 
     class Mesh2(
         val start: Vector3i,
         val end: Vector3i,
-        val faces: MeshFaces,
-        val xEdges: EdgeQuadtree,
-        val yEdges: EdgeQuadtree,
-        val zEdges: EdgeQuadtree,
+        val faces: MeshFaces? = null,
+        val xEdges: EdgeQuadtree? = null,
+        val yEdges: EdgeQuadtree? = null,
+        val zEdges: EdgeQuadtree? = null,
     ) {
         fun visualize(world: World) {
-            faces.xFaces.ls.forEach { it.visualize(world) }
-            faces.yFaces.ls.forEach { it.visualize(world) }
-            faces.zFaces.ls.forEach { it.visualize(world) }
+//            faces?.xFaces?.ls?.forEach { it.visualize(world) }
+//            faces?.yFaces?.ls?.forEach { it.visualize(world) }
+//            faces?.zFaces?.ls?.forEach { it.visualize(world) }
 
-            xEdges.visualize(world, AxisD.X)
-            yEdges.visualize(world, AxisD.Y)
-            zEdges.visualize(world, AxisD.Z)
-        }
-    }
-
-    class MeshFaces(
-        val xFaces: MeshFaceSortedList,
-        val yFaces: MeshFaceSortedList,
-        val zFaces: MeshFaceSortedList,
-    )
-
-    class MeshFace(
-        val axis: AxisD,
-        val level: Double,
-
-        val holes: AABBTree2D,
-    ): Comparable<MeshFace> {
-        lateinit var antiHoles: AABBTree2D
-        val edges = ArrayList<QuadtreeEdge>()
-
-        fun visualize(world: World) {
-//            holes.visualize(world, level, axis, true)
-            antiHoles.visualize(world, level, axis, false)
-        }
-
-        override fun compareTo(other: MeshFace): Int {
-            return if (level > other.level) {
-                1
-            } else if (level == other.level) {
-                0
-            } else {
-                -1
-            }
+            xEdges?.visualize(world)
+            yEdges?.visualize(world)
+            zEdges?.visualize(world)
         }
     }
 
@@ -308,7 +287,43 @@ class LocalMesher {
         val aOffset: Int,
         val bOffset: Int,
     ) {
-        X(Vector3d(1.0, 0.0, 0.0), 0, 1, 2), Y(Vector3d(0.0, 1.0, 0.0), 1, 0, 2), Z(Vector3d(0.0, 0.0, 1.0), 2, 0, 1)
+        X(Vector3d(1.0, 0.0, 0.0), 0, 1, 2), Y(Vector3d(0.0, 1.0, 0.0), 1, 0, 2), Z(Vector3d(0.0, 0.0, 1.0), 2, 0, 1);
+
+        fun project(vertices: Array<Vector3d>): Pair<Double, Double> {
+            var min = Double.MAX_VALUE
+            var max = -Double.MAX_VALUE
+
+            when (this) {
+                X -> {
+                    for (vertex in vertices) {
+                        min = min(min, vertex.x)
+                        max = max(max, vertex.x)
+                    }
+                }
+                Y -> {
+                    for (vertex in vertices) {
+                        min = min(min, vertex.y)
+                        max = max(max, vertex.y)
+                    }
+                }
+                Z -> {
+                    for (vertex in vertices) {
+                        min = min(min, vertex.z)
+                        max = max(max, vertex.z)
+                    }
+                }
+            }
+
+            return min to max
+        }
+
+        fun project(vertex: Vector3d): Double {
+            return when (this) {
+                X -> vertex.x
+                Y -> vertex.y
+                Z -> vertex.z
+            }
+        }
     }
 }
 

@@ -24,15 +24,15 @@ object StepCommand : Command {
         val world = sender.world
         val physicsWorld = world.physicsWorld ?: return true
 
-        if (physicsWorld.frozen) {
+        if (physicsWorld.frozen.get()) {
             if (args.isEmpty()) {
-                physicsWorld.steps = 1
+                physicsWorld.steps.set(1)
                 sender.sendMessage("Stepping!")
             } else {
                 val n = args[0].toIntOrNull()
                 if (n == null) {
                     if (args[0] == "collision") {
-                        physicsWorld.untilCollision = true
+                        physicsWorld.untilCollision.set(true)
 
                         sender.sendMessage("Stepping until a collision!")
 
@@ -42,7 +42,7 @@ object StepCommand : Command {
                     return true
                 }
 
-                physicsWorld.steps = n
+                physicsWorld.steps.set(n)
                 sender.sendMessage("Stepping for $n steps!")
             }
         }

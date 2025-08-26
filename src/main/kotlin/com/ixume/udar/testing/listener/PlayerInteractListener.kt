@@ -2,7 +2,7 @@ package com.ixume.udar.testing.listener
 
 import com.ixume.udar.Udar
 import com.ixume.udar.body.active.ActiveBody
-import com.ixume.udar.collisiondetection.mesh.LocalMesher
+import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.physicsWorld
 import com.ixume.udar.testing.debugConnect

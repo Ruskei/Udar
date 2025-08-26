@@ -1,6 +1,6 @@
 package com.ixume.udar.collisiondetection.mesh.aabbtree2d
 
-import com.ixume.udar.collisiondetection.mesh.LocalMesher
+import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import org.bukkit.World
 import kotlin.math.sign
 
@@ -66,12 +66,15 @@ class AABBNode2D(
         return sign(other.exploredCost - exploredCost).toInt()
     }
 
-    fun isFilledAt(x: Double, y: Double): Boolean {
-        return if (isLeaf) {
-            bb.contains(x, y)
-        } else {
-            child1!!.isFilledAt(x, y) || child2!!.isFilledAt(x, y)
+    fun overlaps(bb: AABB2D, out: MutableList<AABB2D>) {
+        if (!bb.overlaps(this.bb)) return
+        if (isLeaf) {
+            out += this.bb
+            return
         }
+
+        child1!!.overlaps(bb, out)
+        child2!!.overlaps(bb, out)
     }
 
     fun visualize(world: World, depth: Int, level: Double, axis: LocalMesher.AxisD, isHole: Boolean) {

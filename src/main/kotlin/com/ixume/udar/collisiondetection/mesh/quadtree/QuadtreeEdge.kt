@@ -1,18 +1,26 @@
 package com.ixume.udar.collisiondetection.mesh.quadtree
 
-import com.ixume.udar.collisiondetection.mesh.LocalMesher
+import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFace
 import it.unimi.dsi.fastutil.doubles.DoubleAVLTreeSet
+import it.unimi.dsi.fastutil.doubles.DoubleArrayList
+import it.unimi.dsi.fastutil.ints.IntArrayList
 
 class QuadtreeEdge(
-    val f1: LocalMesher.MeshFace,
-    val f2: LocalMesher.MeshFace,
+    val f1: MeshFace,
+    val f2: MeshFace,
+    val a: Double,
+    val b: Double,
 ) {
     init {
         f1.edges += this
         f2.edges += this
     }
 
-    val points = DoubleAVLTreeSet()
+    val _points = DoubleAVLTreeSet()
+    val points = DoubleArrayList()
+
+    val pointMounts = IntArrayList()
+
     private val xoredPoints = DoubleAVLTreeSet() // if a point has been xor'd out, then future calls must be invalid
 
     fun xor(a: Double, b: Double) {
@@ -22,8 +30,8 @@ class QuadtreeEdge(
     }
 
     private fun _xor(d: Double) {
-        if (!points.remove(d)) {
-            points.add(d)
+        if (!_points.remove(d)) {
+            _points.add(d)
         } else {
             xoredPoints.add(d)
         }

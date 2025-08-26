@@ -24,9 +24,9 @@ object FreezeCommand : Command {
         val world = sender.world
         val physicsWorld = world.physicsWorld ?: return true
 
-        physicsWorld.frozen = !physicsWorld.frozen
+        physicsWorld.frozen.set(!physicsWorld.frozen.get())
 
-        if (physicsWorld.frozen) {
+        if (physicsWorld.frozen.get()) {
             sender.sendMessage("Frozen!")
         } else {
             sender.sendMessage("Unfrozen!")

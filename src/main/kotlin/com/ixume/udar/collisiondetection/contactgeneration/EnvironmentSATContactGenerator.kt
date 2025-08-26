@@ -113,13 +113,13 @@ class EnvironmentSATContactGenerator(
                         Axis.X -> {
                             if (cheesyFace.invalid.size < cheesyFace.valid.size) {
                                 for (invalid in cheesyFace.invalid) {
-                                    if (p.point.y in invalid.first.x..invalid.second.x && p.point.z in invalid.first.y..invalid.second.y) {
+                                    if (p.pointA.y in invalid.first.x..invalid.second.x && p.pointA.z in invalid.first.y..invalid.second.y) {
                                         return@validate false
                                     }
                                 }
 
                                 val firstMatch =
-                                    cheesyFace.valid.firstOrNull { p.point.y in it.start.x..it.end.x && p.point.z in it.start.y..it.end.y }
+                                    cheesyFace.valid.firstOrNull { p.pointA.y in it.start.x..it.end.x && p.pointA.z in it.start.y..it.end.y }
                                 if (firstMatch == null) {
                                     return@validate false
                                 }
@@ -129,7 +129,7 @@ class EnvironmentSATContactGenerator(
                                 return@validate d
                             } else {
                                 val firstMatch =
-                                    cheesyFace.valid.firstOrNull { p.point.y in it.start.x..it.end.x && p.point.z in it.start.y..it.end.y }
+                                    cheesyFace.valid.firstOrNull { p.pointA.y in it.start.x..it.end.x && p.pointA.z in it.start.y..it.end.y }
                                 if (firstMatch == null) {
                                     return@validate false
                                 }
@@ -140,7 +140,7 @@ class EnvironmentSATContactGenerator(
                                 if (!d) return@validate false
 
                                 for (invalid in cheesyFace.invalid) {
-                                    if (p.point.y in invalid.first.x..invalid.second.x && p.point.z in invalid.first.y..invalid.second.y) {
+                                    if (p.pointA.y in invalid.first.x..invalid.second.x && p.pointA.z in invalid.first.y..invalid.second.y) {
                                         return@validate false
                                     }
                                 }
@@ -152,13 +152,13 @@ class EnvironmentSATContactGenerator(
                         Axis.Y -> {
                             if (cheesyFace.invalid.size < cheesyFace.valid.size) {
                                 for (invalid in cheesyFace.invalid) {
-                                    if (p.point.x in invalid.first.x..invalid.second.x && p.point.z in invalid.first.y..invalid.second.y) {
+                                    if (p.pointA.x in invalid.first.x..invalid.second.x && p.pointA.z in invalid.first.y..invalid.second.y) {
                                         return@validate false
                                     }
                                 }
 
                                 val firstMatch =
-                                    cheesyFace.valid.firstOrNull { p.point.x in it.start.x..it.end.x && p.point.z in it.start.y..it.end.y }
+                                    cheesyFace.valid.firstOrNull { p.pointA.x in it.start.x..it.end.x && p.pointA.z in it.start.y..it.end.y }
                                 if (firstMatch == null) {
                                     return@validate false
                                 }
@@ -167,7 +167,7 @@ class EnvironmentSATContactGenerator(
                                 return@validate d
                             } else {
                                 val firstMatch =
-                                    cheesyFace.valid.firstOrNull { p.point.x in it.start.x..it.end.x && p.point.z in it.start.y..it.end.y }
+                                    cheesyFace.valid.firstOrNull { p.pointA.x in it.start.x..it.end.x && p.pointA.z in it.start.y..it.end.y }
                                 if (firstMatch == null) {
                                     return@validate false
                                 }
@@ -177,7 +177,7 @@ class EnvironmentSATContactGenerator(
                                 if (!d) return@validate false
 
                                 for (invalid in cheesyFace.invalid) {
-                                    if (p.point.x in invalid.first.x..invalid.second.x && p.point.z in invalid.first.y..invalid.second.y) {
+                                    if (p.pointA.x in invalid.first.x..invalid.second.x && p.pointA.z in invalid.first.y..invalid.second.y) {
                                         return@validate false
                                     }
                                 }
@@ -189,13 +189,13 @@ class EnvironmentSATContactGenerator(
                         Axis.Z -> {
                             if (cheesyFace.invalid.size < cheesyFace.valid.size) {
                                 for (invalid in cheesyFace.invalid) {
-                                    if (p.point.x in invalid.first.x..invalid.second.x && p.point.y in invalid.first.y..invalid.second.y) {
+                                    if (p.pointA.x in invalid.first.x..invalid.second.x && p.pointA.y in invalid.first.y..invalid.second.y) {
                                         return@validate false
                                     }
                                 }
 
                                 val firstMatch =
-                                    cheesyFace.valid.firstOrNull { p.point.x in it.start.x..it.end.x && p.point.y in it.start.y..it.end.y }
+                                    cheesyFace.valid.firstOrNull { p.pointA.x in it.start.x..it.end.x && p.pointA.y in it.start.y..it.end.y }
                                 if (firstMatch == null) {
                                     return@validate false
                                 }
@@ -204,7 +204,7 @@ class EnvironmentSATContactGenerator(
                                 return@validate d
                             } else {
                                 val firstMatch =
-                                    cheesyFace.valid.firstOrNull { p.point.x in it.start.x..it.end.x && p.point.y in it.start.y..it.end.y }
+                                    cheesyFace.valid.firstOrNull { p.pointA.x in it.start.x..it.end.x && p.pointA.y in it.start.y..it.end.y }
                                 if (firstMatch == null) {
                                     return@validate false
                                 }
@@ -213,7 +213,7 @@ class EnvironmentSATContactGenerator(
                                 if (!d) return@validate false
 
                                 for (invalid in cheesyFace.invalid) {
-                                    if (p.point.x in invalid.first.x..invalid.second.x && p.point.y in invalid.first.y..invalid.second.y) {
+                                    if (p.pointA.x in invalid.first.x..invalid.second.x && p.pointA.y in invalid.first.y..invalid.second.y) {
                                         return@validate false
                                     }
                                 }
@@ -227,8 +227,8 @@ class EnvironmentSATContactGenerator(
                 if (valid) {
                     if (p.depth > maxDepth) {
                         activeBody.world.debugConnect(
-                            p.point,
-                            Vector3d(p.point).add(p.norm),
+                            p.pointA,
+                            Vector3d(p.pointA).add(p.norm),
                             Particle.DustOptions(Color.WHITE, 0.2f)
                         )
 
@@ -236,7 +236,7 @@ class EnvironmentSATContactGenerator(
                             Particle.REDSTONE,
                             Location(
                                 activeBody.world,
-                                p.point.x, p.point.y, p.point.z,
+                                p.pointA.x, p.pointA.y, p.pointA.z,
                             ),
                             1, Particle.DustOptions(Color.BLACK, 0.4f)
                         )
@@ -248,7 +248,7 @@ class EnvironmentSATContactGenerator(
                         prevMaxDepth = p.depth
                     }
 
-                    faceCollisions += p.point
+                    faceCollisions += p.pointA
 
                     collisions += p
                 }
@@ -266,7 +266,7 @@ class EnvironmentSATContactGenerator(
                 prevMaxDepth = r.depth
             }
 
-            edgeCollisions += r.point
+            edgeCollisions += r.pointA
 
             collisions += r
         }
@@ -337,15 +337,15 @@ class EnvironmentSATContactGenerator(
 
         return (when (face.axis) {
             Axis.X -> {
-                r.filter { it.point.y in start.y..end.y && it.point.z in start.z..end.z }
+                r.filter { it.pointA.y in start.y..end.y && it.pointA.z in start.z..end.z }
             }
 
             Axis.Y -> {
-                r.filter { it.point.x in start.x..end.x && it.point.z in start.z..end.z }
+                r.filter { it.pointA.x in start.x..end.x && it.pointA.z in start.z..end.z }
             }
 
             Axis.Z -> {
-                r.filter { it.point.y in start.y..end.y && it.point.x in start.x..end.x }
+                r.filter { it.pointA.y in start.y..end.y && it.pointA.x in start.x..end.x }
             }
         }).sortedBy { -it.depth }
     }

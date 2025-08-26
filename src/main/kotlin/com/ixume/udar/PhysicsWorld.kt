@@ -3,18 +3,18 @@ package com.ixume.udar
 import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
-import com.ixume.udar.dynamicaabb.AABBTree
 import com.ixume.udar.collisiondetection.mesh.Mesh
 import com.ixume.udar.collisiondetection.pool.MathPool
+import com.ixume.udar.dynamicaabb.AABBTree
 import com.ixume.udar.physics.BodyIDMap
 import com.ixume.udar.physics.Contact
 import com.ixume.udar.physics.EntityUpdater
 import com.ixume.udar.physics.StatusUpdater
 import com.ixume.udar.physics.constraint.ConstraintSolverManager
 import com.ixume.udar.testing.PhysicsWorldTestDebugData
+import com.ixume.udar.testing.debugConnect
 import kotlinx.coroutines.*
-import org.bukkit.Bukkit
-import org.bukkit.World
+import org.bukkit.*
 import org.joml.Vector3d
 import java.nio.FloatBuffer
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -25,7 +25,7 @@ import kotlin.math.roundToInt
 import kotlin.system.measureNanoTime
 
 class PhysicsWorld(
-    val world: World
+    val world: World,
 ) {
     private val bodiesToAdd = AtomicList<ActiveBody>()
     private val bodiesToRemove = AtomicList<ActiveBody>()
@@ -49,9 +49,9 @@ class PhysicsWorld(
 
     private var time = 0
     private var physicsTime = 0
-    var frozen = false
-    var untilCollision = false
-    var steps = 0
+    val frozen = AtomicBoolean(false)
+    val untilCollision = AtomicBoolean(false)
+    val steps = AtomicInteger(0)
 
     val debugData = PhysicsWorldTestDebugData()
 
@@ -109,8 +109,8 @@ class PhysicsWorld(
         time++
         repeat((0.05 / TIME_STEP).roundToInt()) {
             var doTick = true
-            if (frozen) {
-                if (!untilCollision && --steps < 0) doTick = false
+            if (frozen.get()) {
+                if (!untilCollision.get() && steps.decrementAndGet() < 0) doTick = false
             }
 
             if (doTick) {
@@ -188,7 +188,7 @@ class PhysicsWorld(
                                     body.previousContacts.filter { it.first is EnvironmentBody || it.second is EnvironmentBody }
 
                                 for (ourContact in ourContacts) {
-                                    if (ourContact.result.point.distance(c.result.point) < 1e-2) {
+                                    if (ourContact.result.pointA.distance(c.result.pointA) < 1e-2) {
                                         c.lambdaSum += ourContact.lambdaSum * Udar.CONFIG.collision.lambdaCarryover
 
                                         break
@@ -226,9 +226,9 @@ class PhysicsWorld(
                     }
                 }
 
-                if (untilCollision && contacts.isNotEmpty()) {
-                    untilCollision = false
-                    frozen = true
+                if (untilCollision.get() && (contacts.isNotEmpty() || envContacts.isNotEmpty())) {
+                    untilCollision.set(false)
+                    frozen.set(true)
                 }
 
                 val duration = (System.nanoTime() - startTime).toDouble()
@@ -265,6 +265,38 @@ class PhysicsWorld(
                 }
 
                 busy.set(false)
+            }
+
+            if (Udar.CONFIG.debug.normals > 0) {
+                for (contact in contacts) {
+                    world.spawnParticle(
+                        Particle.REDSTONE,
+                        Location(world, contact.result.pointA.x, contact.result.pointA.y, contact.result.pointA.z),
+                        1,
+                        Particle.DustOptions(Color.RED, 0.3f),
+                    )
+
+                    world.debugConnect(
+                        start = contact.result.pointA,
+                        end = Vector3d(contact.result.pointA).add(contact.result.norm),
+                        options = Particle.DustOptions(Color.BLUE, 0.25f),
+                    )
+                }
+
+                for (contact in envContacts) {
+                    world.spawnParticle(
+                        Particle.REDSTONE,
+                        Location(world, contact.result.pointA.x, contact.result.pointA.y, contact.result.pointA.z),
+                        1,
+                        Particle.DustOptions(Color.RED, 0.3f),
+                    )
+
+                    world.debugConnect(
+                        start = contact.result.pointA,
+                        end = Vector3d(contact.result.pointA).add(contact.result.norm),
+                        options = Particle.DustOptions(Color.BLUE, 0.25f),
+                    )
+                }
             }
         }
     }
@@ -338,7 +370,7 @@ class PhysicsWorld(
                     for (contact in result) {
                         contact.id = runningContactID.andIncrement
                         for (ourContact in ourContacts) {
-                            if (ourContact.result.point.distance(contact.result.point) < 1.0) {
+                            if (ourContact.result.pointA.distance(contact.result.pointA) < 1.0) {
                                 contact.lambdaSum = ourContact.lambdaSum * Udar.CONFIG.collision.lambdaCarryover
                                 contact.t1Sum = ourContact.t1Sum * Udar.CONFIG.collision.lambdaCarryover
                                 contact.t2Sum = ourContact.t2Sum * Udar.CONFIG.collision.lambdaCarryover

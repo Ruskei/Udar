@@ -1,4 +1,4 @@
-package com.ixume.udar.collisiondetection.mesh
+package com.ixume.udar.collisiondetection.mesh.mesh2
 
 import com.ixume.udar.dynamicaabb.AABB
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList

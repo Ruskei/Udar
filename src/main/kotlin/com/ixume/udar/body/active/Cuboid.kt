@@ -9,6 +9,7 @@ import com.ixume.udar.collisiondetection.broadphase.BoundAABB
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.collisiondetection.capability.GJKCapable
 import com.ixume.udar.collisiondetection.capability.SDFCapable
+import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentContactGenerator2
 import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentSATContactGenerator
 import com.ixume.udar.collisiondetection.contactgeneration.SATContactGenerator
 import com.ixume.udar.physics.Contact
@@ -119,7 +120,8 @@ class Cuboid(
     override val contacts: MutableList<Contact> = mutableListOf()
     override val previousContacts: MutableList<Contact> = mutableListOf()
 
-    private val envContactGen = EnvironmentSATContactGenerator(this)
+    private val envContactGen = EnvironmentContactGenerator2(this)
+//    private val envContactGen = EnvironmentSATContactGenerator(this)
     private val SATContactGen = SATContactGenerator(this)
 
     private val _rm = Matrix3d()

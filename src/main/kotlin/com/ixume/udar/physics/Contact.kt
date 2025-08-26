@@ -2,6 +2,7 @@ package com.ixume.udar.physics
 
 import com.ixume.udar.body.Body
 import org.joml.Vector3d
+import kotlin.math.abs
 
 class Contact(
     val first: Body,
@@ -14,6 +15,18 @@ class Contact(
     var t1Sum: Double = 0.0
     val t2: Vector3d = Vector3d(t1).cross(result.norm).normalize()
     var t2Sum: Double = 0.0
+
+    init {
+        check(abs(result.norm.length() - 1.0) < 1e-11) { "norm: ${result.norm}" }
+        check(result.norm.isFinite)
+        check(abs(t1.length() - 1.0) < 1e-11)
+        check(t1.isFinite)
+        check(abs(t2.length() - 1.0) < 1e-11)
+        check(t2.isFinite)
+        check(result.pointA.isFinite)
+        check(result.pointB.isFinite)
+        check(result.depth.isFinite())
+    }
 
     override fun equals(other: Any?): Boolean {
         return other != null && other is Contact && other.id == id

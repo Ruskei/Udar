@@ -148,13 +148,13 @@ class LocalConstraintSolver(
             n.putVector3f(
                 _c_j1
                     .set(contact.first.pos)
-                    .sub(_c_vec3.set(contact.result.point))
+                    .sub(_c_vec3.set(contact.result.pointA))
                     .cross(_norm)
             ) //j1
 
             n.putVector3f(
                 _c_j3
-                    .set(contact.result.point)
+                    .set(contact.result.pointB)
                     .sub(_c_vec3.set(contact.second.pos))
                     .cross(_norm)
             ) //j3
@@ -162,7 +162,11 @@ class LocalConstraintSolver(
             val timestep = 0.005f
             val slop = 0.0001f
 
-            n.put(0.1f / timestep * (abs(contact.result.depth.toFloat()) - slop).coerceAtLeast(0f)) // bias
+            if (component == ContactComponent.NORMAL) {
+                n.put(0.1f / timestep * (abs(contact.result.depth.toFloat()) - slop).coerceAtLeast(0f)) // bias
+            } else {
+                n.put(0f)
+            }
 
             n.put(
                 _c_j0.set(
@@ -174,17 +178,17 @@ class LocalConstraintSolver(
                     contact.first.inverseMass.toFloat(),
                     contact.first.inverseMass.toFloat(),
                 ) +
-                        _c_j1Temp.set(_c_j1).mul(contact.first.inverseInertia).dot(_c_j1) +
-                        _c_j2.set(
-                            _norm.x * _norm.x,
-                            _norm.y * _norm.y,
-                            _norm.z * _norm.z
-                        ).dot(
-                            contact.second.inverseMass.toFloat(),
-                            contact.second.inverseMass.toFloat(),
-                            contact.second.inverseMass.toFloat(),
-                        ) +
-                        _c_j3Temp.set(_c_j3).mul(contact.second.inverseInertia).dot(_c_j3)
+                _c_j1Temp.set(_c_j1).mul(contact.first.inverseInertia).dot(_c_j1) +
+                _c_j2.set(
+                    _norm.x * _norm.x,
+                    _norm.y * _norm.y,
+                    _norm.z * _norm.z
+                ).dot(
+                    contact.second.inverseMass.toFloat(),
+                    contact.second.inverseMass.toFloat(),
+                    contact.second.inverseMass.toFloat(),
+                ) +
+                _c_j3Temp.set(_c_j3).mul(contact.second.inverseInertia).dot(_c_j3)
             ) // den
 
             n.put(
@@ -213,7 +217,8 @@ class LocalConstraintSolver(
         val relevantData = when (component) {
             ContactComponent.NORMAL -> {
                 if (envContactNormalData.size < numc * A2S_N_CONTACT_DATA_FLOATS) {
-                    envContactNormalData = FloatArray(max(envContactNormalData.size * 2, numc * A2S_N_CONTACT_DATA_FLOATS))
+                    envContactNormalData =
+                        FloatArray(max(envContactNormalData.size * 2, numc * A2S_N_CONTACT_DATA_FLOATS))
                 }
                 envContactNormalData
             }
@@ -245,42 +250,57 @@ class LocalConstraintSolver(
                 }
             )
 
+            check(abs(_norm.length() - 1.0) < 1e-5) {
+                """
+                    ISSUE!
+                        _norm: $_norm
+                        length: ${_norm.length()}
+                        component: $component
+            """.trimIndent()
+            }
+            check(_norm.isFinite)
+
             n.putVector3f(_norm) // norm
 
             n.putVector3f(
                 _c_j1
                     .set(contact.first.pos)
-                    .sub(_c_vec3.set(contact.result.point))
+                    .sub(_c_vec3.set(contact.result.pointA))
                     .cross(_norm)
             ) //j1
+
+            check(_c_j1.isFinite)
 
             val timestep = 0.005f
             val slop = 0.0001f
 
-            n.put(0.1f / timestep * (abs(contact.result.depth.toFloat()) - slop).coerceAtLeast(0f)) // bias
+            if (component == ContactComponent.NORMAL) {
+                n.put(0.1f / timestep * (abs(contact.result.depth.toFloat()) - slop).coerceAtLeast(0f)) // bias
+            } else {
+                n.put(0f)
+            }
 
-            n.put(
-                _c_j0.set(
-                    _norm.x * _norm.x,
-                    _norm.y * _norm.y,
-                    _norm.z * _norm.z
-                ).dot(
-                    contact.first.inverseMass.toFloat(),
-                    contact.first.inverseMass.toFloat(),
-                    contact.first.inverseMass.toFloat(),
-                ) +
-                        _c_j1Temp.set(_c_j1).mul(contact.first.inverseInertia).dot(_c_j1) +
-                        _c_j2.set(
-                            _norm.x * _norm.x,
-                            _norm.y * _norm.y,
-                            _norm.z * _norm.z
-                        ).dot(
-                            contact.second.inverseMass.toFloat(),
-                            contact.second.inverseMass.toFloat(),
-                            contact.second.inverseMass.toFloat(),
-                        ) +
-                        _c_j3Temp.set(_c_j3).mul(contact.second.inverseInertia).dot(_c_j3)
-            ) // den
+            val den = _c_j0.set(
+                _norm.x * _norm.x,
+                _norm.y * _norm.y,
+                _norm.z * _norm.z
+            ).dot(
+                contact.first.inverseMass.toFloat(),
+                contact.first.inverseMass.toFloat(),
+                contact.first.inverseMass.toFloat(),
+            ) + _c_j1Temp.set(_c_j1).mul(contact.first.inverseInertia).dot(_c_j1)
+
+            check(abs(den) > 1e-14) {
+                """
+                | norm: $_norm
+                | iMA: ${contact.first.inverseMass}
+                | _c_j1: $_c_j1
+                | iIA: ${contact.first.inverseInertia}
+            """.trimIndent()
+            }
+            check(den.isFinite())
+
+            n.put(den) // den
 
             n.put(
                 when (component) {
@@ -373,6 +393,13 @@ class LocalConstraintSolver(
      * For a contact between active objects
      */
     private fun solveA2AContact(data: FloatArray, contactIdx: Int, component: ContactComponent) {
+        if (component == ContactComponent.T1 || component == ContactComponent.T2) {
+            val n = contactNormalData[contactIdx + A2A_N_LAMBDA_OFFSET]
+            if (n < FRICTION_LAMBDA_EPSILON) {
+                return
+            }
+        }
+
         val nx = data[contactIdx + A2A_N_NORMAL_OFFSET]
         val ny = data[contactIdx + A2A_N_NORMAL_OFFSET + 1]
         val nz = data[contactIdx + A2A_N_NORMAL_OFFSET + 2]
@@ -459,10 +486,9 @@ class LocalConstraintSolver(
             ) / den
 
         val l = data[contactIdx + A2A_N_LAMBDA_OFFSET]
-        val cls = l
         when (component) {
             ContactComponent.NORMAL -> {
-                data[contactIdx + A2A_N_LAMBDA_OFFSET] = max(0f, cls + lambda)
+                data[contactIdx + A2A_N_LAMBDA_OFFSET] = max(0f, l + lambda)
             }
 
             ContactComponent.T1, ContactComponent.T2 -> {
@@ -471,7 +497,7 @@ class LocalConstraintSolver(
             }
         }
 
-        lambda = data[contactIdx + A2A_N_LAMBDA_OFFSET] - cls
+        lambda = data[contactIdx + A2A_N_LAMBDA_OFFSET] - l
 
         flatBodyData[myIdx] -= (data[contactIdx + A2A_N_DELTA_OFFSET] * lambda)
         flatBodyData[myIdx + 1] -= (data[contactIdx + A2A_N_DELTA_OFFSET + 1] * lambda)
@@ -503,6 +529,9 @@ class LocalConstraintSolver(
         j1.from(contactIdx + A2S_N_J1_OFFSET, data)
 
         val bias = data[contactIdx + A2S_N_BIAS_OFFSET]
+        if (component != ContactComponent.NORMAL) {
+            check(bias == 0f)
+        }
 
         val den = data[contactIdx + A2S_N_DEN_OFFSET]
 
@@ -543,12 +572,10 @@ class LocalConstraintSolver(
                 )
             ) / den
 
-
         val l = data[contactIdx + A2S_N_LAMBDA_OFFSET]
-        val cls = l
         when (component) {
             ContactComponent.NORMAL -> {
-                data[contactIdx + A2S_N_LAMBDA_OFFSET] = max(0f, cls + lambda)
+                data[contactIdx + A2S_N_LAMBDA_OFFSET] = max(0f, l + lambda)
             }
 
             ContactComponent.T1, ContactComponent.T2 -> {
@@ -557,7 +584,11 @@ class LocalConstraintSolver(
             }
         }
 
-        lambda = data[contactIdx + A2S_N_LAMBDA_OFFSET] - cls
+        lambda = data[contactIdx + A2S_N_LAMBDA_OFFSET] - l
+
+        if (abs(lambda) < FRICTION_LAMBDA_EPSILON && (component == ContactComponent.T1 || component == ContactComponent.T2)) {
+            return
+        }
 
         flatBodyData[myIdx] -= (data[contactIdx + A2S_N_DELTA_OFFSET] * lambda)
         flatBodyData[myIdx + 1] -= (data[contactIdx + A2S_N_DELTA_OFFSET + 1] * lambda)
@@ -577,7 +608,9 @@ class LocalConstraintSolver(
             val body = idMap[i / BODY_DATA_FLOATS]
 
             body.velocity.from(i + V_OFFSET, flatBodyData)
+            check(body.velocity.isFinite)
             body.omega.from(i + O_OFFSET, flatBodyData).rotate(_quatd.set(body.q).conjugate())
+            check(body.omega.isFinite)
 
             i += BODY_DATA_FLOATS
         }
@@ -634,4 +667,5 @@ enum class ContactComponent {
     NORMAL, T1, T2
 }
 
-private const val FRICTION = 0.2F
+private const val FRICTION = 0.3F
+private const val FRICTION_LAMBDA_EPSILON = 0.0
