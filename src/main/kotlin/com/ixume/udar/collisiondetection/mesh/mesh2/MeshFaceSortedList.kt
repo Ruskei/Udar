@@ -1,6 +1,6 @@
 package com.ixume.udar.collisiondetection.mesh.mesh2
 
-import com.ixume.udar.collisiondetection.mesh.aabbtree2d.AABBTree2D
+import com.ixume.udar.collisiondetection.mesh.aabbtree2d.FlattenedAABBTree2D
 import com.ixume.udar.dynamicaabb.AABB
 import kotlin.math.abs
 
@@ -31,7 +31,7 @@ class MeshFaceSortedList(
         val face = MeshFace(
             axis = axis,
             level = level,
-            holes = AABBTree2D(),
+            holes = FlattenedAABBTree2D(0),
         )
 
         ls.add(low, face)
@@ -128,7 +128,7 @@ class MeshFaceSortedList(
 
     fun constructAntiHoles() {
         for (face in ls) {
-            face.antiHoles = face.holes.collisions()
+            face.antiHoles = face.holes.constructCollisions()
         }
     }
 

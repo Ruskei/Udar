@@ -122,26 +122,59 @@ class EnvironmentContactGenerator2(
                 continue
             }
 
-            val overlappingHoles = face.holes.overlaps(_bb2d)
+            val overlappingHoles = DoubleArrayList()
+
+            face.holes.overlaps(
+                minX = _bb2d.minA(),
+                minY = _bb2d.minB(),
+                maxX = _bb2d.maxA(),
+                maxY = _bb2d.maxB(),
+                out = overlappingHoles,
+            )
+
             if (overlappingHoles.isEmpty()) {
                 i++
                 continue
             }
 
-            val overlappingAntiHoles = face.antiHoles.overlaps(_bb2d)
+            val overlappingAntiHoles = DoubleArrayList()
+
+            face.antiHoles.overlaps(
+                minX = _bb2d.minA(),
+                minY = _bb2d.minB(),
+                maxX = _bb2d.maxA(),
+                maxY = _bb2d.maxB(),
+                out = overlappingAntiHoles,
+            )
 
             var j = 0
             while (j < collisions.size) {
                 val collision = collisions[j]
 
+                val pa = collision.pointA.get(axis.aOffset)
+                val pb = collision.pointA.get(axis.bOffset)
+
                 var valid = true
                 var k = 0
                 while (k < overlappingAntiHoles.size) {
-                    val antiHole = overlappingAntiHoles[k]
-                    if (antiHole.contains(collision.pointA.get(axis.aOffset), collision.pointA.get(axis.bOffset))) {
+                    val minA = overlappingAntiHoles.getDouble(k)
+                    val minB = overlappingAntiHoles.getDouble(k + 1)
+                    val maxA = overlappingAntiHoles.getDouble(k + 2)
+                    val maxB = overlappingAntiHoles.getDouble(k + 3)
+
+                    if (contains(
+                            minA = minA,
+                            minB = minB,
+                            maxA = maxA,
+                            maxB = maxB,
+                            a = pa,
+                            b = pb,
+                        )
+                    ) {
                         valid = false
                         break
                     }
+
                     k++
                 }
 
@@ -154,8 +187,20 @@ class EnvironmentContactGenerator2(
 
                 var l = 0
                 while (l < overlappingHoles.size) {
-                    val hole = overlappingHoles[l]
-                    if (hole.contains(collision.pointA.get(axis.aOffset), collision.pointA.get(axis.bOffset))) {
+                    val minA = overlappingHoles.getDouble(k)
+                    val minB = overlappingHoles.getDouble(k + 1)
+                    val maxA = overlappingHoles.getDouble(k + 2)
+                    val maxB = overlappingHoles.getDouble(k + 3)
+
+                    if (contains(
+                            minA = minA,
+                            minB = minB,
+                            maxA = maxA,
+                            maxB = maxB,
+                            a = pa,
+                            b = pb,
+                        )
+                    ) {
                         valid = true
                         break
                     }
@@ -252,16 +297,16 @@ class EnvironmentContactGenerator2(
 
             _edgeEnd.setComponent(axis.aOffset, a)
             _edgeEnd.setComponent(axis.bOffset, b)
-            
+
             val pts = tree.points[data]
             val mounts = tree.pointMounts[data]
-            
+
             val itr = pts.iterator()
             var i = 0
             while (itr.hasNext()) {
                 val d1 = itr.nextDouble()
                 val d2 = itr.nextDouble()
-                
+
                 val mount = mounts.getInt(i)
 
                 _allowedNormals[0].setComponent(axis.levelOffset, 0.0)
@@ -390,4 +435,16 @@ class EnvironmentContactGenerator2(
 //            }
 //        }
     }
+}
+
+fun contains(
+    minA: Double,
+    minB: Double,
+    maxA: Double,
+    maxB: Double,
+
+    a: Double,
+    b: Double,
+): Boolean {
+    return minA <= a && maxA >= a && minB <= b && maxB >= b
 }

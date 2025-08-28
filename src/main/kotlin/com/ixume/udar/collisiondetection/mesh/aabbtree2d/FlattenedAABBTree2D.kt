@@ -1,12 +1,11 @@
-package com.ixume.udar.dynamicaabb.array
+package com.ixume.udar.collisiondetection.mesh.aabbtree2d
 
-import com.ixume.udar.testing.debugConnect
+import com.ixume.udar.dynamicaabb.array.IntQueue
+import it.unimi.dsi.fastutil.doubles.DoubleArrayList
 import it.unimi.dsi.fastutil.ints.IntComparator
 import it.unimi.dsi.fastutil.ints.IntHeapPriorityQueue
 import org.bukkit.Color
 import org.bukkit.Particle
-import org.bukkit.World
-import org.joml.Vector3d
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.max
 import kotlin.math.min
@@ -22,11 +21,9 @@ import kotlin.math.sign
  *     child2Idx: Int       1
  *     minX: Double         2
  *     minY: Double         3
- *     minZ: Double         4
- *     maxX: Double         5
- *     maxY: Double         6
- *     maxZ: Double         7
- *     exploredCost: Double 8
+ *     maxX: Double         4
+ *     maxY: Double         5
+ *     exploredCost: Double 6
  * }
  *
  * Array is initialized as a flattened linked list of unused nodes. When a node is added, the first available free
@@ -36,7 +33,7 @@ import kotlin.math.sign
  * Implementation is filled with extension methods. These just apply to the indices, so you would use them on the index
  * of the node that you're referencing.
  */
-class FlattenedAABBTree(
+class FlattenedAABBTree2D(
     capacity: Int,
 ) : IntComparator {
     private val blocked = AtomicBoolean(false)
@@ -54,47 +51,236 @@ class FlattenedAABBTree(
     }
 
     private val q = IntQueue()
-    
-    fun contains(x: Double, y: Double, z: Double): Boolean {
+
+    fun contains(x: Double, y: Double): Boolean {
         while (q.hasNext()) {
             val i = q.dequeue()
 
-            if (!i.contains(x, y, z)) continue
+            if (!i.contains(x, y)) continue
 
             if (i.isLeaf()) {
                 return true
             }
-           
+
             q.enqueue(i.child1())
             q.enqueue(i.child2())
         }
-        
+
         return false
     }
 
-    private fun Int.contains(x: Double, y: Double, z: Double): Boolean {
+    private val _overlap = DoubleArray(4)
+
+    fun constructCollisions(): FlattenedAABBTree2D {
+        if (rootIdx == -1) return FlattenedAABBTree2D(0)
+        if (rootIdx.isLeaf()) return FlattenedAABBTree2D(0)
+
+        val out = FlattenedAABBTree2D(0)
+        
+        pairs(rootIdx.child1(), rootIdx.child2(), out)
+        
+        return out
+    }
+
+    private fun pairs(a: Int, b: Int, out: FlattenedAABBTree2D) {
+        if (a.isLeaf()) {
+            if (b.isLeaf()) {
+                if (a.overlapsNode(b)) {
+                    //insert overlap, the anti-hole
+
+                    a.calcOverlap(
+                        minX = b.minX(),
+                        minY = b.minY(),
+                        maxX = b.maxX(),
+                        maxY = b.maxY(),
+                        out = _overlap,
+                    )
+
+                    out.insert(
+                        minX = _overlap[0],
+                        minY = _overlap[1],
+                        maxX = _overlap[2],
+                        maxY = _overlap[3],
+                    )
+                }
+
+                return
+            } else {
+                if (a.parent() == b.parent()) {
+                    pairs(b.child1(), b.child2(), out)
+                }
+
+                if (a.overlapsNode(b)) {
+                    pairs(a, b.child1(), out)
+                    pairs(a, b.child2(), out)
+                }
+            }
+        } else {
+            if (b.isLeaf()) {
+                if (a.parent() == b.parent()) {
+                    pairs(a.child1(), a.child2(), out)
+                }
+
+                if (a.overlapsNode(b)) {
+                    pairs(b, a.child1(), out)
+                    pairs(b, a.child2(), out)
+                }
+            } else {
+                if (a.parent() == b.parent()) {
+                    pairs(a.child1(), a.child2(), out)
+                    pairs(b.child1(), b.child2(), out)
+                }
+
+                if (a.overlapsNode(b)) {
+                    pairs(a.child1(), b.child1(), out)
+                    pairs(a.child1(), b.child2(), out)
+                    pairs(a.child2(), b.child1(), out)
+                    pairs(a.child2(), b.child2(), out)
+                }
+            }
+        }
+    }
+
+
+//    fun constructCollisions(): FlattenedAABBTree2D {
+//        if (rootIdx == -1) return FlattenedAABBTree2D(0)
+//        if (rootIdx.isLeaf()) return FlattenedAABBTree2D(0)
+//
+//        val out = FlattenedAABBTree2D(0)
+//
+//        val aq = IntQueue()
+//        val bq = IntQueue()
+//
+//        aq.enqueue(rootIdx.child1())
+//        bq.enqueue(rootIdx.child2())
+//
+//        while (aq.hasNext()) {
+//            val a = aq.dequeue()
+//            val b = bq.dequeue()
+//
+//            if (a.isLeaf()) {
+//                if (b.isLeaf()) {
+//                    if (a.overlapsNode(b)) {
+//                        a.calcOverlap(
+//                            minX = b.minX(),
+//                            minY = b.minY(),
+//                            maxX = b.maxX(),
+//                            maxY = b.maxY(),
+//                            out = _overlap,
+//                        )
+//
+//                        out.insert(
+//                            minX = _overlap[0],
+//                            minY = _overlap[1],
+//                            maxX = _overlap[2],
+//                            maxY = _overlap[3],
+//                        )
+//                    }
+//
+//                    continue
+//                } else {
+//                    if (a.parent() == b.parent()) {
+//                        aq.enqueue(a.child1())
+//                        bq.enqueue(a.child2())
+//                    }
+//
+//                    if (a.overlapsNode(b)) {
+//                        aq.enqueue(a)
+//                        bq.enqueue(b.child1())
+//
+//                        aq.enqueue(a)
+//                        bq.enqueue(b.child2())
+//                    }
+//                }
+//            } else {
+//                if (b.isLeaf()) {
+//                    if (a.parent() == b.parent()) {
+//                        aq.enqueue(a.child1())
+//                        bq.enqueue(a.child2())
+//                    }
+//
+//                    if (a.overlapsNode(b)) {
+//                        aq.enqueue(b)
+//                        bq.enqueue(a.child1())
+//
+//                        aq.enqueue(b)
+//                        bq.enqueue(a.child2())
+//                    }
+//                } else {
+//                    if (a.parent() == b.parent()) {
+//                        aq.enqueue(a.child1())
+//                        bq.enqueue(a.child2())
+//
+//                        aq.enqueue(b.child1())
+//                        bq.enqueue(b.child2())
+//                    }
+//                    
+//                    if (a.overlapsNode(b)) {
+//                        aq.enqueue(a.child1())
+//                        bq.enqueue(b.child1())
+//
+//                        aq.enqueue(a.child1())
+//                        bq.enqueue(b.child2())
+//
+//                        aq.enqueue(a.child2())
+//                        bq.enqueue(b.child1())
+//
+//                        aq.enqueue(a.child2())
+//                        bq.enqueue(b.child2())
+//                    }
+//                }
+//            }
+//        }
+//        
+//        return out
+//    }
+
+    private fun Int.contains(x: Double, y: Double): Boolean {
         return x >= minX() && x <= maxX() &&
-               y >= minY() && y <= maxY() &&
-               z >= minZ() && z <= maxZ()
+               y >= minY() && y <= maxY()
+    }
+
+    private fun Int.overlaps(
+        minX: Double,
+        minY: Double,
+        maxX: Double,
+        maxY: Double,
+    ): Boolean {
+        return minX() < maxX && maxX() > minX &&
+               minY() < maxY && maxY() > minY
+    }
+
+    private fun Int.overlapsNode(i: Int): Boolean {
+        return overlaps(i.minX(), i.minY(), i.maxX(), i.maxY())
+    }
+
+    private fun Int.calcOverlap(
+        minX: Double,
+        minY: Double,
+        maxX: Double,
+        maxY: Double,
+
+        out: DoubleArray,
+    ) {
+        out[0] = max(minX(), minX)
+        out[1] = max(minY(), minY)
+        out[2] = min(maxX(), maxX)
+        out[3] = min(maxY(), maxY)
     }
 
     fun insert(
         minX: Double,
         minY: Double,
-        minZ: Double,
         maxX: Double,
         maxY: Double,
-        maxZ: Double,
     ) {
         if (!blocked.compareAndSet(false, true)) throw IllegalStateException("Tried to insert while blocked!")
 
         val best = bestSibling(
             minX,
             minY,
-            minZ,
             maxX,
             maxY,
-            maxZ,
         )
 
         if (best == -1) {
@@ -105,10 +291,8 @@ class FlattenedAABBTree(
                 c2 = -1,
                 minX = minX,
                 minY = minY,
-                minZ = minZ,
                 maxX = maxX,
                 maxY = maxY,
-                maxZ = maxZ,
             )
 
             blocked.set(false)
@@ -122,10 +306,8 @@ class FlattenedAABBTree(
             c2 = -1,
             minX = minX,
             minY = minY,
-            minZ = minZ,
             maxX = maxX,
             maxY = maxY,
-            maxZ = maxZ,
         )
 
         val oldParent = best.parent()
@@ -137,10 +319,8 @@ class FlattenedAABBTree(
             c2 = -1,
             minX = min(minX, best.minX()),
             minY = min(minY, best.minY()),
-            minZ = min(minZ, best.minZ()),
             maxX = max(maxX, best.maxX()),
             maxY = max(maxY, best.maxY()),
-            maxZ = max(maxZ, best.maxZ()),
         )
 
         if (oldParent == -1) {
@@ -168,10 +348,8 @@ class FlattenedAABBTree(
             p.refit(
                 minX,
                 minY,
-                minZ,
                 maxX,
                 maxY,
-                maxZ,
             )
 
             p.rotate()
@@ -188,10 +366,8 @@ class FlattenedAABBTree(
     private fun bestSibling(
         minX: Double,
         minY: Double,
-        minZ: Double,
         maxX: Double,
         maxY: Double,
-        maxZ: Double,
     ): Int {
         if (rootIdx == -1) return -1
         if (rootIdx.isLeaf()) return rootIdx
@@ -199,16 +375,12 @@ class FlattenedAABBTree(
         var bestCost = unifiedCost(
             minX,
             minY,
-            minZ,
             maxX,
             maxY,
-            maxZ,
             rootIdx.minX(),
             rootIdx.minY(),
-            rootIdx.minZ(),
             rootIdx.maxX(),
             rootIdx.maxY(),
-            rootIdx.maxZ(),
         )
 
         var bestNode = rootIdx
@@ -222,10 +394,8 @@ class FlattenedAABBTree(
             val c = node.insertionCost(
                 minX,
                 minY,
-                minZ,
                 maxX,
                 maxY,
-                maxZ,
             )
 
             if (c < bestCost) {
@@ -237,10 +407,8 @@ class FlattenedAABBTree(
                 val e = node.minChildrenCost(
                     minX,
                     minY,
-                    minZ,
                     maxX,
                     maxY,
-                    maxZ,
                 )
 
                 if (e < bestCost) {
@@ -261,18 +429,14 @@ class FlattenedAABBTree(
     private fun Int.minChildrenCost(
         minX: Double,
         minY: Double,
-        minZ: Double,
         maxX: Double,
         maxY: Double,
-        maxZ: Double,
     ): Double {
         return volume() + refittingCost(
             minX,
             minY,
-            minZ,
             maxX,
             maxY,
-            maxZ,
         ) + exploredCost()
     }
 
@@ -282,19 +446,15 @@ class FlattenedAABBTree(
     private fun Int.insertionCost(
         minX: Double,
         minY: Double,
-        minZ: Double,
         maxX: Double,
         maxY: Double,
-        maxZ: Double,
     ): Double {
         val parent = parent()
         val inherited = if (parent == -1) 0.0 else parent.recursiveRefittingCost(
             minX,
             minY,
-            minZ,
             maxX,
             maxY,
-            maxZ,
         )
 
         exploredCost(inherited)
@@ -302,27 +462,21 @@ class FlattenedAABBTree(
         return unifiedCost(
             aMinX = minX(),
             aMinY = minY(),
-            aMinZ = minZ(),
             aMaxX = maxX(),
             aMaxY = maxY(),
-            aMaxZ = maxZ(),
 
             bMinX = minX,
             bMinY = minY,
-            bMinZ = minZ,
             bMaxX = maxX,
             bMaxY = maxY,
-            bMaxZ = maxZ,
         ) + inherited
     }
 
     private fun Int.recursiveRefittingCost(
         minX: Double,
         minY: Double,
-        minZ: Double,
         maxX: Double,
         maxY: Double,
-        maxZ: Double,
     ): Double {
         var c = 0.0
         var p = this
@@ -330,10 +484,8 @@ class FlattenedAABBTree(
             c += p.refittingCost(
                 minX,
                 minY,
-                minZ,
                 maxX,
                 maxY,
-                maxZ,
             )
 
             p = p.parent()
@@ -345,25 +497,19 @@ class FlattenedAABBTree(
     private fun Int.refittingCost(
         minX: Double,
         minY: Double,
-        minZ: Double,
         maxX: Double,
         maxY: Double,
-        maxZ: Double,
     ): Double {
         return unifiedCost(
             aMinX = minX(),
             aMinY = minY(),
-            aMinZ = minZ(),
             aMaxX = maxX(),
             aMaxY = maxY(),
-            aMaxZ = maxZ(),
 
             bMinX = minX,
             bMinY = minY,
-            bMinZ = minZ,
             bMaxX = maxX,
             bMaxY = maxY,
-            bMaxZ = maxZ,
         ) - cost()
     }
 
@@ -374,23 +520,19 @@ class FlattenedAABBTree(
             unifiedCost(
                 aMinX = c1.minX(),
                 aMinY = c1.minY(),
-                aMinZ = c1.minZ(),
                 aMaxX = c1.maxX(),
                 aMaxY = c1.maxY(),
-                aMaxZ = c1.maxZ(),
 
                 bMinX = c2.minX(),
                 bMinY = c2.minY(),
-                bMinZ = c2.minZ(),
                 bMaxX = c2.maxX(),
                 bMaxY = c2.maxY(),
-                bMaxZ = c2.maxZ(),
             )
         }
     }
 
     private fun Int.volume(): Double {
-        return (maxX() - minX()) * (maxY() - minY()) * (maxZ() - minZ())
+        return (maxX() - minX()) * (maxY() - minY())
     }
 
     private fun Int.child1(): Int {
@@ -446,14 +588,6 @@ class FlattenedAABBTree(
         arr[this * DATA_SIZE + MIN_Y_OFFSET] = d
     }
 
-    private fun Int.minZ(): Double {
-        return arr[this * DATA_SIZE + MIN_Z_OFFSET]
-    }
-
-    private fun Int.minZ(d: Double) {
-        arr[this * DATA_SIZE + MIN_Z_OFFSET] = d
-    }
-
     private fun Int.maxX(): Double {
         return arr[this * DATA_SIZE + MAX_X_OFFSET]
     }
@@ -468,14 +602,6 @@ class FlattenedAABBTree(
 
     private fun Int.maxY(d: Double) {
         arr[this * DATA_SIZE + MAX_Y_OFFSET] = d
-    }
-
-    private fun Int.maxZ(): Double {
-        return arr[this * DATA_SIZE + MAX_Z_OFFSET]
-    }
-
-    private fun Int.maxZ(d: Double) {
-        arr[this * DATA_SIZE + MAX_Z_OFFSET] = d
     }
 
     private fun Int.exploredCost(): Double {
@@ -504,9 +630,9 @@ class FlattenedAABBTree(
 
         val prevSize = arr.size
         val newSize = max(size * DATA_SIZE, (arr.size * 3 / 2) / DATA_SIZE * DATA_SIZE)
-        
+
         arr = arr.copyOf(newSize)
-        
+
         setFree(prevSize / DATA_SIZE, newSize / DATA_SIZE)
         return prevSize / DATA_SIZE
     }
@@ -521,10 +647,8 @@ class FlattenedAABBTree(
         c2: Int,
         minX: Double,
         minY: Double,
-        minZ: Double,
         maxX: Double,
         maxY: Double,
-        maxZ: Double,
     ): Int {
         val currFreeIdx = freeIdx
         if (currFreeIdx == -1) {
@@ -538,10 +662,8 @@ class FlattenedAABBTree(
             f.child2(c2)
             f.minX(minX)
             f.minY(minY)
-            f.minZ(minZ)
             f.maxX(maxX)
             f.maxY(maxY)
-            f.maxZ(maxZ)
 
             return f
         }
@@ -558,10 +680,8 @@ class FlattenedAABBTree(
         currFreeIdx.child2(c2)
         currFreeIdx.minX(minX)
         currFreeIdx.minY(minY)
-        currFreeIdx.minZ(minZ)
         currFreeIdx.maxX(maxX)
         currFreeIdx.maxY(maxY)
-        currFreeIdx.maxZ(maxZ)
 
         return currFreeIdx
     }
@@ -581,17 +701,13 @@ class FlattenedAABBTree(
     private fun Int.refit(
         minX: Double,
         minY: Double,
-        minZ: Double,
         maxX: Double,
         maxY: Double,
-        maxZ: Double,
     ) {
         minX(min(minX(), minX))
         minY(min(minY(), minY))
-        minZ(min(minZ(), minZ))
         maxX(max(maxX(), maxX))
         maxY(max(maxY(), maxY))
-        maxZ(max(maxZ(), maxZ))
     }
 
     private fun Int.rotate() {
@@ -616,32 +732,24 @@ class FlattenedAABBTree(
         val c1Swap = unifiedCost(
             aMinX = other.minX(),
             aMinY = other.minY(),
-            aMinZ = other.minZ(),
             aMaxX = other.maxX(),
             aMaxY = other.maxY(),
-            aMaxZ = other.maxZ(),
 
             bMinX = c2.minX(),
             bMinY = c2.minY(),
-            bMinZ = c2.minZ(),
             bMaxX = c2.maxX(),
             bMaxY = c2.maxY(),
-            bMaxZ = c2.maxZ(),
         )
         val c2Swap = unifiedCost(
             aMinX = other.minX(),
             aMinY = other.minY(),
-            aMinZ = other.minZ(),
             aMaxX = other.maxX(),
             aMaxY = other.maxY(),
-            aMaxZ = other.maxZ(),
 
             bMinX = c1.minX(),
             bMinY = c1.minY(),
-            bMinZ = c1.minZ(),
             bMaxX = c1.maxX(),
             bMaxY = c1.maxY(),
-            bMaxZ = c1.maxZ(),
         )
 
         if (c1Swap < curr) {
@@ -662,17 +770,13 @@ class FlattenedAABBTree(
             setUnion(
                 aMinX = nc1.minX(),
                 aMinY = nc1.minY(),
-                aMinZ = nc1.minZ(),
                 aMaxX = nc1.maxX(),
                 aMaxY = nc1.maxY(),
-                aMaxZ = nc1.maxZ(),
 
                 bMinX = nc2.minX(),
                 bMinY = nc2.minY(),
-                bMinZ = nc2.minZ(),
                 bMaxX = nc2.maxX(),
                 bMaxY = nc2.maxY(),
-                bMaxZ = nc2.maxZ(),
             )
         } else if (c2Swap < curr) {
             child2(other)
@@ -692,17 +796,13 @@ class FlattenedAABBTree(
             setUnion(
                 aMinX = nc1.minX(),
                 aMinY = nc1.minY(),
-                aMinZ = nc1.minZ(),
                 aMaxX = nc1.maxX(),
                 aMaxY = nc1.maxY(),
-                aMaxZ = nc1.maxZ(),
 
                 bMinX = nc2.minX(),
                 bMinY = nc2.minY(),
-                bMinZ = nc2.minZ(),
                 bMaxX = nc2.maxX(),
                 bMaxY = nc2.maxY(),
-                bMaxZ = nc2.maxZ(),
             )
         }
     }
@@ -710,26 +810,20 @@ class FlattenedAABBTree(
     private fun Int.setUnion(
         aMinX: Double,
         aMinY: Double,
-        aMinZ: Double,
         aMaxX: Double,
         aMaxY: Double,
-        aMaxZ: Double,
 
         bMinX: Double,
         bMinY: Double,
-        bMinZ: Double,
         bMaxX: Double,
         bMaxY: Double,
-        bMaxZ: Double,
     ) {
         minX(min(bMinX, aMinX))
         minY(min(bMinY, aMinY))
-        minZ(min(bMinZ, aMinZ))
         maxX(max(bMaxX, aMaxX))
         maxY(max(bMaxY, aMaxY))
-        maxZ(max(bMaxZ, aMaxZ))
     }
-    
+
     fun clear() {
         freeIdx = setFree(0, arr.size / DATA_SIZE)
         rootIdx = -1
@@ -750,7 +844,7 @@ class FlattenedAABBTree(
      */
     private fun setFree(start: Int, end: Int): Int {
         if (end <= start) return -1
-        
+
         var i = start
         while (i < end - 1) {
             i.nextFree(i + 1)
@@ -763,101 +857,135 @@ class FlattenedAABBTree(
             (end - 1).nextFree(-1)
             (end - 1).free()
         }
-        
+
         return start
     }
-    
-    fun visualize(world: World) {
-        var i = 0
-        val numNodes = arr.size / DATA_SIZE
-        while (i < numNodes) {
-            if (i.isFree()) {
-                i++
+
+    /**
+     * @return a flattened list of 2d aabb structs
+     */
+    fun overlaps(
+        minX: Double,
+        minY: Double,
+        maxX: Double,
+        maxY: Double,
+
+        out: DoubleArrayList,
+    ) {
+        if (rootIdx == -1) return
+
+        val q = IntQueue()
+
+        q.enqueue(rootIdx)
+
+        while (q.hasNext()) {
+            val node = q.dequeue()
+
+            if (!node.overlaps(minX, minY, maxX, maxY)) continue
+
+            if (node.isLeaf()) {
+                out.add(node.minX())
+                out.add(node.minY())
+                out.add(node.maxX())
+                out.add(node.maxY())
+
                 continue
             }
 
-            world.debugConnect(
-                start = Vector3d(i.minX(), i.minY(), i.minZ()),
-                end = Vector3d(i.maxX(), i.minY(), i.minZ()),
-                options = DUST_OPTIONS,
-            )
-            world.debugConnect(
-                start = Vector3d(i.minX(), i.maxY(), i.minZ()),
-                end = Vector3d(i.maxX(), i.maxY(), i.minZ()),
-                options = DUST_OPTIONS,
-            )
-            world.debugConnect(
-                start = Vector3d(i.minX(), i.maxY(), i.maxZ()),
-                end = Vector3d(i.maxX(), i.maxY(), i.maxZ()),
-                options = DUST_OPTIONS,
-            )
-            world.debugConnect(
-                start = Vector3d(i.minX(), i.minY(), i.maxZ()),
-                end = Vector3d(i.maxX(), i.minY(), i.maxZ()),
-                options = DUST_OPTIONS,
-            )
-
-            world.debugConnect(
-                start = Vector3d(i.minX(), i.minY(), i.minZ()),
-                end = Vector3d(i.minX(), i.maxY(), i.minZ()),
-                options = DUST_OPTIONS,
-            )
-            world.debugConnect(
-                start = Vector3d(i.maxX(), i.minY(), i.minZ()),
-                end = Vector3d(i.maxX(), i.maxY(), i.minZ()),
-                options = DUST_OPTIONS,
-            )
-            world.debugConnect(
-                start = Vector3d(i.maxX(), i.minY(), i.maxZ()),
-                end = Vector3d(i.maxX(), i.maxY(), i.maxZ()),
-                options = DUST_OPTIONS,
-            )
-            world.debugConnect(
-                start = Vector3d(i.minX(), i.minY(), i.maxZ()),
-                end = Vector3d(i.minX(), i.maxY(), i.maxZ()),
-                options = DUST_OPTIONS,
-            )
-
-            world.debugConnect(
-                start = Vector3d(i.minX(), i.minY(), i.minZ()),
-                end = Vector3d(i.minX(), i.minY(), i.maxZ()),
-                options = DUST_OPTIONS,
-            )
-            world.debugConnect(
-                start = Vector3d(i.minX(), i.maxY(), i.minZ()),
-                end = Vector3d(i.minX(), i.maxY(), i.maxZ()),
-                options = DUST_OPTIONS,
-            )
-            world.debugConnect(
-                start = Vector3d(i.maxX(), i.maxY(), i.minZ()),
-                end = Vector3d(i.maxX(), i.maxY(), i.maxZ()),
-                options = DUST_OPTIONS,
-            )
-            world.debugConnect(
-                start = Vector3d(i.maxX(), i.minY(), i.minZ()),
-                end = Vector3d(i.maxX(), i.minY(), i.maxZ()),
-                options = DUST_OPTIONS,
-            )
-
-            i++
+            q.enqueue(node.child1())
+            q.enqueue(node.child2())
         }
     }
+
+//    fun visualize(world: World) {
+//        var i = 0
+//        val numNodes = arr.size / DATA_SIZE
+//        while (i < numNodes) {
+//            if (i.isFree()) {
+//                i++
+//                continue
+//            }
+//
+//            world.debugConnect(
+//                start = Vector3d(i.minX(), i.minY(), i.minZ()),
+//                end = Vector3d(i.maxX(), i.minY(), i.minZ()),
+//                options = DUST_OPTIONS,
+//            )
+//            world.debugConnect(
+//                start = Vector3d(i.minX(), i.maxY(), i.minZ()),
+//                end = Vector3d(i.maxX(), i.maxY(), i.minZ()),
+//                options = DUST_OPTIONS,
+//            )
+//            world.debugConnect(
+//                start = Vector3d(i.minX(), i.maxY(), i.maxZ()),
+//                end = Vector3d(i.maxX(), i.maxY(), i.maxZ()),
+//                options = DUST_OPTIONS,
+//            )
+//            world.debugConnect(
+//                start = Vector3d(i.minX(), i.minY(), i.maxZ()),
+//                end = Vector3d(i.maxX(), i.minY(), i.maxZ()),
+//                options = DUST_OPTIONS,
+//            )
+//
+//            world.debugConnect(
+//                start = Vector3d(i.minX(), i.minY(), i.minZ()),
+//                end = Vector3d(i.minX(), i.maxY(), i.minZ()),
+//                options = DUST_OPTIONS,
+//            )
+//            world.debugConnect(
+//                start = Vector3d(i.maxX(), i.minY(), i.minZ()),
+//                end = Vector3d(i.maxX(), i.maxY(), i.minZ()),
+//                options = DUST_OPTIONS,
+//            )
+//            world.debugConnect(
+//                start = Vector3d(i.maxX(), i.minY(), i.maxZ()),
+//                end = Vector3d(i.maxX(), i.maxY(), i.maxZ()),
+//                options = DUST_OPTIONS,
+//            )
+//            world.debugConnect(
+//                start = Vector3d(i.minX(), i.minY(), i.maxZ()),
+//                end = Vector3d(i.minX(), i.maxY(), i.maxZ()),
+//                options = DUST_OPTIONS,
+//            )
+//
+//            world.debugConnect(
+//                start = Vector3d(i.minX(), i.minY(), i.minZ()),
+//                end = Vector3d(i.minX(), i.minY(), i.maxZ()),
+//                options = DUST_OPTIONS,
+//            )
+//            world.debugConnect(
+//                start = Vector3d(i.minX(), i.maxY(), i.minZ()),
+//                end = Vector3d(i.minX(), i.maxY(), i.maxZ()),
+//                options = DUST_OPTIONS,
+//            )
+//            world.debugConnect(
+//                start = Vector3d(i.maxX(), i.maxY(), i.minZ()),
+//                end = Vector3d(i.maxX(), i.maxY(), i.maxZ()),
+//                options = DUST_OPTIONS,
+//            )
+//            world.debugConnect(
+//                start = Vector3d(i.maxX(), i.minY(), i.minZ()),
+//                end = Vector3d(i.maxX(), i.minY(), i.maxZ()),
+//                options = DUST_OPTIONS,
+//            )
+//
+//            i++
+//        }
+//    }
 }
 
 private val DUST_OPTIONS = Particle.DustOptions(Color.FUCHSIA, 0.25f)
 
-private const val DATA_SIZE = 9
+private const val DATA_SIZE = 7
 private const val PARENT_IDX_OFFSET = 0 // low 32 bits; -1 if no parent
 private const val IS_LEAF_OFFSET = 0 // high 32 bits
 private const val CHILD_1_IDX_OFFSET = 1 // low 32 bits
 private const val CHILD_2_IDX_OFFSET = 1 // high 32 bits
 private const val MIN_X_OFFSET = 2
 private const val MIN_Y_OFFSET = 3
-private const val MIN_Z_OFFSET = 4
-private const val MAX_X_OFFSET = 5
-private const val MAX_Y_OFFSET = 6
-private const val MAX_Z_OFFSET = 7
-private const val EXPLORED_COST_OFFSET = 8
+private const val MAX_X_OFFSET = 4
+private const val MAX_Y_OFFSET = 5
+private const val EXPLORED_COST_OFFSET = 6
 
 private const val NEXT_FREE_IDX_OFFSET = 0 // low 32 bits
 private const val NODE_STATUS_OFFSET =
@@ -868,26 +996,20 @@ private const val NODE_UNUSED_STATUS = -1
 private fun unifiedCost(
     aMinX: Double,
     aMinY: Double,
-    aMinZ: Double,
     aMaxX: Double,
     aMaxY: Double,
-    aMaxZ: Double,
 
     bMinX: Double,
     bMinY: Double,
-    bMinZ: Double,
     bMaxX: Double,
     bMaxY: Double,
-    bMaxZ: Double,
 ): Double {
     val minX = min(aMinX, bMinX)
     val minY = min(aMinY, bMinY)
-    val minZ = min(aMinZ, bMinZ)
     val maxX = max(aMaxX, bMaxX)
     val maxY = max(aMaxY, bMaxY)
-    val maxZ = max(aMaxZ, bMaxZ)
 
-    return (maxX - minX) * (maxY - minY) * (maxZ - minZ)
+    return (maxX - minX) * (maxY - minY)
 }
 
 private const val LOWER_MASK = 0xFFFFFFFFL

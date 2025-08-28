@@ -64,7 +64,23 @@ class AABB2D(
     fun contains(a: Double, b: Double): Boolean {
         return data[MIN_A] <= a && data[MAX_A] >= a && data[MIN_B] <= b && data[MAX_B] >= b
     }
+    
+    fun minA(): Double {
+        return data[MIN_A]
+    }
 
+    fun minB(): Double {
+        return data[MIN_B]
+    }
+
+    fun maxA(): Double {
+        return data[MAX_A]
+    }
+
+    fun maxB(): Double {
+        return data[MAX_B]
+    }
+    
     fun updateTree(tree: AABBTree2D) {
         node?.let {
             tree.remove(it)

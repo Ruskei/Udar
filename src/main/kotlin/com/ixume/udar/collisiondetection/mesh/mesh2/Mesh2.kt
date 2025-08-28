@@ -141,17 +141,13 @@ class LocalMesher {
 
     private fun MeshFace.stamp(bb: DoubleArray, inDir: Boolean) {
         val axis = axis
-        val arr = DoubleArray(4)
 
-        arr[MIN_A] = bb.minA(axis)
-        arr[MIN_B] = bb.minB(axis)
-        arr[MAX_A] = bb.maxA(axis)
-        arr[MAX_B] = bb.maxB(axis)
-
-        val bb2d = AABB2D(data = arr)
-        bb2d.inDir = inDir
-
-        holes.insert(bb2d)
+        holes.insert(
+            minX = bb.minA(axis),
+            minY = bb.minB(axis),
+            maxX = bb.maxA(axis),
+            maxY = bb.maxB(axis),
+        )
     }
 
     private inline fun DoubleArray.minLevel(axis: AxisD): Double {
