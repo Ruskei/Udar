@@ -4,6 +4,7 @@ import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFaces
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.dynamicaabb.AABBTree
+import com.ixume.udar.dynamicaabb.array.FlattenedAABBTree
 import org.bukkit.World
 import org.joml.Vector2d
 
@@ -23,7 +24,7 @@ class EdgeQuadtree(
         root.insertEdge(x, y, start, end - ASYMMETRY_EPSILON, axis, meshFaces)
     }
 
-    fun fixUp(bbTree: AABBTree) {
+    fun fixUp(bbTree: FlattenedAABBTree) {
         root.fixUp(bbTree, axis, levelMin, levelMax)
     }
 

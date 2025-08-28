@@ -63,7 +63,7 @@ class AABBNode2D(
     override fun compareTo(other: AABBNode2D): Int {
 //        require(exploredCost != -1.0)
 //        require(other.exploredCost != -1.0)
-        return sign(other.exploredCost - exploredCost).toInt()
+        return sign(exploredCost - other.exploredCost).toInt()
     }
 
     fun overlaps(bb: AABB2D, out: MutableList<AABB2D>) {

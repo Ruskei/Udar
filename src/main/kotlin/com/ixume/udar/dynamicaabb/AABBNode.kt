@@ -77,7 +77,7 @@ class AABBNode(
     override fun compareTo(other: AABBNode): Int {
         require(exploredCost != -1.0)
         require(other.exploredCost != -1.0)
-        return sign(other.exploredCost - exploredCost).toInt()
+        return sign(exploredCost - other.exploredCost).toInt()
     }
 
     fun contains(x: Double, y: Double, z: Double): Boolean {

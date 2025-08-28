@@ -11,7 +11,7 @@ import org.bukkit.Particle
 import org.bukkit.World
 import org.joml.Vector3d
 
-fun World.debugConnect(start: Vector3d, end: Vector3d, options: Particle.DustOptions, interval: Double = 0.1) {
+fun World.debugConnect(start: Vector3d, end: Vector3d, options: Particle.DustOptions, interval: Double = 0.2) {
     val dir = Vector3d(end).sub(start).normalize()!!
     if (!dir.isFinite) return
     var t = 0.0

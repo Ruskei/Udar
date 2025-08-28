@@ -61,6 +61,28 @@ class MeshFaceSortedList(
         return null
     }
 
+    fun getFaceIdxAt(level: Double): Int {
+        var low = 0
+        var high = ls.size - 1
+
+        while (low <= high) {
+            val mid = (low + high) ushr 1
+            val midFace = ls[mid]
+
+            if (abs(midFace.level - level) < FACE_EPSILON) {
+                return mid
+            }
+
+            if (midFace.level < level) {
+                low = mid + 1
+            } else {
+                high = mid - 1
+            }
+        }
+
+        return -1
+    }
+
     fun facesIn(bb: AABB): List<MeshFace> {
         val out = mutableListOf<MeshFace>()
         when (axis) {
