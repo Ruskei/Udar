@@ -6,6 +6,7 @@ import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentContactGen
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFaceSortedList
 import com.ixume.udar.collisiondetection.mesh.quadtree.EdgeQuadtree
+import com.ixume.udar.collisiondetection.mesh.quadtree.FlattenedEdgeQuadtree
 import com.ixume.udar.dynamicaabb.AABB
 import org.bukkit.Bukkit
 import org.bukkit.scheduler.BukkitTask
@@ -57,7 +58,7 @@ class WorldMeshesManager(
         val toGen = mutableListOf<MeshPosition>()
 
         val faces = mutableListOf<MeshFaceSortedList>()
-        val edges = mutableListOf<EdgeQuadtree>()
+        val edges = mutableListOf<FlattenedEdgeQuadtree>()
 
         if (prevBB != null) {
             val prevMinX = floor((prevBB.minX - BB_SAFETY) / MESH_SIZE).toInt()
@@ -96,9 +97,9 @@ class WorldMeshesManager(
                             mesh.faces?.yFaces?.let { faces += it }
                             mesh.faces?.zFaces?.let { faces += it }
 
-                            mesh.xEdges?.let { edges += it }
-                            mesh.yEdges?.let { edges += it }
-                            mesh.zEdges?.let { edges += it }
+                            mesh.xEdges2?.let { edges += it }
+                            mesh.yEdges2?.let { edges += it }
+                            mesh.zEdges2?.let { edges += it }
                         }
                     }
                 }
@@ -137,7 +138,7 @@ class WorldMeshesManager(
     private fun genIfNecessary(
         meshPos: MeshPosition,
         outFaces: MutableList<MeshFaceSortedList>,
-        outEdges: MutableList<EdgeQuadtree>,
+        outEdges: MutableList<FlattenedEdgeQuadtree>,
     ): LocalMesher.Mesh2? {
         val existingMesh = positionedMeshes[meshPos]
         if (existingMesh != null) {
@@ -145,9 +146,9 @@ class WorldMeshesManager(
             existingMesh.faces?.yFaces?.let { outFaces += it }
             existingMesh.faces?.zFaces?.let { outFaces += it }
             
-            existingMesh.xEdges?.let { outEdges += it }
-            existingMesh.yEdges?.let { outEdges += it }
-            existingMesh.zEdges?.let { outEdges += it }
+            existingMesh.xEdges2?.let { outEdges += it }
+            existingMesh.yEdges2?.let { outEdges += it }
+            existingMesh.zEdges2?.let { outEdges += it }
             
             return null
         }
@@ -176,9 +177,9 @@ class WorldMeshesManager(
         mesh.faces?.yFaces?.let { outFaces += it }
         mesh.faces?.zFaces?.let { outFaces += it }
 
-        mesh.xEdges?.let { outEdges += it }
-        mesh.yEdges?.let { outEdges += it }
-        mesh.zEdges?.let { outEdges += it }
+        mesh.xEdges2?.let { outEdges += it }
+        mesh.yEdges2?.let { outEdges += it }
+        mesh.zEdges2?.let { outEdges += it }
         
         return mesh
     }
@@ -192,7 +193,7 @@ class WorldMeshesManager(
 
 private class MeshRequest(
     val faces: MutableList<MeshFaceSortedList>,
-    val edges: MutableList<EdgeQuadtree>,
+    val edges: MutableList<FlattenedEdgeQuadtree>,
     val toGen: List<MeshPosition>,
     val envContactGenerator: EnvironmentContactGenerator2,
 )

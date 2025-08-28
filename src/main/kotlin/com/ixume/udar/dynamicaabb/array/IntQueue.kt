@@ -17,11 +17,7 @@ class IntQueue {
      * Returns -INT.MAX_VALUE if array is empty
      */
     fun dequeue(): Int {
-        size--
-        
-        if (size < 0) return -Int.MAX_VALUE
-        
-        return arr[size]
+        return arr[--size]
     }
     
     fun hasNext(): Boolean {
@@ -31,7 +27,7 @@ class IntQueue {
     private fun grow(required: Int) {
         if (arr.size >= required) return
         
-        val newSize = max(required, arr.size * 2)
+        val newSize = max(required, arr.size * 3 / 2)
         
         arr = arr.copyOf(newSize)
     }

@@ -10,9 +10,11 @@ import com.ixume.udar.collisiondetection.mesh.mesh2.EdgeMountAllowedNormals
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFace
 import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFaceSortedList
-import com.ixume.udar.collisiondetection.mesh.quadtree.EdgeQuadtree
+import com.ixume.udar.collisiondetection.mesh.quadtree.FlattenedEdgeQuadtree
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.physics.Contact
+import it.unimi.dsi.fastutil.doubles.DoubleArrayList
+import it.unimi.dsi.fastutil.ints.IntArrayList
 import org.joml.Vector3d
 import java.util.concurrent.atomic.AtomicReference
 
@@ -24,7 +26,7 @@ class EnvironmentContactGenerator2(
     }
 
     val meshFaces = AtomicReference<List<MeshFaceSortedList>>(emptyList())
-    val meshEdges = AtomicReference<List<EdgeQuadtree>>(emptyList())
+    val meshEdges = AtomicReference<List<FlattenedEdgeQuadtree>>(emptyList())
 
     private val prevBB: AABB = AABB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
@@ -114,7 +116,7 @@ class EnvironmentContactGenerator2(
                 level = face.level,
                 vertices = vertices
             )
-            
+
             if (collisions == null) {
                 i++
                 continue
@@ -125,13 +127,13 @@ class EnvironmentContactGenerator2(
                 i++
                 continue
             }
-            
+
             val overlappingAntiHoles = face.antiHoles.overlaps(_bb2d)
 
             var j = 0
             while (j < collisions.size) {
                 val collision = collisions[j]
-                
+
                 var valid = true
                 var k = 0
                 while (k < overlappingAntiHoles.size) {
@@ -157,10 +159,10 @@ class EnvironmentContactGenerator2(
                         valid = true
                         break
                     }
-                    
+
                     l++
                 }
-                
+
                 if (!valid) {
                     j++
                     continue
@@ -171,10 +173,10 @@ class EnvironmentContactGenerator2(
                     second = other,
                     result = collision,
                 )
-                
+
                 j++
             }
-            
+
             i++
         }
     }
@@ -202,7 +204,7 @@ class EnvironmentContactGenerator2(
     private val _allowedNormals = arrayOf(Vector3d(), Vector3d())
 
     private fun collideEdges(
-        tree: EdgeQuadtree,
+        tree: FlattenedEdgeQuadtree,
         math: LocalMathUtil,
         other: Body,
         out: MutableList<Contact>,
@@ -212,8 +214,23 @@ class EnvironmentContactGenerator2(
         get all edges that we could possibly be colliding with; we could have a valid collision with each of these edges (not using discrete curvature graph rn)
          */
 
-        val edges = tree.overlaps(activeBody.tightBB)
-        if (edges.isEmpty()) return
+        val outA = DoubleArrayList()
+        val outB = DoubleArrayList()
+        val outData = IntArrayList()
+
+        tree.overlaps(
+            minX = activeBody.tightBB.minX,
+            minY = activeBody.tightBB.minY,
+            minZ = activeBody.tightBB.minZ,
+            maxX = activeBody.tightBB.maxX,
+            maxY = activeBody.tightBB.maxY,
+            maxZ = activeBody.tightBB.maxZ,
+            outA = outA,
+            outB = outB,
+            outData = outData,
+        )
+
+        if (outA.isEmpty) return
 
         val vertices = activeBody.vertices
 
@@ -221,25 +238,31 @@ class EnvironmentContactGenerator2(
 
         if (!setupCrossAxiss(axis.vec)) return
 
-        for (edge in edges) {
-            /*
-            edge is represnted by a sorted list of doubles, so we jump 2 at a time through them and those are our edge starts and ends
-                might eventually be worth it to convert this into a sorted set to do O(log n) traversal instead of O(n)
-             */
-            _edgeStart.setComponent(axis.aOffset, edge.a)
-            _edgeStart.setComponent(axis.bOffset, edge.b)
+        val aItr = outA.iterator()
+        val bItr = outB.iterator()
+        val dataItr = outData.iterator()
 
-            _edgeEnd.setComponent(axis.aOffset, edge.a)
-            _edgeEnd.setComponent(axis.bOffset, edge.b)
+        while (aItr.hasNext()) {
+            val a = aItr.nextDouble()
+            val b = bItr.nextDouble()
+            val data = dataItr.nextInt()
 
-//            println("POINTS: ${edge.points.joinToString { it.toString() }}")
-            val itr = edge.points.iterator()
+            _edgeStart.setComponent(axis.aOffset, a)
+            _edgeStart.setComponent(axis.bOffset, b)
+
+            _edgeEnd.setComponent(axis.aOffset, a)
+            _edgeEnd.setComponent(axis.bOffset, b)
+            
+            val pts = tree.points[data]
+            val mounts = tree.pointMounts[data]
+            
+            val itr = pts.iterator()
             var i = 0
             while (itr.hasNext()) {
                 val d1 = itr.nextDouble()
                 val d2 = itr.nextDouble()
-
-                val mount = edge.pointMounts.getInt(i)
+                
+                val mount = mounts.getInt(i)
 
                 _allowedNormals[0].setComponent(axis.levelOffset, 0.0)
                 _allowedNormals[0].setComponent(axis.aOffset, EdgeMountAllowedNormals.allowedNormals[mount][0].x)
@@ -273,14 +296,16 @@ class EnvironmentContactGenerator2(
 //                println("  - allowedNormals[1]: ${_allowedNormals[1]}")
 //                println("  - mount: $mount")
 
-                check(true) { """
+                check(true) {
+                    """
                     Edge Contact:
                     | norm: ${r.norm}
                     | point: ${r.pointA}
                     | allowedNormal[0]: ${_allowedNormals[0]}
                     | allowedNormal[1]: ${_allowedNormals[1]}
                     | mount: $mount
-                """.trimIndent() }
+                """.trimIndent()
+                }
 
                 out += Contact(
                     first = activeBody,
@@ -291,5 +316,78 @@ class EnvironmentContactGenerator2(
                 i++
             }
         }
+
+//        for (edge in edges) {
+//            /*
+//            edge is represnted by a sorted list of doubles, so we jump 2 at a time through them and those are our edge starts and ends
+//                might eventually be worth it to convert this into a sorted set to do O(log n) traversal instead of O(n)
+//             */
+//            _edgeStart.setComponent(axis.aOffset, edge.a)
+//            _edgeStart.setComponent(axis.bOffset, edge.b)
+//
+//            _edgeEnd.setComponent(axis.aOffset, edge.a)
+//            _edgeEnd.setComponent(axis.bOffset, edge.b)
+//
+////            println("POINTS: ${edge.points.joinToString { it.toString() }}")
+//            val itr = edge.points.iterator()
+//            var i = 0
+//            while (itr.hasNext()) {
+//                val d1 = itr.nextDouble()
+//                val d2 = itr.nextDouble()
+//
+//                val mount = edge.pointMounts.getInt(i)
+//
+//                _allowedNormals[0].setComponent(axis.levelOffset, 0.0)
+//                _allowedNormals[0].setComponent(axis.aOffset, EdgeMountAllowedNormals.allowedNormals[mount][0].x)
+//                _allowedNormals[0].setComponent(axis.bOffset, EdgeMountAllowedNormals.allowedNormals[mount][0].y)
+//
+//                _allowedNormals[1].setComponent(axis.levelOffset, 0.0)
+//                _allowedNormals[1].setComponent(axis.aOffset, EdgeMountAllowedNormals.allowedNormals[mount][1].x)
+//                _allowedNormals[1].setComponent(axis.bOffset, EdgeMountAllowedNormals.allowedNormals[mount][1].y)
+//
+//                _edgeStart.setComponent(axis.levelOffset, d1)
+//                _edgeEnd.setComponent(axis.levelOffset, d2)
+//
+//                val r = math.collideCuboidEdge(
+//                    edgeStart = _edgeStart,
+//                    edgeEnd = _edgeEnd,
+//                    bodyAxiss = _bodyAxiss,
+//                    crossAxiss = _crossAxiss,
+//                    vertices = vertices,
+//                    allowedNormals = _allowedNormals,
+//                )
+//
+//                if (r == null) {
+//                    i++
+//                    continue
+//                }
+//
+////                println("COLLIDED EDGE")
+////                println("  - norm: ${r.norm}")
+////                println("  - point: ${r.pointA}")
+////                println("  - allowedNormals[0]: ${_allowedNormals[0]}")
+////                println("  - allowedNormals[1]: ${_allowedNormals[1]}")
+////                println("  - mount: $mount")
+//
+//                check(true) {
+//                    """
+//                    Edge Contact:
+//                    | norm: ${r.norm}
+//                    | point: ${r.pointA}
+//                    | allowedNormal[0]: ${_allowedNormals[0]}
+//                    | allowedNormal[1]: ${_allowedNormals[1]}
+//                    | mount: $mount
+//                """.trimIndent()
+//                }
+//
+//                out += Contact(
+//                    first = activeBody,
+//                    second = other,
+//                    result = r,
+//                )
+//
+//                i++
+//            }
+//        }
     }
 }

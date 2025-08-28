@@ -3,6 +3,7 @@ package com.ixume.udar.collisiondetection.mesh.quadtree
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFaces
 import com.ixume.udar.dynamicaabb.AABB
+import com.ixume.udar.dynamicaabb.AABBTree
 import com.ixume.udar.dynamicaabb.array.FlattenedAABBTree
 import com.ixume.udar.testing.debugConnect
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
@@ -197,7 +198,7 @@ class EdgeQuadtreeNode(
     private val _vec3Mounts = DoubleArray(12)
 
     fun fixUp(
-        tree: FlattenedAABBTree,
+        tree: AABBTree,
         axis: LocalMesher.AxisD,
         levelMin: Double,
         levelMax: Double,

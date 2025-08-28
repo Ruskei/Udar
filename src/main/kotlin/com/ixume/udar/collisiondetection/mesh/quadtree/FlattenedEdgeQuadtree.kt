@@ -77,11 +77,11 @@ class FlattenedEdgeQuadtree(
     val levelMin: Double,
     val levelMax: Double,
 ) {
-    private val _points = mutableListOf<DoubleAVLTreeSet>()
-    private val xoredPoints = mutableListOf<DoubleAVLTreeSet>()
+    val _points = mutableListOf<DoubleAVLTreeSet>()
+    val xoredPoints = mutableListOf<DoubleAVLTreeSet>()
 
-    private val points = mutableListOf<DoubleAVLTreeSet>()
-    private val pointMounts = mutableListOf<IntArrayList>()
+    val points = mutableListOf<DoubleAVLTreeSet>()
+    val pointMounts = mutableListOf<IntArrayList>()
 
     private var nodeFreeIdx = -1 // head of node free linked list
     private var edgeFreeIdx = -1 // head of edge free linked list
@@ -113,7 +113,7 @@ class FlattenedEdgeQuadtree(
     }
 
     private val fixupQueue = IntQueue()
-    
+
     private val _vec3Mounts = DoubleArray(12)
 
     fun fixUp(tree: FlattenedAABBTree) {
@@ -123,25 +123,26 @@ class FlattenedEdgeQuadtree(
 
         while (fixupQueue.hasNext()) {
             val node = fixupQueue.dequeue()
-            
+
             if (node.isLeaf()) {
                 var i = 0
                 val n = node.numPoints()
-                
+
                 while (i < n) {
                     val pts = DoubleArrayList()
                     val ptMounts = IntArrayList()
-                    
+
                     val edge = node.edge(i)
-                    val _pts = edge._points()
-                    val edgePts = edge.points()
-                    
+                    val dataIdx = edge.dataIdx()
+                    val _pts = edge._points(dataIdx)
+                    val edgePts = edge.points(dataIdx)
+
                     val s = _pts.size
                     check(s % 2 == 0)
-                    
+
                     val a = edge.a()
                     val b = edge.b()
-                    
+
                     _vec3Mounts[axis.aOffset] = a + MOUNT_EPSILON
                     _vec3Mounts[axis.bOffset] = b + MOUNT_EPSILON
 
@@ -153,27 +154,27 @@ class FlattenedEdgeQuadtree(
 
                     _vec3Mounts[9 + axis.aOffset] = a - MOUNT_EPSILON
                     _vec3Mounts[9 + axis.bOffset] = b + MOUNT_EPSILON
-                    
+
                     val lvlOffset = axis.levelOffset
-                    
+
                     val itr = _pts.iterator()
-                    
+
                     while (itr.hasNext()) {
                         var mounted = false
                         var mount = -1
-                        
+
                         val d0 = itr.nextDouble()
                         val d1 = itr.nextDouble()
 
                         val d0Valid = d0 >= levelMin && d0 <= levelMax
                         val d1Valid = d1 >= levelMin && d1 <= levelMax
-                        
+
                         if (!d0Valid || !d1Valid) {
                             continue
                         }
-                        
+
                         val center = d0 * 0.5 + d1 * 0.5
-                        
+
                         var j = 0
                         while (j < 4) {
                             _vec3Mounts[j * 3 + lvlOffset] = center
@@ -187,18 +188,18 @@ class FlattenedEdgeQuadtree(
                                     mount = j
                                 }
                             }
-                            
+
                             j++
                         }
-                        
+
                         if (mounted) {
                             pts.add(d0)
                             pts.add(d1)
-                            
+
                             ptMounts.add(mount)
                         }
                     }
-                    
+
                     if (pts.isEmpty) {
                         i++
                         continue
@@ -207,13 +208,13 @@ class FlattenedEdgeQuadtree(
                     check(pts.size % 2 == 0)
                     check(ptMounts.isNotEmpty())
                     check(ptMounts.size * 2 == pts.size)
-                    
-                    val edgeMounts = edge.mounts()
+
+                    val edgeMounts = edge.mounts(dataIdx)
 
                     var currentStart = pts.getDouble(0)
                     var latestEnd: Double = pts.getDouble(1)
                     var currentEdgeMount = ptMounts.getInt(0)
-                    
+
                     var j = 1
                     while (j < ptMounts.size) {
                         val s = pts.getDouble(j * 2)
@@ -240,7 +241,7 @@ class FlattenedEdgeQuadtree(
                     edgePts.add(currentStart)
                     edgePts.add(latestEnd)
                     edgeMounts.add(currentEdgeMount)
-                    
+
                     i++
                 }
             } else {
@@ -249,6 +250,114 @@ class FlattenedEdgeQuadtree(
                 fixupQueue.enqueue(node.child3())
                 fixupQueue.enqueue(node.child4())
             }
+        }
+    }
+
+    fun overlaps(
+        minX: Double,
+        minY: Double,
+        minZ: Double,
+        maxX: Double,
+        maxY: Double,
+        maxZ: Double,
+
+        outA: DoubleArrayList,
+        outB: DoubleArrayList,
+        outData: IntArrayList,
+    ) {
+        if (rootIdx == -1) return
+
+        val q = IntQueue()
+
+        q.enqueue(rootIdx)
+
+        while (q.hasNext()) {
+            val node = q.dequeue()
+
+            when (axis) {
+                LocalMesher.AxisD.X -> {
+                    if (!node.overlaps(minY, minZ, maxY, maxZ)) continue
+                    
+                    if (node.isLeaf()) {
+                        val np = node.numPoints()
+                        var i = 0
+                        while (i < np) {
+                            val e = node.edge(i)
+                            val a = e.a()
+                            val b = e.b()
+
+                            if (a >= minY && a <= maxY &&
+                                b >= minZ && b <= maxZ
+                            ) {
+                                outA.add(a)
+                                outB.add(b)
+                                outData.add(e.dataIdx())
+                            }
+                            
+                            i++
+                        }
+                        
+                        continue
+                    }
+                }
+
+                LocalMesher.AxisD.Y -> {
+                    if (!node.overlaps(minX, minZ, maxX, maxZ)) continue
+
+                    if (node.isLeaf()) {
+                        val np = node.numPoints()
+                        var i = 0
+                        while (i < np) {
+                            val e = node.edge(i)
+                            val a = e.a()
+                            val b = e.b()
+
+                            if (a >= minX && a <= maxX &&
+                                b >= minZ && b <= maxZ
+                            ) {
+                                outA.add(a)
+                                outB.add(b)
+                                outData.add(e.dataIdx())
+                            }
+
+                            i++
+                        }
+
+                        continue
+                    }
+                }
+
+                LocalMesher.AxisD.Z -> {
+                    if (!node.overlaps(minX, minY, maxX, maxY)) continue
+
+                    if (node.isLeaf()) {
+                        val np = node.numPoints()
+                        var i = 0
+                        while (i < np) {
+                            val e = node.edge(i)
+                            val a = e.a()
+                            val b = e.b()
+
+                            if (a >= minX && a <= maxX &&
+                                b >= minY && b <= maxY
+                            ) {
+                                outA.add(a)
+                                outB.add(b)
+                                outData.add(e.dataIdx())
+                            }
+
+                            i++
+                        }
+
+                        continue
+                    }
+                }
+            }
+            
+            q.enqueue(node.child1())
+            q.enqueue(node.child2())
+            q.enqueue(node.child3())
+            q.enqueue(node.child4())
         }
     }
 
@@ -263,20 +372,20 @@ class FlattenedEdgeQuadtree(
             if (!node.contains(a, b)) continue
 
             if (node.isLeaf()) {
-                var j = 0
+                var i = 0
                 val np = node.numPoints()
-                while (j < np) {
-                    val edge = node.edge(j)
+                while (i < np) {
+                    val edge = node.edge(i)
                     val na = edge.a()
                     val nb = edge.b()
 
                     if (na == a && nb == b) { // found matching edge !
-                        edge.xor(start, end)
+                        edge.xor(start, end, edge.dataIdx())
 
                         return true
                     }
 
-                    j++
+                    i++
                 }
 
                 // didn't find a matching edge, so we have to create a new point or subdivide
@@ -312,7 +421,7 @@ class FlattenedEdgeQuadtree(
                         idx = idx,
                     )
 
-                    ne.xor(start, end)
+                    ne.xor(start, end, ne.dataIdx())
 
                     node.edge(numPts, ne)
                     node.numPoints(numPts + 1)
@@ -632,21 +741,21 @@ class FlattenedEdgeQuadtree(
     /**
      * `this` is index of edge in edgeArray
      */
-    private fun Int.xor(start: Double, end: Double) {
-        val xored = xoredPoints()
+    private fun Int.xor(start: Double, end: Double, dataIdx: Int) {
+        val xored = xoredPoints(dataIdx)
         if (xored.contains(start) || xored.contains(end)) return
 
-        _xor(start)
-        _xor(end)
+        val _pts = _points(dataIdx)
+
+        _xor(start, xored, _pts)
+        _xor(end, xored, _pts)
     }
 
-    private fun Int._xor(d: Double) {
-        val pts = _points()
-
-        if (!pts.remove(d)) {
-            pts.add(d)
+    private fun Int._xor(d: Double, xored: DoubleAVLTreeSet, _pts: DoubleAVLTreeSet) {
+        if (!_pts.remove(d)) {
+            _pts.add(d)
         } else {
-            xoredPoints().add(d)
+            xored.add(d)
         }
     }
 
@@ -654,20 +763,20 @@ class FlattenedEdgeQuadtree(
     /**
      * `this` is index of the edge in edgeArray
      */
-    private fun Int.xoredPoints(): DoubleAVLTreeSet {
-        return xoredPoints[dataIdx()]
+    private fun Int.xoredPoints(dataIdx: Int): DoubleAVLTreeSet {
+        return xoredPoints[dataIdx]
     }
 
-    private fun Int._points(): DoubleAVLTreeSet {
-        return _points[dataIdx()]
+    private fun Int._points(dataIdx: Int): DoubleAVLTreeSet {
+        return _points[dataIdx]
     }
 
-    private fun Int.points(): DoubleAVLTreeSet {
-        return points[dataIdx()]
+    private fun Int.points(dataIdx: Int): DoubleAVLTreeSet {
+        return points[dataIdx]
     }
 
-    private fun Int.mounts(): IntArrayList {
-        return pointMounts[dataIdx()]
+    private fun Int.mounts(dataIdx: Int): IntArrayList {
+        return pointMounts[dataIdx]
     }
 
     /**
@@ -863,8 +972,18 @@ class FlattenedEdgeQuadtree(
     }
 
     private fun Int.contains(a: Double, b: Double): Boolean {
-        return a >= minA() && a <= maxA() &&
-               b >= minB() && b <= maxB()
+        return a >= minA() && a < maxA() &&
+               b >= minB() && b < maxB()
+    }
+
+    private fun Int.overlaps(
+        minA: Double,
+        minB: Double,
+        maxA: Double,
+        maxB: Double,
+    ): Boolean {
+        return maxA() >= minA && minA() <= maxA &&
+               maxB() >= minB && minB() <= maxB
     }
 
     private fun Int.minA(): Double {
@@ -960,7 +1079,7 @@ class FlattenedEdgeQuadtree(
                     val a = e.a()
                     val b = e.b()
 
-                    val pts = e._points()
+                    val pts = e._points(e.dataIdx())
 
                     _varr1[axis.aOffset] = a
                     _varr1[axis.bOffset] = b

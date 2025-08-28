@@ -24,7 +24,7 @@ class EdgeQuadtree(
         root.insertEdge(x, y, start, end - ASYMMETRY_EPSILON, axis, meshFaces)
     }
 
-    fun fixUp(bbTree: FlattenedAABBTree) {
+    fun fixUp(bbTree: AABBTree) {
         root.fixUp(bbTree, axis, levelMin, levelMax)
     }
 
@@ -41,5 +41,5 @@ class EdgeQuadtree(
     }
 }
 
-const val ASYMMETRY_EPSILON = 1e-12
-const val ABOVE_ASYMMETRY_EPSILON = 1e-11
+const val ASYMMETRY_EPSILON = 1e-8
+const val ABOVE_ASYMMETRY_EPSILON = 1e-7
