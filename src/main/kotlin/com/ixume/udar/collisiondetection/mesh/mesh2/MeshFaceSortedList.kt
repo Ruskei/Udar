@@ -2,14 +2,19 @@ package com.ixume.udar.collisiondetection.mesh.mesh2
 
 import com.ixume.udar.collisiondetection.mesh.aabbtree2d.FlattenedAABBTree2D
 import com.ixume.udar.dynamicaabb.AABB
+import org.joml.Vector3i
 import kotlin.math.abs
 
 class MeshFaceSortedList(
     val axis: LocalMesher.AxisD,
+    val meshStart: Vector3i,
+    val meshEnd: Vector3i,
 ) {
     val ls = mutableListOf<MeshFace>() // TODO: CHANGE TO BINARY HEAP!
 
-    fun placeFaceAt(level: Double): MeshFace {
+    fun placeFaceAt(level: Double): MeshFace? {
+        if (level <= meshStart.get(axis.levelOffset) - 1.0 || level >= meshEnd.get(axis.levelOffset) + 2.0) return null
+        
         var low = 0
         var high = ls.size - 1
 
@@ -31,7 +36,7 @@ class MeshFaceSortedList(
         val face = MeshFace(
             axis = axis,
             level = level,
-            holes = FlattenedAABBTree2D(0),
+            holes = FlattenedAABBTree2D(0, level, axis),
         )
 
         ls.add(low, face)
@@ -86,22 +91,22 @@ class MeshFaceSortedList(
     fun facesIn(bb: AABB): List<MeshFace> {
         val out = mutableListOf<MeshFace>()
         when (axis) {
-           LocalMesher.AxisD.X -> {
-               var i = 0
-               while (i < ls.size) {
-                   val f =  ls[i]
-                   if (f.level >= bb.minX && f.level <= bb.maxX) {
-                       out += f
-                   }
+            LocalMesher.AxisD.X -> {
+                var i = 0
+                while (i < ls.size) {
+                    val f = ls[i]
+                    if (f.level >= bb.minX && f.level <= bb.maxX) {
+                        out += f
+                    }
 
-                   i++
-               }
-           }
+                    i++
+                }
+            }
 
             LocalMesher.AxisD.Y -> {
                 var i = 0
                 while (i < ls.size) {
-                    val f =  ls[i]
+                    val f = ls[i]
                     if (f.level >= bb.minY && f.level <= bb.maxY) {
                         out += f
                     }
@@ -113,7 +118,7 @@ class MeshFaceSortedList(
             LocalMesher.AxisD.Z -> {
                 var i = 0
                 while (i < ls.size) {
-                    val f =  ls[i]
+                    val f = ls[i]
                     if (f.level >= bb.minZ && f.level <= bb.maxZ) {
                         out += f
                     }

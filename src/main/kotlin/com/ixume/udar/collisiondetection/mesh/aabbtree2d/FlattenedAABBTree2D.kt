@@ -1,12 +1,16 @@
 package com.ixume.udar.collisiondetection.mesh.aabbtree2d
 
 import com.ixume.udar.collisiondetection.LocalMathUtil
+import com.ixume.udar.collisiondetection.mesh.aabbtree2d.AABB2D.Companion.withLevel
+import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.dynamicaabb.array.IntQueue
+import com.ixume.udar.testing.debugConnect
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
 import it.unimi.dsi.fastutil.ints.IntComparator
 import it.unimi.dsi.fastutil.ints.IntHeapPriorityQueue
 import org.bukkit.Color
 import org.bukkit.Particle
+import org.bukkit.World
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.max
 import kotlin.math.min
@@ -36,6 +40,8 @@ import kotlin.math.sign
  */
 class FlattenedAABBTree2D(
     capacity: Int,
+    val level: Double,
+    val axis: LocalMesher.AxisD,
 ) : IntComparator {
     private val blocked = AtomicBoolean(false)
 
@@ -144,10 +150,10 @@ class FlattenedAABBTree2D(
 
 
     fun constructCollisions(): FlattenedAABBTree2D {
-        if (rootIdx == -1) return FlattenedAABBTree2D(0)
-        if (rootIdx.isLeaf()) return FlattenedAABBTree2D(0)
+        if (rootIdx == -1) return FlattenedAABBTree2D(0, level, axis)
+        if (rootIdx.isLeaf()) return FlattenedAABBTree2D(0, level, axis)
 
-        val out = FlattenedAABBTree2D(0)
+        val out = FlattenedAABBTree2D(0, level, axis)
 
         val aq = IntQueue()
         val bq = IntQueue()
@@ -898,82 +904,46 @@ class FlattenedAABBTree2D(
             q.enqueue(node.child2())
         }
     }
+    
+    private val visualizationQueue = IntQueue()
 
-//    fun visualize(world: World) {
-//        var i = 0
-//        val numNodes = arr.size / DATA_SIZE
-//        while (i < numNodes) {
-//            if (i.isFree()) {
-//                i++
-//                continue
-//            }
-//
-//            world.debugConnect(
-//                start = Vector3d(i.minX(), i.minY(), i.minZ()),
-//                end = Vector3d(i.maxX(), i.minY(), i.minZ()),
-//                options = DUST_OPTIONS,
-//            )
-//            world.debugConnect(
-//                start = Vector3d(i.minX(), i.maxY(), i.minZ()),
-//                end = Vector3d(i.maxX(), i.maxY(), i.minZ()),
-//                options = DUST_OPTIONS,
-//            )
-//            world.debugConnect(
-//                start = Vector3d(i.minX(), i.maxY(), i.maxZ()),
-//                end = Vector3d(i.maxX(), i.maxY(), i.maxZ()),
-//                options = DUST_OPTIONS,
-//            )
-//            world.debugConnect(
-//                start = Vector3d(i.minX(), i.minY(), i.maxZ()),
-//                end = Vector3d(i.maxX(), i.minY(), i.maxZ()),
-//                options = DUST_OPTIONS,
-//            )
-//
-//            world.debugConnect(
-//                start = Vector3d(i.minX(), i.minY(), i.minZ()),
-//                end = Vector3d(i.minX(), i.maxY(), i.minZ()),
-//                options = DUST_OPTIONS,
-//            )
-//            world.debugConnect(
-//                start = Vector3d(i.maxX(), i.minY(), i.minZ()),
-//                end = Vector3d(i.maxX(), i.maxY(), i.minZ()),
-//                options = DUST_OPTIONS,
-//            )
-//            world.debugConnect(
-//                start = Vector3d(i.maxX(), i.minY(), i.maxZ()),
-//                end = Vector3d(i.maxX(), i.maxY(), i.maxZ()),
-//                options = DUST_OPTIONS,
-//            )
-//            world.debugConnect(
-//                start = Vector3d(i.minX(), i.minY(), i.maxZ()),
-//                end = Vector3d(i.minX(), i.maxY(), i.maxZ()),
-//                options = DUST_OPTIONS,
-//            )
-//
-//            world.debugConnect(
-//                start = Vector3d(i.minX(), i.minY(), i.minZ()),
-//                end = Vector3d(i.minX(), i.minY(), i.maxZ()),
-//                options = DUST_OPTIONS,
-//            )
-//            world.debugConnect(
-//                start = Vector3d(i.minX(), i.maxY(), i.minZ()),
-//                end = Vector3d(i.minX(), i.maxY(), i.maxZ()),
-//                options = DUST_OPTIONS,
-//            )
-//            world.debugConnect(
-//                start = Vector3d(i.maxX(), i.maxY(), i.minZ()),
-//                end = Vector3d(i.maxX(), i.maxY(), i.maxZ()),
-//                options = DUST_OPTIONS,
-//            )
-//            world.debugConnect(
-//                start = Vector3d(i.maxX(), i.minY(), i.minZ()),
-//                end = Vector3d(i.maxX(), i.minY(), i.maxZ()),
-//                options = DUST_OPTIONS,
-//            )
-//
-//            i++
-//        }
-//    }
+    fun visualize(world: World, isHole: Boolean) {
+        if (rootIdx == -1) return
+        
+        visualizationQueue.enqueue(rootIdx)
+        
+        while (visualizationQueue.hasNext()) {
+            val node = visualizationQueue.dequeue()
+            
+            if (node.isLeaf()) {
+                val options = if (isHole) Particle.DustOptions(Color.BLUE, 0.25f) else Particle.DustOptions(Color.RED, 0.25f)
+
+                world.debugConnect(
+                    start = withLevel(axis, node.minX(), node.minY(), level),
+                    end = withLevel(axis, node.maxX(), node.minY(), level),
+                    options = options,
+                )
+                world.debugConnect(
+                    start = withLevel(axis, node.maxX(), node.minY(), level),
+                    end = withLevel(axis, node.maxX(), node.maxY(), level),
+                    options = options,
+                )
+                world.debugConnect(
+                    start = withLevel(axis, node.maxX(), node.maxY(), level),
+                    end = withLevel(axis, node.minX(), node.maxY(), level),
+                    options = options,
+                )
+                world.debugConnect(
+                    start = withLevel(axis, node.minX(), node.maxY(), level),
+                    end = withLevel(axis, node.minX(), node.minY(), level),
+                    options = options,
+                )
+            } else {
+                visualizationQueue.enqueue(node.child1())
+                visualizationQueue.enqueue(node.child2())
+            }
+        }
+    }
 }
 
 private val DUST_OPTIONS = Particle.DustOptions(Color.FUCHSIA, 0.25f)

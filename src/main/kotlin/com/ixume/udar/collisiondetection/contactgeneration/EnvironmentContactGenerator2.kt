@@ -38,6 +38,7 @@ class EnvironmentContactGenerator2(
         other: Body,
         math: LocalMathUtil,
     ): List<Contact> {
+//        println("ENV CONTACT GEN")
         val bb = activeBody.tightBB
 
         contacts.clear()
@@ -116,6 +117,10 @@ class EnvironmentContactGenerator2(
         while (i < faces.size) {
             val face = faces[i]
             testedFaces++
+//            println("TESTING FACE:")
+//            println("| axis: $axis")
+//            println("| level: ${face.level}")
+            
             val collisions = math.collidePlane(
                 axis = axis,
                 level = face.level,
@@ -153,9 +158,13 @@ class EnvironmentContactGenerator2(
                 out = _overlappingAntiHoles,
                 math = math,
             )
+            
+//            println("| holes: ${_overlappingHoles.size / 4}")
+//            println("| antiholes: ${_overlappingAntiHoles.size / 4}")
 
             var j = 0
             while (j < collisions.size) {
+//                println("| COLLISION")
                 val collision = collisions[j]
 
                 val pa = collision.pointA.get(axis.aOffset)
@@ -169,6 +178,8 @@ class EnvironmentContactGenerator2(
                     val minB = _overlappingAntiHoles.getDouble(k * 4 + 1)
                     val maxA = _overlappingAntiHoles.getDouble(k * 4 + 2)
                     val maxB = _overlappingAntiHoles.getDouble(k * 4 + 3)
+                    
+//                    println("| TESTING AH: ($minA, $minB) -> ($maxA, $maxB)")
 
                     if (contains(
                             minA = minA,
@@ -179,6 +190,7 @@ class EnvironmentContactGenerator2(
                             b = pb,
                         )
                     ) {
+//                        println("| CONTAINED IN ANTIHOLE: ($minA, $minB) -> ($maxA, $maxB)")
                         valid = false
                         break
                     }
@@ -210,6 +222,7 @@ class EnvironmentContactGenerator2(
                             b = pb,
                         )
                     ) {
+//                        println("| CONTAINED IN HOLE: ($minA, $minB) -> ($maxA, $maxB)")
                         valid = true
                         break
                     }

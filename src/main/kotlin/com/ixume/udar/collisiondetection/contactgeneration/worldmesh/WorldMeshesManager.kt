@@ -5,7 +5,6 @@ import com.ixume.udar.Udar
 import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentContactGenerator2
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFaceSortedList
-import com.ixume.udar.collisiondetection.mesh.quadtree.EdgeQuadtree
 import com.ixume.udar.collisiondetection.mesh.quadtree.FlattenedEdgeQuadtree
 import com.ixume.udar.dynamicaabb.AABB
 import org.bukkit.Bukkit
@@ -121,7 +120,7 @@ class WorldMeshesManager(
 
     private fun tick() {
 //        positionedMeshes.values.forEach { it.visualize(world) }
-        
+
         var rq: MeshRequest?
         while (queue.poll().also { rq = it } != null) {
             rq ?: return
@@ -145,14 +144,14 @@ class WorldMeshesManager(
             existingMesh.faces?.xFaces?.let { outFaces += it }
             existingMesh.faces?.yFaces?.let { outFaces += it }
             existingMesh.faces?.zFaces?.let { outFaces += it }
-            
+
             existingMesh.xEdges2?.let { outEdges += it }
             existingMesh.yEdges2?.let { outEdges += it }
             existingMesh.zEdges2?.let { outEdges += it }
-            
+
             return null
         }
-        
+
         val meshBB = AABB(
             minX = meshPos.x * MESH_SIZE.toDouble(),
             minY = meshPos.y * MESH_SIZE.toDouble(),
@@ -161,18 +160,18 @@ class WorldMeshesManager(
             maxY = meshPos.y * MESH_SIZE.toDouble() + MESH_SIZE - 1,
             maxZ = meshPos.z * MESH_SIZE.toDouble() + MESH_SIZE - 1,
         )
-        
+
         val mesh: LocalMesher.Mesh2
-        
+
         val t = measureNanoTime {
             mesh = mesher.mesh(
                 world = world,
                 boundingBox = meshBB
             )
         }
-        
+
         println("Generated mesh in ${t / 1_000_000.0}ms!")
-        
+
         mesh.faces?.xFaces?.let { outFaces += it }
         mesh.faces?.yFaces?.let { outFaces += it }
         mesh.faces?.zFaces?.let { outFaces += it }
@@ -180,10 +179,10 @@ class WorldMeshesManager(
         mesh.xEdges2?.let { outEdges += it }
         mesh.yEdges2?.let { outEdges += it }
         mesh.zEdges2?.let { outEdges += it }
-        
+
         return mesh
     }
-    
+
     fun kill() {
         positionedMeshes.clear()
         syncTask?.cancel()
@@ -215,5 +214,5 @@ class MeshPosition(
     }
 }
 
-private const val MESH_SIZE = 16
+private const val MESH_SIZE = 8
 private const val BB_SAFETY = 1.0

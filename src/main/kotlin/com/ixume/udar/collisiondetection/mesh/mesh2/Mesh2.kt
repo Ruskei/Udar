@@ -1,10 +1,5 @@
 package com.ixume.udar.collisiondetection.mesh.mesh2
 
-import com.ixume.udar.collisiondetection.mesh.aabbtree2d.AABB2D
-import com.ixume.udar.collisiondetection.mesh.aabbtree2d.AABB2D.Companion.MAX_A
-import com.ixume.udar.collisiondetection.mesh.aabbtree2d.AABB2D.Companion.MAX_B
-import com.ixume.udar.collisiondetection.mesh.aabbtree2d.AABB2D.Companion.MIN_A
-import com.ixume.udar.collisiondetection.mesh.aabbtree2d.AABB2D.Companion.MIN_B
 import com.ixume.udar.collisiondetection.mesh.quadtree.FlattenedEdgeQuadtree
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.dynamicaabb.array.FlattenedAABBTree
@@ -22,12 +17,17 @@ class LocalMesher {
     private lateinit var _xAxiss2: FlattenedEdgeQuadtree
     private lateinit var _yAxiss2: FlattenedEdgeQuadtree
     private lateinit var _zAxiss2: FlattenedEdgeQuadtree
+    
+    /*
+    since meshes are tiled, we deal with boundary issues by having each mesh only worry about its minimum bounds
+     */
 
     fun mesh(
         world: World,
         boundingBox: AABB,
 //        experimental: Boolean = false,
     ): Mesh2 {
+//        println("GENERATING!")
         val meshStart = Vector3i(
             floor(boundingBox.minX).toInt(),
             floor(boundingBox.minY).toInt(),
@@ -38,7 +38,10 @@ class LocalMesher {
             floor(boundingBox.maxY).toInt(),
             floor(boundingBox.maxZ).toInt(),
         )
-
+        
+//        println("| meshStart: $meshStart")
+//        println("| meshEnd: $meshEnd")
+//
         val flatTree = FlattenedAABBTree(0)
         _bbs.clear()
 
@@ -119,7 +122,7 @@ class LocalMesher {
         add anti-holes
          */
 
-        val faces = MeshFaceSortedList(axis)
+        val faces = MeshFaceSortedList(axis, meshStart, meshEnd)
 
         val _bb = DoubleArray(6)
 
@@ -128,10 +131,11 @@ class LocalMesher {
             _bbs.get(i, _bb)
 
             val minFace = faces.placeFaceAt(_bb.minLevel(axis))
-            minFace.stamp(_bb, false)
+            minFace?.stamp(_bb, false)
+            
 
             val maxFace = faces.placeFaceAt(_bb.maxLevel(axis))
-            maxFace.stamp(_bb, true)
+            maxFace?.stamp(_bb, true)
 
             i++
         }
@@ -175,110 +179,7 @@ class LocalMesher {
     private inline fun DoubleArray.maxB(axis: AxisD): Double {
         return this[3 + axis.bOffset]
     }
-
-//    private fun createMeshEdges(
-//        meshStart: Vector3i,
-//        meshEnd: Vector3i,
-//        meshFaces: MeshFaces,
-//        flatTree: AABBTree,
-//    ) {
-//        //TODO: Dont put out of bounds points on edges
-//        _xAxiss = EdgeQuadtree(
-//            AxisD.X,
-//            Vector2d(meshStart.y.toDouble(), meshStart.z.toDouble()),
-//            Vector2d(meshEnd.y.toDouble() + 2.0, meshEnd.z.toDouble() + 2.0),
-//            levelMin = meshStart.x.toDouble(),
-//            levelMax = meshEnd.x.toDouble() + 1.0,
-//        )
-//        _yAxiss = EdgeQuadtree(
-//            AxisD.Y,
-//            Vector2d(meshStart.x.toDouble(), meshStart.z.toDouble()),
-//            Vector2d(meshEnd.x.toDouble() + 2.0, meshEnd.z.toDouble() + 2.0),
-//            levelMin = meshStart.y.toDouble(),
-//            levelMax = meshEnd.y.toDouble() + 1.0,
-//        )
-//        _zAxiss = EdgeQuadtree(
-//            AxisD.Z,
-//            Vector2d(meshStart.x.toDouble(), meshStart.y.toDouble()),
-//            Vector2d(meshEnd.x.toDouble() + 2.0, meshEnd.y.toDouble() + 2.0),
-//            levelMin = meshStart.z.toDouble(),
-//            levelMax = meshEnd.z.toDouble() + 1.0,
-//        )
-//
-//        val _bb = DoubleArray(6) // [ minX, minY, minZ, maxX, maxY, maxZ ]
-//
-//        var i = 0
-//        while (i < _bbs.size) {
-//            _bbs.get(i, _bb)
-//
-//            //x axis
-//            val xStart = _bb[BB_MIN_X]
-//            val xEnd = _bb[BB_MAX_X]
-//
-//            val x0aStart = _bb[BB_MIN_Y]
-//            val x0bStart = _bb[BB_MIN_Z]
-//            _xAxiss.insertEdge(x0aStart, x0bStart, xStart, xEnd, meshFaces)
-//
-//            val x1aStart = _bb[BB_MAX_Y]
-//            val x1bStart = _bb[BB_MIN_Z]
-//            _xAxiss.insertEdge(x1aStart, x1bStart, xStart, xEnd, meshFaces)
-//
-//            val x2aStart = _bb[BB_MAX_Y]
-//            val x2bStart = _bb[BB_MAX_Z]
-//            _xAxiss.insertEdge(x2aStart, x2bStart, xStart, xEnd, meshFaces)
-//
-//            val x3aStart = _bb[BB_MIN_Y]
-//            val x3bStart = _bb[BB_MAX_Z]
-//            _xAxiss.insertEdge(x3aStart, x3bStart, xStart, xEnd, meshFaces)
-//
-//            //y axis
-//            val yStart = _bb[BB_MIN_Y]
-//            val yEnd = _bb[BB_MAX_Y]
-//
-//            val y0aStart = _bb[BB_MIN_X]
-//            val y0bStart = _bb[BB_MIN_Z]
-//            _yAxiss.insertEdge(y0aStart, y0bStart, yStart, yEnd, meshFaces)
-//
-//            val y1aStart = _bb[BB_MAX_X]
-//            val y1bStart = _bb[BB_MIN_Z]
-//            _yAxiss.insertEdge(y1aStart, y1bStart, yStart, yEnd, meshFaces)
-//
-//            val y2aStart = _bb[BB_MAX_X]
-//            val y2bStart = _bb[BB_MAX_Z]
-//            _yAxiss.insertEdge(y2aStart, y2bStart, yStart, yEnd, meshFaces)
-//
-//            val y3aStart = _bb[BB_MIN_X]
-//            val y3bStart = _bb[BB_MAX_Z]
-//            _yAxiss.insertEdge(y3aStart, y3bStart, yStart, yEnd, meshFaces)
-//
-//            //z axis
-//            val zStart = _bb[BB_MIN_Z]
-//            val zEnd = _bb[BB_MAX_Z]
-//
-//            val z0aStart = _bb[BB_MIN_X]
-//            val z0bStart = _bb[BB_MIN_Y]
-//            _zAxiss.insertEdge(z0aStart, z0bStart, zStart, zEnd, meshFaces)
-//
-//            val z1aStart = _bb[BB_MAX_X]
-//            val z1bStart = _bb[BB_MIN_Y]
-//            _zAxiss.insertEdge(z1aStart, z1bStart, zStart, zEnd, meshFaces)
-//
-//            val z2aStart = _bb[BB_MAX_X]
-//            val z2bStart = _bb[BB_MAX_Y]
-//            _zAxiss.insertEdge(z2aStart, z2bStart, zStart, zEnd, meshFaces)
-//
-//            val z3aStart = _bb[BB_MIN_X]
-//            val z3bStart = _bb[BB_MAX_Y]
-//            _zAxiss.insertEdge(z3aStart, z3bStart, zStart, zEnd, meshFaces)
-//
-//            i++
-//        }
-//
-//        _xAxiss.fixUp(flatTree)
-//        _yAxiss.fixUp(flatTree)
-//        _zAxiss.fixUp(flatTree)
-//    }
-
+    
     private fun createMeshEdges2(
         meshStart: Vector3i,
         meshEnd: Vector3i,
@@ -395,14 +296,15 @@ class LocalMesher {
         val flatTree: FlattenedAABBTree?,
     ) {
         fun visualize(world: World) {
+//            println("visualizing mesh")
 //            xEdges2?.visualize(world)
 //            yEdges2?.visualize(world)
 //            zEdges2?.visualize(world)
-            flatTree?.visualize(world)
+//            flatTree?.visualize(world)
 
-//            faces?.xFaces?.ls?.forEach { it.visualize(world) }
-//            faces?.yFaces?.ls?.forEach { it.visualize(world) }
-//            faces?.zFaces?.ls?.forEach { it.visualize(world) }
+            faces?.xFaces?.ls?.forEach { it.visualize(world) }
+            faces?.yFaces?.ls?.forEach { it.visualize(world) }
+            faces?.zFaces?.ls?.forEach { it.visualize(world) }
 ////
 //            xEdges?.visualize(world)
 //            yEdges?.visualize(world)
