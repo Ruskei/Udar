@@ -71,6 +71,7 @@ class LocalMesher {
             return Mesh2(
                 start = meshStart,
                 end = meshEnd,
+                flatTree = null,
             )
         }
 
@@ -93,6 +94,7 @@ class LocalMesher {
             xEdges2 = _xAxiss2,
             yEdges2 = _yAxiss2,
             zEdges2 = _zAxiss2,
+            flatTree = flatTree,
         )
     }
 
@@ -390,12 +392,13 @@ class LocalMesher {
         val xEdges2: FlattenedEdgeQuadtree? = null,
         val yEdges2: FlattenedEdgeQuadtree? = null,
         val zEdges2: FlattenedEdgeQuadtree? = null,
+        val flatTree: FlattenedAABBTree?,
     ) {
         fun visualize(world: World) {
-            xEdges2?.visualize(world)
-            yEdges2?.visualize(world)
-            zEdges2?.visualize(world)
-//            flatTree?.visualize(world)
+//            xEdges2?.visualize(world)
+//            yEdges2?.visualize(world)
+//            zEdges2?.visualize(world)
+            flatTree?.visualize(world)
 
 //            faces?.xFaces?.ls?.forEach { it.visualize(world) }
 //            faces?.yFaces?.ls?.forEach { it.visualize(world) }

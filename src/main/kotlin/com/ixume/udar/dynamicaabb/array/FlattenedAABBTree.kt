@@ -50,11 +50,11 @@ class FlattenedAABBTree(
     }
 
     override fun compare(k1: Int, k2: Int): Int {
-        return sign(k2.exploredCost() - k1.exploredCost()).toInt()
+        return sign(k1.exploredCost() - k2.exploredCost()).toInt()
     }
 
     private val q = IntQueue()
-    
+
     fun contains(x: Double, y: Double, z: Double): Boolean {
         while (q.hasNext()) {
             val i = q.dequeue()
@@ -64,11 +64,11 @@ class FlattenedAABBTree(
             if (i.isLeaf()) {
                 return true
             }
-           
+
             q.enqueue(i.child1())
             q.enqueue(i.child2())
         }
-        
+
         return false
     }
 
@@ -131,7 +131,7 @@ class FlattenedAABBTree(
         val oldParent = best.parent()
 
         val newParent = newNode(
-            parent = -1,
+            parent = oldParent,
             isLeaf = false,
             c1 = -1,
             c2 = -1,
@@ -266,7 +266,7 @@ class FlattenedAABBTree(
         maxY: Double,
         maxZ: Double,
     ): Double {
-        return volume() + refittingCost(
+        return ((maxX - minX) * (maxY - minY) * (maxZ - minZ)) + refittingCost(
             minX,
             minY,
             minZ,
@@ -504,9 +504,9 @@ class FlattenedAABBTree(
 
         val prevSize = arr.size
         val newSize = max(size * DATA_SIZE, (arr.size * 3 / 2) / DATA_SIZE * DATA_SIZE)
-        
+
         arr = arr.copyOf(newSize)
-        
+
         setFree(prevSize / DATA_SIZE, newSize / DATA_SIZE)
         return prevSize / DATA_SIZE
     }
@@ -597,6 +597,10 @@ class FlattenedAABBTree(
     private fun Int.rotate() {
         val pp = parent()
         if (pp == -1) return
+
+        if (isLeaf()) {
+            return
+        }
 
         val isFirst: Boolean
         val other: Int
@@ -729,7 +733,7 @@ class FlattenedAABBTree(
         maxY(max(bMaxY, aMaxY))
         maxZ(max(bMaxZ, aMaxZ))
     }
-    
+
     fun clear() {
         freeIdx = setFree(0, arr.size / DATA_SIZE)
         rootIdx = -1
@@ -750,7 +754,7 @@ class FlattenedAABBTree(
      */
     private fun setFree(start: Int, end: Int): Int {
         if (end <= start) return -1
-        
+
         var i = start
         while (i < end - 1) {
             i.nextFree(i + 1)
@@ -763,10 +767,10 @@ class FlattenedAABBTree(
             (end - 1).nextFree(-1)
             (end - 1).free()
         }
-        
+
         return start
     }
-    
+
     fun visualize(world: World) {
         var i = 0
         val numNodes = arr.size / DATA_SIZE

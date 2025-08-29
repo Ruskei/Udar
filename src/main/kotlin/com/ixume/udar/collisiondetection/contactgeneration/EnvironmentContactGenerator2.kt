@@ -156,11 +156,12 @@ class EnvironmentContactGenerator2(
 
                 var valid = true
                 var k = 0
-                while (k < overlappingAntiHoles.size) {
-                    val minA = overlappingAntiHoles.getDouble(k)
-                    val minB = overlappingAntiHoles.getDouble(k + 1)
-                    val maxA = overlappingAntiHoles.getDouble(k + 2)
-                    val maxB = overlappingAntiHoles.getDouble(k + 3)
+                check(overlappingAntiHoles.size % 4 == 0)
+                while (k < overlappingAntiHoles.size / 4) {
+                    val minA = overlappingAntiHoles.getDouble(k * 4)
+                    val minB = overlappingAntiHoles.getDouble(k * 4 + 1)
+                    val maxA = overlappingAntiHoles.getDouble(k * 4 + 2)
+                    val maxB = overlappingAntiHoles.getDouble(k * 4 + 3)
 
                     if (contains(
                             minA = minA,
@@ -186,11 +187,12 @@ class EnvironmentContactGenerator2(
                 valid = false
 
                 var l = 0
-                while (l < overlappingHoles.size) {
-                    val minA = overlappingHoles.getDouble(k)
-                    val minB = overlappingHoles.getDouble(k + 1)
-                    val maxA = overlappingHoles.getDouble(k + 2)
-                    val maxB = overlappingHoles.getDouble(k + 3)
+                check(overlappingHoles.size % 4 == 0)
+                while (l < overlappingHoles.size / 4) {
+                    val minA = overlappingHoles.getDouble(l * 4)
+                    val minB = overlappingHoles.getDouble(l * 4 + 1)
+                    val maxA = overlappingHoles.getDouble(l * 4 + 2)
+                    val maxB = overlappingHoles.getDouble(l * 4 + 3)
 
                     if (contains(
                             minA = minA,

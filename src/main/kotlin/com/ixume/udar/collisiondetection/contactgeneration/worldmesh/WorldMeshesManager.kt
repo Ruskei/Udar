@@ -120,7 +120,7 @@ class WorldMeshesManager(
     }
 
     private fun tick() {
-        positionedMeshes.values.forEach { it.visualize(world) }
+//        positionedMeshes.values.forEach { it.visualize(world) }
         
         var rq: MeshRequest?
         while (queue.poll().also { rq = it } != null) {
@@ -171,7 +171,7 @@ class WorldMeshesManager(
             )
         }
         
-        println("Generated mesh in ${t / 1_000_000.0}us!")
+        println("Generated mesh in ${t / 1_000_000.0}ms!")
         
         mesh.faces?.xFaces?.let { outFaces += it }
         mesh.faces?.yFaces?.let { outFaces += it }

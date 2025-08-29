@@ -47,7 +47,7 @@ class FlattenedAABBTree2D(
     }
 
     override fun compare(k1: Int, k2: Int): Int {
-        return sign(k2.exploredCost() - k1.exploredCost()).toInt()
+        return sign(k1.exploredCost() - k2.exploredCost()).toInt()
     }
 
     private val q = IntQueue()
@@ -71,169 +71,169 @@ class FlattenedAABBTree2D(
 
     private val _overlap = DoubleArray(4)
 
-    fun constructCollisions(): FlattenedAABBTree2D {
-        if (rootIdx == -1) return FlattenedAABBTree2D(0)
-        if (rootIdx.isLeaf()) return FlattenedAABBTree2D(0)
-
-        val out = FlattenedAABBTree2D(0)
-        
-        pairs(rootIdx.child1(), rootIdx.child2(), out)
-        
-        return out
-    }
-
-    private fun pairs(a: Int, b: Int, out: FlattenedAABBTree2D) {
-        if (a.isLeaf()) {
-            if (b.isLeaf()) {
-                if (a.overlapsNode(b)) {
-                    //insert overlap, the anti-hole
-
-                    a.calcOverlap(
-                        minX = b.minX(),
-                        minY = b.minY(),
-                        maxX = b.maxX(),
-                        maxY = b.maxY(),
-                        out = _overlap,
-                    )
-
-                    out.insert(
-                        minX = _overlap[0],
-                        minY = _overlap[1],
-                        maxX = _overlap[2],
-                        maxY = _overlap[3],
-                    )
-                }
-
-                return
-            } else {
-                if (a.parent() == b.parent()) {
-                    pairs(b.child1(), b.child2(), out)
-                }
-
-                if (a.overlapsNode(b)) {
-                    pairs(a, b.child1(), out)
-                    pairs(a, b.child2(), out)
-                }
-            }
-        } else {
-            if (b.isLeaf()) {
-                if (a.parent() == b.parent()) {
-                    pairs(a.child1(), a.child2(), out)
-                }
-
-                if (a.overlapsNode(b)) {
-                    pairs(b, a.child1(), out)
-                    pairs(b, a.child2(), out)
-                }
-            } else {
-                if (a.parent() == b.parent()) {
-                    pairs(a.child1(), a.child2(), out)
-                    pairs(b.child1(), b.child2(), out)
-                }
-
-                if (a.overlapsNode(b)) {
-                    pairs(a.child1(), b.child1(), out)
-                    pairs(a.child1(), b.child2(), out)
-                    pairs(a.child2(), b.child1(), out)
-                    pairs(a.child2(), b.child2(), out)
-                }
-            }
-        }
-    }
-
-
 //    fun constructCollisions(): FlattenedAABBTree2D {
 //        if (rootIdx == -1) return FlattenedAABBTree2D(0)
 //        if (rootIdx.isLeaf()) return FlattenedAABBTree2D(0)
 //
 //        val out = FlattenedAABBTree2D(0)
 //
-//        val aq = IntQueue()
-//        val bq = IntQueue()
+//        pairs(rootIdx.child1(), rootIdx.child2(), out)
 //
-//        aq.enqueue(rootIdx.child1())
-//        bq.enqueue(rootIdx.child2())
+//        return out
+//    }
+
+//    private fun pairs(a: Int, b: Int, out: FlattenedAABBTree2D) {
+//        if (a.isLeaf()) {
+//            if (b.isLeaf()) {
+//                if (a.overlapsNode(b)) {
+//                    //insert overlap, the anti-hole
 //
-//        while (aq.hasNext()) {
-//            val a = aq.dequeue()
-//            val b = bq.dequeue()
+//                    a.calcOverlap(
+//                        minX = b.minX(),
+//                        minY = b.minY(),
+//                        maxX = b.maxX(),
+//                        maxY = b.maxY(),
+//                        out = _overlap,
+//                    )
 //
-//            if (a.isLeaf()) {
-//                if (b.isLeaf()) {
-//                    if (a.overlapsNode(b)) {
-//                        a.calcOverlap(
-//                            minX = b.minX(),
-//                            minY = b.minY(),
-//                            maxX = b.maxX(),
-//                            maxY = b.maxY(),
-//                            out = _overlap,
-//                        )
+//                    out.insert(
+//                        minX = _overlap[0],
+//                        minY = _overlap[1],
+//                        maxX = _overlap[2],
+//                        maxY = _overlap[3],
+//                    )
+//                }
 //
-//                        out.insert(
-//                            minX = _overlap[0],
-//                            minY = _overlap[1],
-//                            maxX = _overlap[2],
-//                            maxY = _overlap[3],
-//                        )
-//                    }
+//                return
+//            } else {
+//                if (a.parent() == b.parent()) {
+//                    pairs(b.child1(), b.child2(), out)
+//                }
 //
-//                    continue
-//                } else {
-//                    if (a.parent() == b.parent()) {
-//                        aq.enqueue(a.child1())
-//                        bq.enqueue(a.child2())
-//                    }
+//                if (a.overlapsNode(b)) {
+//                    pairs(a, b.child1(), out)
+//                    pairs(a, b.child2(), out)
+//                }
+//            }
+//        } else {
+//            if (b.isLeaf()) {
+//                if (a.parent() == b.parent()) {
+//                    pairs(a.child1(), a.child2(), out)
+//                }
 //
-//                    if (a.overlapsNode(b)) {
-//                        aq.enqueue(a)
-//                        bq.enqueue(b.child1())
-//
-//                        aq.enqueue(a)
-//                        bq.enqueue(b.child2())
-//                    }
+//                if (a.overlapsNode(b)) {
+//                    pairs(b, a.child1(), out)
+//                    pairs(b, a.child2(), out)
 //                }
 //            } else {
-//                if (b.isLeaf()) {
-//                    if (a.parent() == b.parent()) {
-//                        aq.enqueue(a.child1())
-//                        bq.enqueue(a.child2())
-//                    }
+//                if (a.parent() == b.parent()) {
+//                    pairs(a.child1(), a.child2(), out)
+//                    pairs(b.child1(), b.child2(), out)
+//                }
 //
-//                    if (a.overlapsNode(b)) {
-//                        aq.enqueue(b)
-//                        bq.enqueue(a.child1())
-//
-//                        aq.enqueue(b)
-//                        bq.enqueue(a.child2())
-//                    }
-//                } else {
-//                    if (a.parent() == b.parent()) {
-//                        aq.enqueue(a.child1())
-//                        bq.enqueue(a.child2())
-//
-//                        aq.enqueue(b.child1())
-//                        bq.enqueue(b.child2())
-//                    }
-//                    
-//                    if (a.overlapsNode(b)) {
-//                        aq.enqueue(a.child1())
-//                        bq.enqueue(b.child1())
-//
-//                        aq.enqueue(a.child1())
-//                        bq.enqueue(b.child2())
-//
-//                        aq.enqueue(a.child2())
-//                        bq.enqueue(b.child1())
-//
-//                        aq.enqueue(a.child2())
-//                        bq.enqueue(b.child2())
-//                    }
+//                if (a.overlapsNode(b)) {
+//                    pairs(a.child1(), b.child1(), out)
+//                    pairs(a.child1(), b.child2(), out)
+//                    pairs(a.child2(), b.child1(), out)
+//                    pairs(a.child2(), b.child2(), out)
 //                }
 //            }
 //        }
-//        
-//        return out
 //    }
+
+
+    fun constructCollisions(): FlattenedAABBTree2D {
+        if (rootIdx == -1) return FlattenedAABBTree2D(0)
+        if (rootIdx.isLeaf()) return FlattenedAABBTree2D(0)
+
+        val out = FlattenedAABBTree2D(0)
+
+        val aq = IntQueue()
+        val bq = IntQueue()
+
+        aq.enqueue(rootIdx.child1())
+        bq.enqueue(rootIdx.child2())
+
+        while (aq.hasNext()) {
+            val a = aq.dequeue()
+            val b = bq.dequeue()
+
+            if (a.isLeaf()) {
+                if (b.isLeaf()) {
+                    if (a.overlapsNode(b)) {
+                        a.calcOverlap(
+                            minX = b.minX(),
+                            minY = b.minY(),
+                            maxX = b.maxX(),
+                            maxY = b.maxY(),
+                            out = _overlap,
+                        )
+
+                        out.insert(
+                            minX = _overlap[0],
+                            minY = _overlap[1],
+                            maxX = _overlap[2],
+                            maxY = _overlap[3],
+                        )
+                    }
+
+                    continue
+                } else {
+                    if (a.parent() == b.parent()) {
+                        aq.enqueue(b.child1())
+                        bq.enqueue(b.child2())
+                    }
+
+                    if (a.overlapsNode(b)) {
+                        aq.enqueue(a)
+                        bq.enqueue(b.child1())
+
+                        aq.enqueue(a)
+                        bq.enqueue(b.child2())
+                    }
+                }
+            } else {
+                if (b.isLeaf()) {
+                    if (a.parent() == b.parent()) {
+                        aq.enqueue(a.child1())
+                        bq.enqueue(a.child2())
+                    }
+
+                    if (a.overlapsNode(b)) {
+                        aq.enqueue(b)
+                        bq.enqueue(a.child1())
+
+                        aq.enqueue(b)
+                        bq.enqueue(a.child2())
+                    }
+                } else {
+                    if (a.parent() == b.parent()) {
+                        aq.enqueue(a.child1())
+                        bq.enqueue(a.child2())
+
+                        aq.enqueue(b.child1())
+                        bq.enqueue(b.child2())
+                    }
+
+                    if (a.overlapsNode(b)) {
+                        aq.enqueue(a.child1())
+                        bq.enqueue(b.child1())
+
+                        aq.enqueue(a.child1())
+                        bq.enqueue(b.child2())
+
+                        aq.enqueue(a.child2())
+                        bq.enqueue(b.child1())
+
+                        aq.enqueue(a.child2())
+                        bq.enqueue(b.child2())
+                    }
+                }
+            }
+        }
+
+        return out
+    }
 
     private fun Int.contains(x: Double, y: Double): Boolean {
         return x >= minX() && x <= maxX() &&
@@ -282,7 +282,7 @@ class FlattenedAABBTree2D(
             maxX,
             maxY,
         )
-
+       
         if (best == -1) {
             rootIdx = newNode(
                 parent = -1,
@@ -313,7 +313,7 @@ class FlattenedAABBTree2D(
         val oldParent = best.parent()
 
         val newParent = newNode(
-            parent = -1,
+            parent = oldParent,
             isLeaf = false,
             c1 = -1,
             c2 = -1,
@@ -360,6 +360,8 @@ class FlattenedAABBTree2D(
         blocked.set(false)
     }
 
+    val siblingQueue = IntHeapPriorityQueue(this)
+
     /**
      * Finds the best sibling of a given AABB and returns its index; -1 if no node is found
      */
@@ -385,12 +387,10 @@ class FlattenedAABBTree2D(
 
         var bestNode = rootIdx
 
-        val q = IntHeapPriorityQueue(this)
+        siblingQueue.enqueue(rootIdx)
 
-        q.enqueue(rootIdx)
-
-        while (!q.isEmpty) {
-            val node = q.dequeueInt()
+        while (!siblingQueue.isEmpty) {
+            val node = siblingQueue.dequeueInt()
             val c = node.insertionCost(
                 minX,
                 minY,
@@ -417,8 +417,8 @@ class FlattenedAABBTree2D(
                     c1.exploredCost(e)
                     c2.exploredCost(e)
 
-                    q.enqueue(c1)
-                    q.enqueue(c2)
+                    siblingQueue.enqueue(c1)
+                    siblingQueue.enqueue(c2)
                 }
             }
         }
@@ -432,7 +432,7 @@ class FlattenedAABBTree2D(
         maxX: Double,
         maxY: Double,
     ): Double {
-        return volume() + refittingCost(
+        return ((maxX - minX) * (maxY - minY)) + refittingCost(
             minX,
             minY,
             maxX,
@@ -450,7 +450,7 @@ class FlattenedAABBTree2D(
         maxY: Double,
     ): Double {
         val parent = parent()
-        val inherited = if (parent == -1) 0.0 else parent.recursiveRefittingCost(
+        val inherited = if (this == -1 || parent == -1) 0.0 else parent.recursiveRefittingCost(
             minX,
             minY,
             maxX,
