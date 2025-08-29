@@ -1,5 +1,6 @@
 package com.ixume.udar.collisiondetection.mesh.aabbtree2d
 
+import com.ixume.udar.collisiondetection.LocalMathUtil
 import com.ixume.udar.dynamicaabb.array.IntQueue
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
 import it.unimi.dsi.fastutil.ints.IntComparator
@@ -871,10 +872,11 @@ class FlattenedAABBTree2D(
         maxY: Double,
 
         out: DoubleArrayList,
+        math: LocalMathUtil,
     ) {
         if (rootIdx == -1) return
 
-        val q = IntQueue()
+        val q = math.envOverlapQueue
 
         q.enqueue(rootIdx)
 

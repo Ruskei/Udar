@@ -32,13 +32,15 @@ class EnvironmentContactGenerator2(
 
     private var testedFaces = 0
 
+    val contacts = mutableListOf<Contact>()
+    
     override fun collides(
         other: Body,
         math: LocalMathUtil,
     ): List<Contact> {
         val bb = activeBody.tightBB
 
-        val contacts = mutableListOf<Contact>()
+        contacts.clear()
 
         testedFaces = 0
 
@@ -72,6 +74,9 @@ class EnvironmentContactGenerator2(
     }
 
     private val _bb2d = AABB2D(doubleArrayOf(0.0, 0.0, 0.0, 0.0))
+    private val _overlappingHoles = DoubleArrayList()
+    private val _overlappingAntiHoles = DoubleArrayList()
+    
     private fun collideFaces(
         faces: List<MeshFace>,
         axis: LocalMesher.AxisD,
@@ -122,29 +127,31 @@ class EnvironmentContactGenerator2(
                 continue
             }
 
-            val overlappingHoles = DoubleArrayList()
+            _overlappingHoles.clear()
 
             face.holes.overlaps(
                 minX = _bb2d.minA(),
                 minY = _bb2d.minB(),
                 maxX = _bb2d.maxA(),
                 maxY = _bb2d.maxB(),
-                out = overlappingHoles,
+                out = _overlappingHoles,
+                math = math,
             )
 
-            if (overlappingHoles.isEmpty()) {
+            if (_overlappingHoles.isEmpty()) {
                 i++
                 continue
             }
 
-            val overlappingAntiHoles = DoubleArrayList()
+            _overlappingAntiHoles.clear()
 
             face.antiHoles.overlaps(
                 minX = _bb2d.minA(),
                 minY = _bb2d.minB(),
                 maxX = _bb2d.maxA(),
                 maxY = _bb2d.maxB(),
-                out = overlappingAntiHoles,
+                out = _overlappingAntiHoles,
+                math = math,
             )
 
             var j = 0
@@ -156,12 +163,12 @@ class EnvironmentContactGenerator2(
 
                 var valid = true
                 var k = 0
-                check(overlappingAntiHoles.size % 4 == 0)
-                while (k < overlappingAntiHoles.size / 4) {
-                    val minA = overlappingAntiHoles.getDouble(k * 4)
-                    val minB = overlappingAntiHoles.getDouble(k * 4 + 1)
-                    val maxA = overlappingAntiHoles.getDouble(k * 4 + 2)
-                    val maxB = overlappingAntiHoles.getDouble(k * 4 + 3)
+                check(_overlappingAntiHoles.size % 4 == 0)
+                while (k < _overlappingAntiHoles.size / 4) {
+                    val minA = _overlappingAntiHoles.getDouble(k * 4)
+                    val minB = _overlappingAntiHoles.getDouble(k * 4 + 1)
+                    val maxA = _overlappingAntiHoles.getDouble(k * 4 + 2)
+                    val maxB = _overlappingAntiHoles.getDouble(k * 4 + 3)
 
                     if (contains(
                             minA = minA,
@@ -187,12 +194,12 @@ class EnvironmentContactGenerator2(
                 valid = false
 
                 var l = 0
-                check(overlappingHoles.size % 4 == 0)
-                while (l < overlappingHoles.size / 4) {
-                    val minA = overlappingHoles.getDouble(l * 4)
-                    val minB = overlappingHoles.getDouble(l * 4 + 1)
-                    val maxA = overlappingHoles.getDouble(l * 4 + 2)
-                    val maxB = overlappingHoles.getDouble(l * 4 + 3)
+                check(_overlappingHoles.size % 4 == 0)
+                while (l < _overlappingHoles.size / 4) {
+                    val minA = _overlappingHoles.getDouble(l * 4)
+                    val minB = _overlappingHoles.getDouble(l * 4 + 1)
+                    val maxA = _overlappingHoles.getDouble(l * 4 + 2)
+                    val maxB = _overlappingHoles.getDouble(l * 4 + 3)
 
                     if (contains(
                             minA = minA,
@@ -249,6 +256,10 @@ class EnvironmentContactGenerator2(
     private val _edgeStart = Vector3d()
     private val _edgeEnd = Vector3d()
     private val _allowedNormals = arrayOf(Vector3d(), Vector3d())
+    
+    private val _outA = DoubleArrayList()
+    private val _outB = DoubleArrayList()
+    private val _outData = IntArrayList()
 
     private fun collideEdges(
         tree: FlattenedEdgeQuadtree,
@@ -261,9 +272,9 @@ class EnvironmentContactGenerator2(
         get all edges that we could possibly be colliding with; we could have a valid collision with each of these edges (not using discrete curvature graph rn)
          */
 
-        val outA = DoubleArrayList()
-        val outB = DoubleArrayList()
-        val outData = IntArrayList()
+        _outA.clear()
+        _outB.clear()
+        _outData.clear()
 
         tree.overlaps(
             minX = activeBody.tightBB.minX,
@@ -272,12 +283,13 @@ class EnvironmentContactGenerator2(
             maxX = activeBody.tightBB.maxX,
             maxY = activeBody.tightBB.maxY,
             maxZ = activeBody.tightBB.maxZ,
-            outA = outA,
-            outB = outB,
-            outData = outData,
+            outA = _outA,
+            outB = _outB,
+            outData = _outData,
+            math = math,
         )
 
-        if (outA.isEmpty) return
+        if (_outA.isEmpty) return
 
         val vertices = activeBody.vertices
 
@@ -285,9 +297,9 @@ class EnvironmentContactGenerator2(
 
         if (!setupCrossAxiss(axis.vec)) return
 
-        val aItr = outA.iterator()
-        val bItr = outB.iterator()
-        val dataItr = outData.iterator()
+        val aItr = _outA.iterator()
+        val bItr = _outB.iterator()
+        val dataItr = _outData.iterator()
 
         while (aItr.hasNext()) {
             val a = aItr.nextDouble()

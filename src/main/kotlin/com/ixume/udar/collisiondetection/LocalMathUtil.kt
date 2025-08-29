@@ -4,6 +4,7 @@ import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.collisiondetection.pool.TrackingD3Pool
+import com.ixume.udar.dynamicaabb.array.IntQueue
 import com.ixume.udar.physics.CollisionResult
 import org.joml.Vector3d
 import kotlin.math.abs
@@ -24,6 +25,9 @@ class LocalMathUtil(
 
     private val _myAxiss = Array(3) { Vector3d() }
     private val _tv = Vector3d()
+    
+    val envOverlapQueue = IntQueue()
+    val envEdgeOverlapQueue = IntQueue()
 
     fun collidesSAT(
         activeBody: ActiveBody,
