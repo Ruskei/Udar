@@ -1,6 +1,7 @@
 package com.ixume.udar.physics.constraint
 
 import com.ixume.udar.PhysicsWorld
+import com.ixume.udar.Udar
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.physics.Contact
 import org.joml.Quaterniond
@@ -15,6 +16,11 @@ import kotlin.math.min
 class LocalConstraintSolver(
     val physicsWorld: PhysicsWorld,
 ) {
+    private val timeStep = Udar.CONFIG.timeStep.toFloat()
+    private val friction = Udar.CONFIG.collision.friction.toFloat()
+    private val bias = Udar.CONFIG.collision.bias.toFloat()
+    private val slop = Udar.CONFIG.collision.passiveSlop.toFloat()
+    
     private val j1 = Vector3f()
     private val j3 = Vector3f()
 
@@ -159,11 +165,8 @@ class LocalConstraintSolver(
                     .cross(_norm)
             ) //j3
 
-            val timestep = 0.005f
-            val slop = 0.0001f
-
             if (component == ContactComponent.NORMAL) {
-                n.put(0.1f / timestep * (abs(contact.result.depth.toFloat()) - slop).coerceAtLeast(0f)) // bias
+                n.put(bias / timeStep * (abs(contact.result.depth.toFloat()) - slop).coerceAtLeast(0f)) // bias
             } else {
                 n.put(0f)
             }
@@ -271,11 +274,8 @@ class LocalConstraintSolver(
 
             check(_c_j1.isFinite)
 
-            val timestep = 0.005f
-            val slop = 0.0001f
-
             if (component == ContactComponent.NORMAL) {
-                n.put(0.1f / timestep * (abs(contact.result.depth.toFloat()) - slop).coerceAtLeast(0f)) // bias
+                n.put(bias / timeStep * (abs(contact.result.depth.toFloat()) - slop).coerceAtLeast(0f)) // bias
             } else {
                 n.put(0f)
             }
@@ -493,7 +493,7 @@ class LocalConstraintSolver(
 
             ContactComponent.T1, ContactComponent.T2 -> {
                 val n = contactNormalData[contactIdx + A2A_N_LAMBDA_OFFSET]
-                data[contactIdx + A2A_N_LAMBDA_OFFSET] = min(max(-FRICTION * n, l + lambda), FRICTION * n)
+                data[contactIdx + A2A_N_LAMBDA_OFFSET] = min(max(-friction * n, l + lambda), friction * n)
             }
         }
 
@@ -580,7 +580,7 @@ class LocalConstraintSolver(
 
             ContactComponent.T1, ContactComponent.T2 -> {
                 val n = envContactNormalData[contactIdx + A2S_N_LAMBDA_OFFSET]
-                data[contactIdx + A2S_N_LAMBDA_OFFSET] = min(max(-FRICTION * n, l + lambda), FRICTION * n)
+                data[contactIdx + A2S_N_LAMBDA_OFFSET] = min(max(-friction * n, l + lambda), friction * n)
             }
         }
 
@@ -667,5 +667,4 @@ enum class ContactComponent {
     NORMAL, T1, T2
 }
 
-private const val FRICTION = 0.3F
 private const val FRICTION_LAMBDA_EPSILON = 0.0
