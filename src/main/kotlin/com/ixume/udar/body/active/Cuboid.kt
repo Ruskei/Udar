@@ -10,7 +10,6 @@ import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.collisiondetection.capability.GJKCapable
 import com.ixume.udar.collisiondetection.capability.SDFCapable
 import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentContactGenerator2
-import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentSATContactGenerator
 import com.ixume.udar.collisiondetection.contactgeneration.SATContactGenerator
 import com.ixume.udar.physics.Contact
 import com.ixume.udar.physicsWorld
