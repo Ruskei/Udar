@@ -42,4 +42,4 @@ class EdgeQuadtree(
 }
 
 const val ASYMMETRY_EPSILON = 1e-8
-const val ABOVE_ASYMMETRY_EPSILON = 1e-7
+const val ABOVE_ASYMMETRY_EPSILON = 2f * ASYMMETRY_EPSILON

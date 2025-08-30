@@ -1,5 +1,6 @@
 package com.ixume.udar.collisiondetection.mesh.mesh2
 
+import com.ixume.udar.collisiondetection.LocalMathUtil
 import com.ixume.udar.collisiondetection.mesh.quadtree.FlattenedEdgeQuadtree
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.dynamicaabb.array.FlattenedAABBTree
@@ -70,6 +71,8 @@ class LocalMesher {
             }
         }
 
+        println("${_bbs.size} BBs!")
+
         if (_bbs.size == 0) {
             return Mesh2(
                 start = meshStart,
@@ -127,9 +130,10 @@ class LocalMesher {
 
         val _bb = DoubleArray(6)
 
-        var i = 0
-        while (i < _bbs.size) {
-            _bbs.get(i, _bb)
+        val itr = tree.iterator()
+
+        while (itr.hasNext()) {
+            itr.next(_bb)
 
             val minFace = faces.placeFaceAt(_bb.minLevel(axis))
             minFace?.stamp(_bb, false)
@@ -137,8 +141,6 @@ class LocalMesher {
 
             val maxFace = faces.placeFaceAt(_bb.maxLevel(axis))
             maxFace?.stamp(_bb, true)
-
-            i++
         }
 
         faces.constructAntiHoles()
@@ -212,8 +214,6 @@ class LocalMesher {
 
         val _bb = DoubleArray(6) // [ minX, minY, minZ, maxX, maxY, maxZ ]
         val itr = tree.iterator()
-        
-        println("${_bbs.size} BBs!")
 
         while (itr.hasNext()) {
             itr.next(_bb)

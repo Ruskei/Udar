@@ -53,16 +53,20 @@ class FlattenedAABBTree(
     override fun compare(k1: Int, k2: Int): Int {
         return sign(k1.exploredCost() - k2.exploredCost()).toInt()
     }
-    
+
     fun iterator(): FlattenedAABBTreeIterator {
         return FlattenedAABBTreeIterator(this)
     }
 
-    private val q = IntQueue()
-
+    val containmentQueue = IntQueue()
+    
     fun contains(x: Double, y: Double, z: Double): Boolean {
-        while (q.hasNext()) {
-            val i = q.dequeue()
+        if (rootIdx == -1) return false
+       
+        containmentQueue.enqueue(rootIdx)
+
+        while (containmentQueue.hasNext()) {
+            val i = containmentQueue.dequeue()
 
             if (!i.contains(x, y, z)) continue
 
@@ -70,8 +74,8 @@ class FlattenedAABBTree(
                 return true
             }
 
-            q.enqueue(i.child1())
-            q.enqueue(i.child2())
+            containmentQueue.enqueue(i.child1())
+            containmentQueue.enqueue(i.child2())
         }
 
         return false
@@ -487,15 +491,15 @@ class FlattenedAABBTree(
     private fun Int.isFree(): Boolean {
         return (arr[this * DATA_SIZE + NODE_STATUS_OFFSET].toRawBits() ushr 32).toInt() == NODE_UNUSED_STATUS
     }
-    
+
     fun isNodeFree(i: Int): Boolean {
         return (arr[i * DATA_SIZE + NODE_STATUS_OFFSET].toRawBits() ushr 32).toInt() == NODE_UNUSED_STATUS
     }
-    
+
     fun isNodeLeaf(i: Int): Boolean {
         return (arr[i * DATA_SIZE + IS_LEAF_OFFSET].toRawBits() ushr 32).toInt() == 1
     }
-    
+
     private fun Int.free() {
         arr[this * DATA_SIZE + NODE_STATUS_OFFSET] =
             arr[this * DATA_SIZE + NODE_STATUS_OFFSET].withHigher(NODE_UNUSED_STATUS)
