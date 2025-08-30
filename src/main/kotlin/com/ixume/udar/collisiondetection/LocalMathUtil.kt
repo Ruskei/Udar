@@ -376,12 +376,16 @@ class LocalMathUtil(
         }
     }
 
+    private val _mm = DoubleArray(2)
+    
     fun collidePlane(
         axis: LocalMesher.AxisD,
         level: Double,
         vertices: Array<Vector3d>,
     ): List<CollisionResult>? {
-        val (min, max) = axis.project(vertices)
+        axis.project(vertices, _mm)
+        val min = _mm[0]
+        val max = _mm[1]
 
         if (level < min || level > max) {
             return null

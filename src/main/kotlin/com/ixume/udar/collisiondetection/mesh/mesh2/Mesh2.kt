@@ -319,7 +319,10 @@ class LocalMesher {
     ) {
         X(Vector3d(1.0, 0.0, 0.0), 0, 1, 2), Y(Vector3d(0.0, 1.0, 0.0), 1, 0, 2), Z(Vector3d(0.0, 0.0, 1.0), 2, 0, 1);
 
-        fun project(vertices: Array<Vector3d>): Pair<Double, Double> {
+        fun project(
+            vertices: Array<Vector3d>,
+            out: DoubleArray,
+        ) {
             var min = Double.MAX_VALUE
             var max = -Double.MAX_VALUE
 
@@ -346,7 +349,8 @@ class LocalMesher {
                 }
             }
 
-            return min to max
+            out[0] = min
+            out[1] = max
         }
 
         fun project(vertex: Vector3d): Double {
