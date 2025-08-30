@@ -53,6 +53,10 @@ class FlattenedAABBTree(
     override fun compare(k1: Int, k2: Int): Int {
         return sign(k1.exploredCost() - k2.exploredCost()).toInt()
     }
+    
+    fun iterator(): FlattenedAABBTreeIterator {
+        return FlattenedAABBTreeIterator(this)
+    }
 
     private val q = IntQueue()
 
@@ -483,7 +487,15 @@ class FlattenedAABBTree(
     private fun Int.isFree(): Boolean {
         return (arr[this * DATA_SIZE + NODE_STATUS_OFFSET].toRawBits() ushr 32).toInt() == NODE_UNUSED_STATUS
     }
-
+    
+    fun isNodeFree(i: Int): Boolean {
+        return (arr[i * DATA_SIZE + NODE_STATUS_OFFSET].toRawBits() ushr 32).toInt() == NODE_UNUSED_STATUS
+    }
+    
+    fun isNodeLeaf(i: Int): Boolean {
+        return (arr[i * DATA_SIZE + IS_LEAF_OFFSET].toRawBits() ushr 32).toInt() == 1
+    }
+    
     private fun Int.free() {
         arr[this * DATA_SIZE + NODE_STATUS_OFFSET] =
             arr[this * DATA_SIZE + NODE_STATUS_OFFSET].withHigher(NODE_UNUSED_STATUS)
@@ -995,7 +1007,7 @@ class FlattenedAABBTree(
 private val DUST_OPTIONS = Particle.DustOptions(Color.RED, 0.25f)
 private val DUST_OPTIONS_LEAF = Particle.DustOptions(Color.FUCHSIA, 0.3f)
 
-private const val DATA_SIZE = 9
+internal const val DATA_SIZE = 9
 private const val PARENT_IDX_OFFSET = 0 // low 32 bits; -1 if no parent
 private const val IS_LEAF_OFFSET = 0 // high 32 bits
 private const val CHILD_1_IDX_OFFSET = 1 // low 32 bits

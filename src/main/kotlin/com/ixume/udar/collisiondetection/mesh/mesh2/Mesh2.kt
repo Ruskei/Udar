@@ -81,9 +81,9 @@ class LocalMesher {
 //        println("BBs: ${_bbs.size}")
 
         val meshFaces = MeshFaces(
-            createMeshFaces(AxisD.X, meshStart, meshEnd),
-            createMeshFaces(AxisD.Y, meshStart, meshEnd),
-            createMeshFaces(AxisD.Z, meshStart, meshEnd),
+            createMeshFaces(AxisD.X, meshStart, meshEnd, flatTree),
+            createMeshFaces(AxisD.Y, meshStart, meshEnd, flatTree),
+            createMeshFaces(AxisD.Z, meshStart, meshEnd, flatTree),
         )
 
 //        createMeshEdges(meshStart, meshEnd, meshFaces, t)
@@ -105,6 +105,7 @@ class LocalMesher {
         axis: AxisD,
         meshStart: Vector3i,
         meshEnd: Vector3i,
+        tree: FlattenedAABBTree,
     ): MeshFaceSortedList {
         /*
         iterate through all bb's, and add holes and anti-holes
@@ -184,7 +185,7 @@ class LocalMesher {
         meshStart: Vector3i,
         meshEnd: Vector3i,
         meshFaces: MeshFaces,
-        flatTree: FlattenedAABBTree,
+        tree: FlattenedAABBTree,
     ) {
         //TODO: Dont put out of bounds points on edges
         _xAxiss2 = FlattenedEdgeQuadtree(
@@ -210,12 +211,12 @@ class LocalMesher {
         )
 
         val _bb = DoubleArray(6) // [ minX, minY, minZ, maxX, maxY, maxZ ]
+        val itr = tree.iterator()
         
         println("${_bbs.size} BBs!")
 
-        var i = 0
-        while (i < _bbs.size) {
-            _bbs.get(i, _bb)
+        while (itr.hasNext()) {
+            itr.next(_bb)
 
             //x axis
             val xStart = _bb[BB_MIN_X]
@@ -276,13 +277,11 @@ class LocalMesher {
             val z3aStart = _bb[BB_MIN_X]
             val z3bStart = _bb[BB_MAX_Y]
             _zAxiss2.insertEdge(z3aStart, z3bStart, zStart, zEnd, meshFaces)
-
-            i++
         }
 
-        _xAxiss2.fixUp(flatTree)
-        _yAxiss2.fixUp(flatTree)
-        _zAxiss2.fixUp(flatTree)
+        _xAxiss2.fixUp(tree)
+        _yAxiss2.fixUp(tree)
+        _zAxiss2.fixUp(tree)
     }
 
     class Mesh2(
@@ -297,12 +296,12 @@ class LocalMesher {
     ) {
         fun visualize(world: World) {
 //            println("visualizing mesh")
-//            xEdges2?.visualize(world)
-//            yEdges2?.visualize(world)
-//            zEdges2?.visualize(world)
+            xEdges2?.visualize(world)
+            yEdges2?.visualize(world)
+            zEdges2?.visualize(world)
 //            flatTree?.visualize(world)
 
-            faces?.xFaces?.ls?.forEach { it.visualize(world) }
+//            faces?.xFaces?.ls?.forEach { it.visualize(world) }
 //            faces?.yFaces?.ls?.forEach { it.visualize(world) }
 //            faces?.zFaces?.ls?.forEach { it.visualize(world) }
 ////
