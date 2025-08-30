@@ -1,9 +1,9 @@
 package com.ixume.udar.body.active
 
 import com.ixume.udar.PhysicsWorld
+import com.ixume.udar.Udar
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.EnvironmentBody
-import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.collisiondetection.LocalMathUtil
 import com.ixume.udar.collisiondetection.broadphase.BoundAABB
 import com.ixume.udar.dynamicaabb.AABB
@@ -184,7 +184,7 @@ class Cuboid(
         prevQ.set(q)
         prevP.set(pos)
 
-        pos.add(Vector3d(velocity).mul(TIME_STEP))
+        pos.add(Vector3d(velocity).mul(Udar.CONFIG.timeStep))
         rotationIntegrator.process()
 
         torque.set(0.0)

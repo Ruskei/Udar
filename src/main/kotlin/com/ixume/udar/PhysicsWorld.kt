@@ -2,7 +2,6 @@ package com.ixume.udar
 
 import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.body.active.ActiveBody
-import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.collisiondetection.contactgeneration.worldmesh.WorldMeshesManager
 import com.ixume.udar.collisiondetection.mesh.Mesh
 import com.ixume.udar.collisiondetection.pool.MathPool
@@ -109,7 +108,7 @@ class PhysicsWorld(
     private fun tick() {
 //        aabbTree.visualize(world)
         time++
-        repeat((0.05 / TIME_STEP).roundToInt()) {
+        repeat((0.05 / Udar.CONFIG.timeStep).roundToInt()) {
             var doTick = true
             if (frozen.get()) {
                 if (!untilCollision.get() && steps.decrementAndGet() < 0) doTick = false
@@ -211,7 +210,7 @@ class PhysicsWorld(
                 for (body in bodiesSnapshot) {
                     if (body.awake.get() && body.hasGravity) body.velocity.add(
                         Vector3d(Udar.CONFIG.gravity).mul(
-                            TIME_STEP
+                            Udar.CONFIG.timeStep
                         )
                     )
                 }

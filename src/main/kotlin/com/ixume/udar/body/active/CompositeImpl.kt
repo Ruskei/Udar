@@ -1,8 +1,8 @@
 package com.ixume.udar.body.active
 
 import com.ixume.udar.PhysicsWorld
+import com.ixume.udar.Udar
 import com.ixume.udar.body.Body
-import com.ixume.udar.body.active.ActiveBody.Companion.TIME_STEP
 import com.ixume.udar.collisiondetection.LocalMathUtil
 import com.ixume.udar.collisiondetection.broadphase.BoundAABB
 import com.ixume.udar.dynamicaabb.AABB
@@ -230,13 +230,13 @@ class CompositeImpl(
         prevQ.set(q)
         prevP.set(pos)
 
-        pos.add(Vector3d(velocity).mul(TIME_STEP))
+        pos.add(Vector3d(velocity).mul(Udar.CONFIG.timeStep))
         rotationIntegrator.process()
 
         for (part in parts) {
             val pose = relativePoses[part.uuid]!!
             val np = Vector3d(pos).add(Vector3d(pose.pos).rotate(q))
-            val v = Vector3d(np).sub(part.pos).div(TIME_STEP)
+            val v = Vector3d(np).sub(part.pos).div(Udar.CONFIG.timeStep)
             part.pos.set(np)
             part.velocity.set(v)
             part.q.set(Quaterniond(q).mul(pose.rot))

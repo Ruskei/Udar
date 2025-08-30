@@ -69,8 +69,4 @@ interface ActiveBody : CollidableBody, Projectable {
         normal: Vector3d,
         impulse: Vector3d,
     )
-
-    companion object {
-        const val TIME_STEP = 0.005
-    }
 }
