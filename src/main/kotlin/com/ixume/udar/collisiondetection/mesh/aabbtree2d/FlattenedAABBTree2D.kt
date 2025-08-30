@@ -12,6 +12,7 @@ import org.bukkit.Color
 import org.bukkit.Particle
 import org.bukkit.World
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sign
@@ -77,77 +78,6 @@ class FlattenedAABBTree2D(
     }
 
     private val _overlap = DoubleArray(4)
-
-//    fun constructCollisions(): FlattenedAABBTree2D {
-//        if (rootIdx == -1) return FlattenedAABBTree2D(0)
-//        if (rootIdx.isLeaf()) return FlattenedAABBTree2D(0)
-//
-//        val out = FlattenedAABBTree2D(0)
-//
-//        pairs(rootIdx.child1(), rootIdx.child2(), out)
-//
-//        return out
-//    }
-
-//    private fun pairs(a: Int, b: Int, out: FlattenedAABBTree2D) {
-//        if (a.isLeaf()) {
-//            if (b.isLeaf()) {
-//                if (a.overlapsNode(b)) {
-//                    //insert overlap, the anti-hole
-//
-//                    a.calcOverlap(
-//                        minX = b.minX(),
-//                        minY = b.minY(),
-//                        maxX = b.maxX(),
-//                        maxY = b.maxY(),
-//                        out = _overlap,
-//                    )
-//
-//                    out.insert(
-//                        minX = _overlap[0],
-//                        minY = _overlap[1],
-//                        maxX = _overlap[2],
-//                        maxY = _overlap[3],
-//                    )
-//                }
-//
-//                return
-//            } else {
-//                if (a.parent() == b.parent()) {
-//                    pairs(b.child1(), b.child2(), out)
-//                }
-//
-//                if (a.overlapsNode(b)) {
-//                    pairs(a, b.child1(), out)
-//                    pairs(a, b.child2(), out)
-//                }
-//            }
-//        } else {
-//            if (b.isLeaf()) {
-//                if (a.parent() == b.parent()) {
-//                    pairs(a.child1(), a.child2(), out)
-//                }
-//
-//                if (a.overlapsNode(b)) {
-//                    pairs(b, a.child1(), out)
-//                    pairs(b, a.child2(), out)
-//                }
-//            } else {
-//                if (a.parent() == b.parent()) {
-//                    pairs(a.child1(), a.child2(), out)
-//                    pairs(b.child1(), b.child2(), out)
-//                }
-//
-//                if (a.overlapsNode(b)) {
-//                    pairs(a.child1(), b.child1(), out)
-//                    pairs(a.child1(), b.child2(), out)
-//                    pairs(a.child2(), b.child1(), out)
-//                    pairs(a.child2(), b.child2(), out)
-//                }
-//            }
-//        }
-//    }
-
 
     fun constructCollisions(): FlattenedAABBTree2D {
         if (rootIdx == -1) return FlattenedAABBTree2D(0, level, axis)
@@ -306,6 +236,45 @@ class FlattenedAABBTree2D(
             return
         }
 
+        if (best.isLeaf()) {
+            val bv = best.volume()
+            val uc = unifiedCost(
+                aMinX = best.minX(),
+                aMinY = best.minY(),
+                aMaxX = best.maxX(),
+                aMaxY = best.maxY(),
+
+                bMinX = minX,
+                bMinY = minY,
+                bMaxX = maxX,
+                bMaxY = maxY,
+            )
+
+            if (abs(bv + ((maxX - minX) * (maxY - minY)) - uc) < 1e-14) {
+                best.setUnion(
+                    aMinX = best.minX(),
+                    aMinY = best.minY(),
+                    aMaxX = best.maxX(),
+                    aMaxY = best.maxY(),
+
+                    bMinX = minX,
+                    bMinY = minY,
+                    bMaxX = maxX,
+                    bMaxY = maxY,
+                )
+
+                best.parent().refitRecursively(
+                    minX,
+                    minY,
+                    maxX,
+                    maxY,
+                )
+
+                blocked.set(false)
+                return
+            }
+        }
+
         val leaf = newNode(
             parent = -1,
             isLeaf = true,
@@ -349,22 +318,101 @@ class FlattenedAABBTree2D(
         best.parent(newParent)
         leaf.parent(newParent)
 
-        var p = newParent
+        newParent.refitRecursively(
+            minX,
+            minY,
+            maxX,
+            maxY,
+        )
+
+        blocked.set(false)
+    }
+
+    private fun Int.refitRecursively(
+        minX: Double,
+        minY: Double,
+        maxX: Double,
+        maxY: Double,
+    ) {
+        var p = this
 
         while (p != -1) {
-            p.refit(
-                minX,
-                minY,
-                maxX,
-                maxY,
-            )
+            if (!p.tryMerge()) {
+                p.refit(
+                    minX,
+                    minY,
+                    maxX,
+                    maxY,
+                )
+            }
 
-            p.rotate()
+            if (!p.isLeaf()) p.rotate()
 
             p = p.parent()
         }
+    }
 
-        blocked.set(false)
+    private fun Int.tryMerge(): Boolean {
+        if (isLeaf()) {
+            return false
+        }
+        val c1 = child1()
+        if (!c1.isLeaf()) {
+            return false
+        }
+        val c2 = child2()
+        if (!c2.isLeaf()) {
+            return false
+        }
+
+        val c =
+            unifiedCost(
+                aMinX = c1.minX(),
+                aMinY = c1.minY(),
+                aMaxX = c1.maxX(),
+                aMaxY = c1.maxY(),
+
+                bMinX = c2.minX(),
+                bMinY = c2.minY(),
+                bMaxX = c2.maxX(),
+                bMaxY = c2.maxY(),
+            )
+
+        val c1v = c1.volume()
+        val c2v = c2.volume()
+
+        if (abs(c1v + c2v - c) < 1e-14) {
+            setUnion(
+                aMinX = c1.minX(),
+                aMinY = c1.minY(),
+                aMaxX = c1.maxX(),
+                aMaxY = c1.maxY(),
+
+                bMinX = c2.minX(),
+                bMinY = c2.minY(),
+                bMaxX = c2.maxX(),
+                bMaxY = c2.maxY(),
+            )
+
+            leaf(true)
+
+            child1(-1)
+            child2(-1)
+
+            c1.removeNode()
+            c2.removeNode()
+
+            return true
+        }
+
+        return false
+    }
+
+    private fun Int.removeNode() {
+        nextFree(freeIdx)
+        free()
+
+        freeIdx = this
     }
 
     val siblingQueue = IntHeapPriorityQueue(this)

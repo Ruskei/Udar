@@ -15,7 +15,7 @@ class MeshFace(
 
     fun visualize(world: World) {
         if (axis == LocalMesher.AxisD.X) {
-            holes.visualize(world, true)
+//            holes.visualize(world, true)
             antiHoles.visualize(world, false)
         }
     }

@@ -153,12 +153,12 @@ class WorldMeshesManager(
         }
 
         val meshBB = AABB(
-            minX = meshPos.x * MESH_SIZE.toDouble(),
-            minY = meshPos.y * MESH_SIZE.toDouble(),
-            minZ = meshPos.z * MESH_SIZE.toDouble(),
-            maxX = meshPos.x * MESH_SIZE.toDouble() + MESH_SIZE - 1,
-            maxY = meshPos.y * MESH_SIZE.toDouble() + MESH_SIZE - 1,
-            maxZ = meshPos.z * MESH_SIZE.toDouble() + MESH_SIZE - 1,
+            minX = meshPos.x * MESH_SIZE.toDouble() - 2,
+            minY = meshPos.y * MESH_SIZE.toDouble() - 2,
+            minZ = meshPos.z * MESH_SIZE.toDouble() - 2,
+            maxX = meshPos.x * MESH_SIZE.toDouble() + MESH_SIZE + 1,
+            maxY = meshPos.y * MESH_SIZE.toDouble() + MESH_SIZE + 1,
+            maxZ = meshPos.z * MESH_SIZE.toDouble() + MESH_SIZE + 1,
         )
 
         val mesh: LocalMesher.Mesh2

@@ -265,7 +265,7 @@ class FlattenedEdgeQuadtree(
         outA: DoubleArrayList,
         outB: DoubleArrayList,
         outData: IntArrayList,
-        
+
         math: LocalMathUtil,
     ) {
         if (rootIdx == -1) return
@@ -280,7 +280,7 @@ class FlattenedEdgeQuadtree(
             when (axis) {
                 LocalMesher.AxisD.X -> {
                     if (!node.overlaps(minY, minZ, maxY, maxZ)) continue
-                    
+
                     if (node.isLeaf()) {
                         val np = node.numPoints()
                         var i = 0
@@ -296,10 +296,10 @@ class FlattenedEdgeQuadtree(
                                 outB.add(b)
                                 outData.add(e.dataIdx())
                             }
-                            
+
                             i++
                         }
-                        
+
                         continue
                     }
                 }
@@ -356,7 +356,7 @@ class FlattenedEdgeQuadtree(
                     }
                 }
             }
-            
+
             q.enqueue(node.child1())
             q.enqueue(node.child2())
             q.enqueue(node.child3())

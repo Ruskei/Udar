@@ -303,8 +303,8 @@ class LocalMesher {
 //            flatTree?.visualize(world)
 
             faces?.xFaces?.ls?.forEach { it.visualize(world) }
-            faces?.yFaces?.ls?.forEach { it.visualize(world) }
-            faces?.zFaces?.ls?.forEach { it.visualize(world) }
+//            faces?.yFaces?.ls?.forEach { it.visualize(world) }
+//            faces?.zFaces?.ls?.forEach { it.visualize(world) }
 ////
 //            xEdges?.visualize(world)
 //            yEdges?.visualize(world)

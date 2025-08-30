@@ -8,6 +8,7 @@ import org.bukkit.Particle
 import org.bukkit.World
 import org.joml.Vector3d
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sign
@@ -115,6 +116,56 @@ class FlattenedAABBTree(
             return
         }
 
+        // check if the best sibling and proposed aabb could be represented as 1 aabb
+        if (best.isLeaf()) {
+            val bv = best.volume()
+            val uc = unifiedCost(
+                aMinX = best.minX(),
+                aMinY = best.minY(),
+                aMinZ = best.minZ(),
+                aMaxX = best.maxX(),
+                aMaxY = best.maxY(),
+                aMaxZ = best.maxZ(),
+
+                bMinX = minX,
+                bMinY = minY,
+                bMinZ = minZ,
+                bMaxX = maxX,
+                bMaxY = maxY,
+                bMaxZ = maxZ,
+            )
+
+            if (abs(bv + ((maxX - minX) * (maxY - minY) * (maxZ - minZ)) - uc) < 1e-14) {
+                best.setUnion(
+                    aMinX = best.minX(),
+                    aMinY = best.minY(),
+                    aMinZ = best.minZ(),
+                    aMaxX = best.maxX(),
+                    aMaxY = best.maxY(),
+                    aMaxZ = best.maxZ(),
+
+                    bMinX = minX,
+                    bMinY = minY,
+                    bMinZ = minZ,
+                    bMaxX = maxX,
+                    bMaxY = maxY,
+                    bMaxZ = maxZ,
+                )
+
+                best.parent().refitRecursively(
+                    minX,
+                    minY,
+                    minZ,
+                    maxX,
+                    maxY,
+                    maxZ,
+                )
+
+                blocked.set(false)
+                return
+            }
+        }
+
         val leaf = newNode(
             parent = -1,
             isLeaf = true,
@@ -162,24 +213,44 @@ class FlattenedAABBTree(
         best.parent(newParent)
         leaf.parent(newParent)
 
-        var p = newParent
+        newParent.refitRecursively(
+            minX,
+            minY,
+            minZ,
+            maxX,
+            maxY,
+            maxZ,
+        )
+
+        blocked.set(false)
+    }
+
+    private fun Int.refitRecursively(
+        minX: Double,
+        minY: Double,
+        minZ: Double,
+        maxX: Double,
+        maxY: Double,
+        maxZ: Double,
+    ) {
+        var p = this
 
         while (p != -1) {
-            p.refit(
-                minX,
-                minY,
-                minZ,
-                maxX,
-                maxY,
-                maxZ,
-            )
+            if (!p.tryMerge()) {
+                p.refit(
+                    minX,
+                    minY,
+                    minZ,
+                    maxX,
+                    maxY,
+                    maxZ,
+                )
+            }
 
-            p.rotate()
+            if (!p.isLeaf()) p.rotate()
 
             p = p.parent()
         }
-
-        blocked.set(false)
     }
 
     /**
@@ -578,6 +649,70 @@ class FlattenedAABBTree(
         arr[this * DATA_SIZE + NEXT_FREE_IDX_OFFSET] = Double.fromBits(next.toLong())
     }
 
+    private fun Int.tryMerge(): Boolean {
+        if (isLeaf()) {
+            return false
+        }
+        val c1 = child1()
+        if (!c1.isLeaf()) {
+            return false
+        }
+        val c2 = child2()
+        if (!c2.isLeaf()) {
+            return false
+        }
+
+        val c =
+            unifiedCost(
+                aMinX = c1.minX(),
+                aMinY = c1.minY(),
+                aMinZ = c1.minZ(),
+                aMaxX = c1.maxX(),
+                aMaxY = c1.maxY(),
+                aMaxZ = c1.maxZ(),
+
+                bMinX = c2.minX(),
+                bMinY = c2.minY(),
+                bMinZ = c2.minZ(),
+                bMaxX = c2.maxX(),
+                bMaxY = c2.maxY(),
+                bMaxZ = c2.maxZ(),
+            )
+
+        val c1v = c1.volume()
+        val c2v = c2.volume()
+
+        if (abs(c1v + c2v - c) < 1e-14) {
+            setUnion(
+                aMinX = c1.minX(),
+                aMinY = c1.minY(),
+                aMinZ = c1.minZ(),
+                aMaxX = c1.maxX(),
+                aMaxY = c1.maxY(),
+                aMaxZ = c1.maxZ(),
+
+                bMinX = c2.minX(),
+                bMinY = c2.minY(),
+                bMinZ = c2.minZ(),
+                bMaxX = c2.maxX(),
+                bMaxY = c2.maxY(),
+                bMaxZ = c2.maxZ(),
+            )
+
+            leaf(true)
+
+            child1(-1)
+            child2(-1)
+
+            c1.removeNode()
+            c2.removeNode()
+
+            return true
+        }
+
+        return false
+    }
+
     private fun Int.refit(
         minX: Double,
         minY: Double,
@@ -771,6 +906,13 @@ class FlattenedAABBTree(
         return start
     }
 
+    private fun Int.removeNode() {
+        nextFree(freeIdx)
+        free()
+
+        freeIdx = this
+    }
+
     fun visualize(world: World) {
         var i = 0
         val numNodes = arr.size / DATA_SIZE
@@ -780,67 +922,69 @@ class FlattenedAABBTree(
                 continue
             }
 
+            val dustOptions = if (i.isLeaf()) DUST_OPTIONS_LEAF else DUST_OPTIONS
+
             world.debugConnect(
                 start = Vector3d(i.minX(), i.minY(), i.minZ()),
                 end = Vector3d(i.maxX(), i.minY(), i.minZ()),
-                options = DUST_OPTIONS,
+                options = dustOptions,
             )
             world.debugConnect(
                 start = Vector3d(i.minX(), i.maxY(), i.minZ()),
                 end = Vector3d(i.maxX(), i.maxY(), i.minZ()),
-                options = DUST_OPTIONS,
+                options = dustOptions,
             )
             world.debugConnect(
                 start = Vector3d(i.minX(), i.maxY(), i.maxZ()),
                 end = Vector3d(i.maxX(), i.maxY(), i.maxZ()),
-                options = DUST_OPTIONS,
+                options = dustOptions,
             )
             world.debugConnect(
                 start = Vector3d(i.minX(), i.minY(), i.maxZ()),
                 end = Vector3d(i.maxX(), i.minY(), i.maxZ()),
-                options = DUST_OPTIONS,
+                options = dustOptions,
             )
 
             world.debugConnect(
                 start = Vector3d(i.minX(), i.minY(), i.minZ()),
                 end = Vector3d(i.minX(), i.maxY(), i.minZ()),
-                options = DUST_OPTIONS,
+                options = dustOptions,
             )
             world.debugConnect(
                 start = Vector3d(i.maxX(), i.minY(), i.minZ()),
                 end = Vector3d(i.maxX(), i.maxY(), i.minZ()),
-                options = DUST_OPTIONS,
+                options = dustOptions,
             )
             world.debugConnect(
                 start = Vector3d(i.maxX(), i.minY(), i.maxZ()),
                 end = Vector3d(i.maxX(), i.maxY(), i.maxZ()),
-                options = DUST_OPTIONS,
+                options = dustOptions,
             )
             world.debugConnect(
                 start = Vector3d(i.minX(), i.minY(), i.maxZ()),
                 end = Vector3d(i.minX(), i.maxY(), i.maxZ()),
-                options = DUST_OPTIONS,
+                options = dustOptions,
             )
 
             world.debugConnect(
                 start = Vector3d(i.minX(), i.minY(), i.minZ()),
                 end = Vector3d(i.minX(), i.minY(), i.maxZ()),
-                options = DUST_OPTIONS,
+                options = dustOptions,
             )
             world.debugConnect(
                 start = Vector3d(i.minX(), i.maxY(), i.minZ()),
                 end = Vector3d(i.minX(), i.maxY(), i.maxZ()),
-                options = DUST_OPTIONS,
+                options = dustOptions,
             )
             world.debugConnect(
                 start = Vector3d(i.maxX(), i.maxY(), i.minZ()),
                 end = Vector3d(i.maxX(), i.maxY(), i.maxZ()),
-                options = DUST_OPTIONS,
+                options = dustOptions,
             )
             world.debugConnect(
                 start = Vector3d(i.maxX(), i.minY(), i.minZ()),
                 end = Vector3d(i.maxX(), i.minY(), i.maxZ()),
-                options = DUST_OPTIONS,
+                options = dustOptions,
             )
 
             i++
@@ -848,7 +992,8 @@ class FlattenedAABBTree(
     }
 }
 
-private val DUST_OPTIONS = Particle.DustOptions(Color.FUCHSIA, 0.25f)
+private val DUST_OPTIONS = Particle.DustOptions(Color.RED, 0.25f)
+private val DUST_OPTIONS_LEAF = Particle.DustOptions(Color.FUCHSIA, 0.3f)
 
 private const val DATA_SIZE = 9
 private const val PARENT_IDX_OFFSET = 0 // low 32 bits; -1 if no parent
