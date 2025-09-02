@@ -19,6 +19,7 @@ interface ActiveBody : CollidableBody, Projectable {
 
     val vertices: Array<Vector3d>
     val faces: Array<Face>
+    val edges: Array<Edge>
     val radius: Double
     val fatBB: BoundAABB
     val tightBB: AABB

@@ -82,6 +82,23 @@ class Cuboid(
         Face(vertices = arrayOf(vertices[4], vertices[7], vertices[6], vertices[5])),
     )
 
+    override val edges: Array<Edge> = arrayOf(
+        Edge(vertices[0], vertices[1]),
+        Edge(vertices[1], vertices[2]),
+        Edge(vertices[2], vertices[3]),
+        Edge(vertices[3], vertices[0]),
+
+        Edge(vertices[4], vertices[5]),
+        Edge(vertices[5], vertices[6]),
+        Edge(vertices[6], vertices[7]),
+        Edge(vertices[7], vertices[4]),
+        
+        Edge(vertices[0], vertices[4]),
+        Edge(vertices[1], vertices[5]),
+        Edge(vertices[2], vertices[6]),
+        Edge(vertices[3], vertices[7]),
+    )
+
     private fun updateVertices() {
         var i = 0
         while (i < vertices.size) {

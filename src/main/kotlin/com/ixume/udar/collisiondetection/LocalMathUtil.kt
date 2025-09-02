@@ -2,6 +2,7 @@ package com.ixume.udar.collisiondetection
 
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.body.active.ActiveBody
+import com.ixume.udar.body.active.Edge
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.collisiondetection.pool.TrackingD3Pool
 import com.ixume.udar.dynamicaabb.array.IntQueue
@@ -166,12 +167,6 @@ class LocalMathUtil(
         if (collideMyAxiss && minAxis in _edgeArr) {
             //edge-edge
             //depending on the order, find most penetrating point(s) on each body, then choose the edges from that
-//            if (PhysicsCommand.DEBUG_SAT_LEVEL > 0) {
-//                println("EDGE-EDGE")
-//                println("  - AXIS: $minAxis")
-//                println("  - OVERLAP: $minOverlap")
-//                println("  - ORDER: $minOrder")
-//            }
 
             val myDeepestVertices = mutableListOf<Vector3d>()
             var myDeepestDistance = -Double.MAX_VALUE
@@ -181,13 +176,10 @@ class LocalMathUtil(
 
             for (vertex in myVertices) {
                 val d = vertex.dot(_myOrderedAxis)
-//                println("my $vertex d: $d deepest: $myDeepestDistance")
                 if (abs(d - myDeepestDistance) < epsilon) {
-//                    println("MERGER!")
                     myDeepestVertices += vertex
                     continue
                 } else if (d > myDeepestDistance) {
-//                    println("NEW LARGEST!")
                     myDeepestDistance = d
                     myDeepestVertices.clear()
                     myDeepestVertices += vertex
@@ -200,7 +192,6 @@ class LocalMathUtil(
 
             for (vertex in otherVertices) {
                 val d = vertex.dot(_otherOrderedAxis)
-//                println("other $vertex d: $d deepest: $otherDeepestDistance")
                 if (abs(d - otherDeepestDistance) < epsilon) {
                     otherDeepestVertices += vertex
                     continue
@@ -210,9 +201,6 @@ class LocalMathUtil(
                     otherDeepestVertices += vertex
                 }
             }
-
-//            println("myDeepestVertices : $myDeepestDistance : $myDeepestVertices")
-//            println("otherDeepestVertices : $otherDeepestDistance : $otherDeepestVertices")
 
             if (myDeepestVertices.size % 2 != 0) return null
             if (otherDeepestVertices.size % 2 != 0) return null
@@ -245,14 +233,6 @@ class LocalMathUtil(
                 )
             }
 
-//            if (PhysicsCommand.DEBUG_SAT_LEVEL > 1) {
-//                println("   * myDeepestVertices: ${myDeepestVertices[0]}")
-//                println("   * myDeepestVertices: ${myDeepestVertices[1]}")
-//                println("   * otherDeepestVertices: ${otherDeepestVertices[0]}")
-//                println("   * otherDeepestVertices: ${otherDeepestVertices[1]}")
-//                println("   * DISTANCE: ${r.third}")
-//            }
-
             d3Pool.clearTracked()
             return mutableListOf(
                 CollisionResult(
@@ -264,12 +244,6 @@ class LocalMathUtil(
             )
         } else {
             //face-vertex
-//            if (PhysicsCommand.DEBUG_SAT_LEVEL > 0) {
-//                println("FACE-VERTEX")
-//                println("  - AXIS: $minAxis")
-//                println("  - OVERLAP: $minOverlap")
-//                println("  - minOrder: $minOrder")
-//            }
 
             var furthestDistance = -Double.MAX_VALUE
             var furtherVertex: Vector3d? = null
@@ -279,7 +253,6 @@ class LocalMathUtil(
                 if (!minOrder) {
                     _antiNormal.negate()
                 }
-//                println("OTHER AXIS")
                 //other has incident
                 for (vertex in otherVertices) {
                     val d = vertex.dot(_antiNormal)
@@ -288,9 +261,6 @@ class LocalMathUtil(
                         furtherVertex = vertex
                     }
                 }
-//                if (PhysicsCommand.DEBUG_SAT_LEVEL > 0) {
-//                    println("  - POINT: $furtherVertex")
-//                }
 
                 //happens to conicide with antinormal here, but keep them as separate variables to not cause confusion
                 _trueAxis.set(minAxis)
@@ -328,7 +298,6 @@ class LocalMathUtil(
                 if (minOrder) {
                     _antiNormal.negate()
                 }
-//                println("MY AXIS")
                 //i have incident
                 for (vertex in myVertices) {
                     val d = vertex.dot(_antiNormal)
@@ -337,10 +306,6 @@ class LocalMathUtil(
                         furtherVertex = vertex
                     }
                 }
-
-//                if (PhysicsCommand.DEBUG_SAT_LEVEL > 0) {
-//                    println("  - POINT: $furtherVertex")
-//                }
 
                 _trueAxis.set(minAxis)
                 if (!minOrder) {
@@ -461,10 +426,10 @@ class LocalMathUtil(
         crossAxiss: Array<Vector3d>,
 
         vertices: Array<Vector3d>,
+        edges: Array<Edge>,
 
         allowedNormals: Array<Vector3d>,
     ): CollisionResult? {
-//        println("collideCuboidEdge")
         var minBodyOverlap = Double.MAX_VALUE
         var minBodyAxis: Vector3d? = null
         var minBodyInDirOfAxis = true
@@ -644,17 +609,12 @@ class LocalMathUtil(
             val closestA = Vector3d()
 
             var l = 0
-            while (l < vertices.size) {
-                val v1 = vertices[l]
-                var next = l + 1
-
-                if (next >= vertices.size) next = 0
-
-                val v2 = vertices[next]
+            while (l < edges.size) {
+                val edge = edges[l]
 
                 val (cA, _, distance) = closestPointsBetweenSegments(
-                    a0 = v1,
-                    a1 = v2,
+                    a0 = edge.start,
+                    a1 = edge.end,
                     b0 = edgeStart,
                     b1 = edgeEnd
                 )

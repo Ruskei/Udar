@@ -336,6 +336,7 @@ class EnvironmentContactGenerator2(
                     crossAxiss = _crossAxiss,
                     vertices = vertices,
                     allowedNormals = _allowedNormals,
+                    edges = activeBody.edges,
                 )
 
                 if (r == null) {

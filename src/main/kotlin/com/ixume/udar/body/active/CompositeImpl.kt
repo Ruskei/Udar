@@ -138,6 +138,10 @@ class CompositeImpl(
         .flatMap { it.faces.toList() } // this really sucks but it's only once per object so it doesn't matter
         .toTypedArray()
 
+    override val edges: Array<Edge> = parts
+        .flatMap { it.edges.toList() }
+        .toTypedArray()
+
     init {
         val com = calcCOM()
         pos = com

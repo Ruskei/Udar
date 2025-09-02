@@ -3,6 +3,7 @@ package com.ixume.udar.collisiondetection.contactgeneration
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.Collidable
 import com.ixume.udar.body.active.ActiveBody
+import com.ixume.udar.body.active.Edge
 import com.ixume.udar.body.active.Face
 import com.ixume.udar.collisiondetection.LocalMathUtil
 import com.ixume.udar.collisiondetection.capability.Projectable
@@ -10,6 +11,7 @@ import com.ixume.udar.physics.CollisionResult
 import com.ixume.udar.physics.Contact
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
 import org.joml.Vector3d
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
@@ -29,6 +31,9 @@ class CuboidSATContactGenerator(
     private val _incidentVertices = DoubleArrayList()
     private val _prevIncidentVertex = Vector3d()
     private val _currIncidentVertex = Vector3d()
+
+    private val _myEdgeVertices = DoubleArrayList()
+    private val _otherEdgeVertices = DoubleArrayList()
 
     private val _refCenter = Vector3d()
     private val _incidentPoint = Vector3d()
@@ -60,6 +65,7 @@ class CuboidSATContactGenerator(
 
         var minCrossOverlap = Double.MAX_VALUE
         var minCrossAxis: Vector3d? = null
+        var minCrossAxisIdx: Int = -1
         var minCrossInDirOfAxis = true
 
         var i = 0
@@ -213,6 +219,7 @@ class CuboidSATContactGenerator(
             val overlapLow = otherMax - myMin
             val overlapHigh = myMax - otherMin
 
+            minCrossAxisIdx = k
             if (overlapLow < overlapHigh) {
                 if (overlapLow < minCrossOverlap) {
                     minCrossOverlap = overlapLow
@@ -232,9 +239,81 @@ class CuboidSATContactGenerator(
 
         if (minCrossOverlap < minMyBodyOverlap && minCrossOverlap < minOtherBodyOverlap) {
             // edge-edge!
-            check(false)
+            if (minCrossAxis == null) return emptyList()
+            
+            val norm = if (minCrossInDirOfAxis) {
+                Vector3d(minCrossAxis).normalize()
+            } else {
+                Vector3d(minCrossAxis).negate().normalize()
+            }
 
-            return emptyList()
+            check(abs(norm.length() - 1.0) < 1e-5)
+
+            val myEdges = activeBody.edges
+            val otherEdges = other.edges
+
+            _otherEdgeVertices.clear()
+            _myEdgeVertices.clear()
+
+            var myMin = Double.MAX_VALUE
+            var myEdge: Edge? = null
+
+            var m = 0
+            while (m < myEdges.size) {
+                val edge = myEdges[m]
+
+                val a = edge.start.dot(norm)
+                val b = edge.end.dot(norm)
+
+                if (abs(a - b) < EDGE_EPSILON && min(a, b) < myMin) {
+                    myMin = min(a, b)
+                    myEdge = edge
+                }
+
+                m++
+            }
+
+            checkNotNull(myEdge)
+
+            var otherMax = -Double.MAX_VALUE
+            var otherEdge: Edge? = null
+
+            var n = 0
+            while (n < otherEdges.size) {
+                val edge = otherEdges[n]
+
+                val a = edge.start.dot(norm)
+                val b = edge.end.dot(norm)
+
+                if (abs(a - b) < EDGE_EPSILON && max(a, b) > otherMax) {
+                    otherMax = max(a, b)
+                    otherEdge = edge
+                }
+
+                n++
+            }
+
+            checkNotNull(otherEdge)
+            
+            val (cA, cB, _) = math.closestPointsBetweenSegments(
+                a0 = myEdge.start,
+                a1 = myEdge.end,
+                b0 = otherEdge.start,
+                b1 = otherEdge.end,
+            )
+
+            return listOf(
+                Contact(
+                    first = activeBody,
+                    second = other,
+                    result = CollisionResult(
+                        pointA = cA,
+                        pointB = cB,
+                        norm = norm,
+                        depth = minCrossOverlap,
+                    ),
+                )
+            )
         } else {
             /*
             face-face:
@@ -300,14 +379,14 @@ class CuboidSATContactGenerator(
 
             val output = DoubleArrayList()
             incidentFace.populate(output)
-
+            
             var o = 0
             while (o < refFace.vertices.size) {
                 val v1 = refFace.vertices[o]
                 val v2 = refFace.vertices[(o + 1).mod(refFace.vertices.size)]
 
-                val edgeNormal = _edgeNormal.set(v2).sub(v1).cross(norm)
-
+                val edgeNormal = _edgeNormal.set(v2).sub(v1).cross(norm).normalize()
+                
                 check(edgeNormal.dot(Vector3d(_refCenter).sub(v1)) < 0)
 
                 _incidentVertices.clear()
@@ -321,7 +400,7 @@ class CuboidSATContactGenerator(
                         _incidentVertices.getDouble((p * 3 - 3 + 1).mod(_incidentVertices.size)),
                         _incidentVertices.getDouble((p * 3 - 3 + 2).mod(_incidentVertices.size)),
                     )
-
+                    
                     _currIncidentVertex.set(
                         _incidentVertices.getDouble(p * 3),
                         _incidentVertices.getDouble(p * 3 + 1),
@@ -329,16 +408,16 @@ class CuboidSATContactGenerator(
                     )
 
                     intersection(
-                        planePoint = refFace.point(),
-                        planeNormal = refFace.normal,
+                        planePoint = v1,
+                        planeNormal = edgeNormal,
                         start = _prevIncidentVertex,
                         end = _currIncidentVertex,
                         out = _intersectionOut,
                     )
-
+                    
                     val prevInside = _incidentPoint.set(_prevIncidentVertex).sub(v1).dot(edgeNormal) <= 0
                     val currInside = _incidentPoint.set(_currIncidentVertex).sub(v1).dot(edgeNormal) <= 0
-
+                    
                     if (currInside) {
                         if (!prevInside) {
                             output.add(_intersectionOut.x)
@@ -360,7 +439,7 @@ class CuboidSATContactGenerator(
 
                 o++
             }
-
+            
             // now check if the incident vertices are behind the reference face
 
             val collisions = mutableListOf<Contact>()
@@ -374,7 +453,7 @@ class CuboidSATContactGenerator(
                 )
 
                 val d = -_tpProjected.set(_tp).sub(refFace.point()).dot(refFace.normal)
-                
+
                 if (d < 0.0) {
                     val v = Vector3d(_tp).sub(d * refFace.normal.x, d * refFace.normal.y, d * refFace.normal.z)
                     collisions += Contact(
@@ -450,3 +529,5 @@ class CuboidSATContactGenerator(
         return true
     }
 }
+
+private const val EDGE_EPSILON = 1e-11
