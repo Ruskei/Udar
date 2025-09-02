@@ -407,7 +407,6 @@ class LocalMathUtil(
         val collisions = mutableListOf<CollisionResult>()
 
         if (level - min < max - level) {
-            //approached from top, so find vertex with smallest projection
             var i = 0
             while (i < vertices.size) {
                 val v = vertices[i]
@@ -478,8 +477,6 @@ class LocalMathUtil(
         while (i < bodyAxiss.size) {
             val axis = bodyAxiss[i]
 
-//            println("TESTING BODY AXIS: $axis")
-
             var bodyMin = Double.MAX_VALUE
             var bodyMax = -Double.MAX_VALUE
 
@@ -502,17 +499,6 @@ class LocalMathUtil(
 
             if (!checkOverlap(bodyMin, bodyMax, edgeMin, edgeMax)) {
                 //if no overlap, we found a non-overlapping axis between the edge and the cuboid, meaning they don't collide
-//                println(
-//                    """
-//                    NOT COLLIDING ON BOXY $axis
-//                    | edgeStart: $edgeStart
-//                    | edgeEnd: $edgeEnd
-//                    | edgeMin: $edgeMin
-//                    | edgeMax: $edgeMax
-//                    | bodyMin: $bodyMin
-//                    | bodyMax: $bodyMax
-//                """.trimIndent()
-//                )
                 return null
             }
 
@@ -534,7 +520,6 @@ class LocalMathUtil(
              */
 
             if ((edgeMin < bodyMin && edgeMax > bodyMax) || (bodyMin < edgeMin && bodyMax > edgeMax)) {
-//                println("CONTAINMENT OF BODY AXIS!")
                 i++
                 continue
             }
@@ -577,8 +562,6 @@ class LocalMathUtil(
             """.trimIndent()
             }
 
-//            println("TESTING CROSS AXIS: $axis")
-//
             var crossMin = Double.MAX_VALUE
             var crossMax = -Double.MAX_VALUE
 
@@ -597,16 +580,6 @@ class LocalMathUtil(
                 edgeStart.dot(axis) // since this is a cross between the edge normal and the body, min and max are equal
 
             if (es > crossMax || es < crossMin) {
-//                println(
-//                    """
-//                    NOT COLLIDING ON BOXY $axis
-//                    | edgeStart: $edgeStart
-//                    | edgeEnd: $edgeEnd
-//                    | es: $es
-//                    | crossMin: $crossMin
-//                    | crossMax: $crossMax
-//                """.trimIndent()
-//                )
                 return null
             }
 
@@ -634,8 +607,6 @@ class LocalMathUtil(
             j++
         }
 
-//        check(abs(minCrossAxis!!.length() - 1.0) < 1e-5)
-
         /*
         check if the min axis is even allowed; if not, then we're on the wrong side of the edge
 
@@ -654,27 +625,9 @@ class LocalMathUtil(
             check(abs(norm.length() - 1.0) < 1e-5)
 
             if (norm.dot(allowedNormals[0]) < 0.0) {
-//                println(
-//                    """
-//                    DISALLOWED NORMAL
-//                    | norm: $norm
-//                    | failed allowed: ${allowedNormals[0]}
-//                    | edgeStart: $edgeStart
-//                    | edgeEnd: $edgeEnd
-//                """.trimIndent()
-//                )
                 return null
             }
             if (norm.dot(allowedNormals[1]) < 0.0) {
-//                println(
-//                    """
-//                    DISALLOWED NORMAL
-//                    | norm: $norm
-//                    | failed allowed: ${allowedNormals[1]}
-//                    | edgeStart: $edgeStart
-//                    | edgeEnd: $edgeEnd
-//                """.trimIndent()
-//                )
                 return null
             }
 
@@ -732,27 +685,9 @@ class LocalMathUtil(
             }
 
             if (norm.dot(allowedNormals[0]) < 0.0) {
-//                println(
-//                    """
-//                    DISALLOWED NORMAL
-//                    | norm: $norm
-//                    | failed allowed: ${allowedNormals[0]}
-//                    | edgeStart: $edgeStart
-//                    | edgeEnd: $edgeEnd
-//                """.trimIndent()
-//                )
                 return null
             }
             if (norm.dot(allowedNormals[1]) < 0.0) {
-//                println(
-//                    """
-//                    DISALLOWED NORMAL
-//                    | norm: $norm
-//                    | failed allowed: ${allowedNormals[1]}
-//                    | edgeStart: $edgeStart
-//                    | edgeEnd: $edgeEnd
-//                """.trimIndent()
-//                )
                 return null
             }
 
@@ -826,7 +761,7 @@ class LocalMathUtil(
         }
     }
 
-    private inline fun checkOverlap(
+    inline fun checkOverlap(
         a: Double,
         b: Double,
 

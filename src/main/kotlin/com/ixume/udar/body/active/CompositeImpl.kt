@@ -5,8 +5,8 @@ import com.ixume.udar.Udar
 import com.ixume.udar.body.Body
 import com.ixume.udar.collisiondetection.LocalMathUtil
 import com.ixume.udar.collisiondetection.broadphase.BoundAABB
-import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.collisiondetection.contactgeneration.CompositeCompositeContactGenerator
+import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.jacobiEigenDecomposition
 import com.ixume.udar.physics.Contact
 import com.ixume.udar.physicsWorld
@@ -77,7 +77,7 @@ class CompositeImpl(
     data class InertialData(
         val localInertia: Vector3d,
         val inverseInertia: Matrix3d,
-        val principleRotation: Matrix3d
+        val principleRotation: Matrix3d,
     )
 
     private fun calcInitialInertialData(): InertialData {
@@ -134,6 +134,9 @@ class CompositeImpl(
     val localInverseInertia: Matrix3d
 
     override val vertices: Array<Vector3d> = Array(parts.fold(0) { s, p -> s + p.vertices.size }) { Vector3d() }
+    override val faces: Array<Face> = parts
+        .flatMap { it.faces.toList() } // this really sucks but it's only once per object so it doesn't matter
+        .toTypedArray()
 
     init {
         val com = calcCOM()
@@ -270,7 +273,7 @@ class CompositeImpl(
 
     override fun intersect(
         origin: Vector3d,
-        end: Vector3d
+        end: Vector3d,
     ): List<Pair<Vector3d, Vector3d>> {
         return parts.flatMap { it.intersect(origin, end) }
     }

@@ -30,8 +30,6 @@ class EnvironmentContactGenerator2(
 
     private val prevBB: AABB = AABB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
-    private var testedFaces = 0
-
     val contacts = mutableListOf<Contact>()
     
     override fun collides(
@@ -42,8 +40,6 @@ class EnvironmentContactGenerator2(
         val bb = activeBody.tightBB
 
         contacts.clear()
-
-        testedFaces = 0
 
         activeBody.physicsWorld.worldMeshesManager.request(
             prevBB = prevBB,
@@ -116,11 +112,6 @@ class EnvironmentContactGenerator2(
         var i = 0
         while (i < faces.size) {
             val face = faces[i]
-            testedFaces++
-//            println("TESTING FACE:")
-//            println("| axis: $axis")
-//            println("| level: ${face.level}")
-            
             val collisions = math.collidePlane(
                 axis = axis,
                 level = face.level,
@@ -159,12 +150,8 @@ class EnvironmentContactGenerator2(
                 math = math,
             )
             
-//            println("| holes: ${_overlappingHoles.size / 4}")
-//            println("| antiholes: ${_overlappingAntiHoles.size / 4}")
-
             var j = 0
             while (j < collisions.size) {
-//                println("| COLLISION")
                 val collision = collisions[j]
 
                 val pa = collision.pointA.get(axis.aOffset)
@@ -179,8 +166,6 @@ class EnvironmentContactGenerator2(
                     val maxA = _overlappingAntiHoles.getDouble(k * 4 + 2)
                     val maxB = _overlappingAntiHoles.getDouble(k * 4 + 3)
                     
-//                    println("| TESTING AH: ($minA, $minB) -> ($maxA, $maxB)")
-
                     if (contains(
                             minA = minA,
                             minB = minB,
@@ -190,7 +175,6 @@ class EnvironmentContactGenerator2(
                             b = pb,
                         )
                     ) {
-//                        println("| CONTAINED IN ANTIHOLE: ($minA, $minB) -> ($maxA, $maxB)")
                         valid = false
                         break
                     }
@@ -222,7 +206,6 @@ class EnvironmentContactGenerator2(
                             b = pb,
                         )
                     ) {
-//                        println("| CONTAINED IN HOLE: ($minA, $minB) -> ($maxA, $maxB)")
                         valid = true
                         break
                     }
@@ -280,7 +263,6 @@ class EnvironmentContactGenerator2(
         other: Body,
         out: MutableList<Contact>,
     ) {
-//        println("COLLIDING EDGES!")
         /*
         get all edges that we could possibly be colliding with; we could have a valid collision with each of these edges (not using discrete curvature graph rn)
          */
@@ -361,13 +343,6 @@ class EnvironmentContactGenerator2(
                     continue
                 }
 
-//                println("COLLIDED EDGE")
-//                println("  - norm: ${r.norm}")
-//                println("  - point: ${r.pointA}")
-//                println("  - allowedNormals[0]: ${_allowedNormals[0]}")
-//                println("  - allowedNormals[1]: ${_allowedNormals[1]}")
-//                println("  - mount: $mount")
-
                 check(true) {
                     """
                     Edge Contact:
@@ -388,79 +363,6 @@ class EnvironmentContactGenerator2(
                 i++
             }
         }
-
-//        for (edge in edges) {
-//            /*
-//            edge is represnted by a sorted list of doubles, so we jump 2 at a time through them and those are our edge starts and ends
-//                might eventually be worth it to convert this into a sorted set to do O(log n) traversal instead of O(n)
-//             */
-//            _edgeStart.setComponent(axis.aOffset, edge.a)
-//            _edgeStart.setComponent(axis.bOffset, edge.b)
-//
-//            _edgeEnd.setComponent(axis.aOffset, edge.a)
-//            _edgeEnd.setComponent(axis.bOffset, edge.b)
-//
-////            println("POINTS: ${edge.points.joinToString { it.toString() }}")
-//            val itr = edge.points.iterator()
-//            var i = 0
-//            while (itr.hasNext()) {
-//                val d1 = itr.nextDouble()
-//                val d2 = itr.nextDouble()
-//
-//                val mount = edge.pointMounts.getInt(i)
-//
-//                _allowedNormals[0].setComponent(axis.levelOffset, 0.0)
-//                _allowedNormals[0].setComponent(axis.aOffset, EdgeMountAllowedNormals.allowedNormals[mount][0].x)
-//                _allowedNormals[0].setComponent(axis.bOffset, EdgeMountAllowedNormals.allowedNormals[mount][0].y)
-//
-//                _allowedNormals[1].setComponent(axis.levelOffset, 0.0)
-//                _allowedNormals[1].setComponent(axis.aOffset, EdgeMountAllowedNormals.allowedNormals[mount][1].x)
-//                _allowedNormals[1].setComponent(axis.bOffset, EdgeMountAllowedNormals.allowedNormals[mount][1].y)
-//
-//                _edgeStart.setComponent(axis.levelOffset, d1)
-//                _edgeEnd.setComponent(axis.levelOffset, d2)
-//
-//                val r = math.collideCuboidEdge(
-//                    edgeStart = _edgeStart,
-//                    edgeEnd = _edgeEnd,
-//                    bodyAxiss = _bodyAxiss,
-//                    crossAxiss = _crossAxiss,
-//                    vertices = vertices,
-//                    allowedNormals = _allowedNormals,
-//                )
-//
-//                if (r == null) {
-//                    i++
-//                    continue
-//                }
-//
-////                println("COLLIDED EDGE")
-////                println("  - norm: ${r.norm}")
-////                println("  - point: ${r.pointA}")
-////                println("  - allowedNormals[0]: ${_allowedNormals[0]}")
-////                println("  - allowedNormals[1]: ${_allowedNormals[1]}")
-////                println("  - mount: $mount")
-//
-//                check(true) {
-//                    """
-//                    Edge Contact:
-//                    | norm: ${r.norm}
-//                    | point: ${r.pointA}
-//                    | allowedNormal[0]: ${_allowedNormals[0]}
-//                    | allowedNormal[1]: ${_allowedNormals[1]}
-//                    | mount: $mount
-//                """.trimIndent()
-//                }
-//
-//                out += Contact(
-//                    first = activeBody,
-//                    second = other,
-//                    result = r,
-//                )
-//
-//                i++
-//            }
-//        }
     }
 }
 

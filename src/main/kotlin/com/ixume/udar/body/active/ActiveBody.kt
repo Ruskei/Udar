@@ -18,6 +18,7 @@ interface ActiveBody : CollidableBody, Projectable {
     var isChild: Boolean
 
     val vertices: Array<Vector3d>
+    val faces: Array<Face>
     val radius: Double
     val fatBB: BoundAABB
     val tightBB: AABB

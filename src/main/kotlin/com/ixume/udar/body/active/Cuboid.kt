@@ -6,11 +6,11 @@ import com.ixume.udar.body.Body
 import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.collisiondetection.LocalMathUtil
 import com.ixume.udar.collisiondetection.broadphase.BoundAABB
-import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.collisiondetection.capability.GJKCapable
 import com.ixume.udar.collisiondetection.capability.SDFCapable
+import com.ixume.udar.collisiondetection.contactgeneration.CuboidSATContactGenerator
 import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentContactGenerator2
-import com.ixume.udar.collisiondetection.contactgeneration.SATContactGenerator
+import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.physics.Contact
 import com.ixume.udar.physicsWorld
 import org.bukkit.Material
@@ -71,6 +71,17 @@ class Cuboid(
         Vector3d(0.5, 0.5, -0.5),
     )
 
+    override val vertices: Array<Vector3d> = Array(8) { Vector3d() }
+    override val faces: Array<Face> = arrayOf(
+        // wound counterclockwise
+        Face(vertices = arrayOf(vertices[0], vertices[4], vertices[7], vertices[3])),
+        Face(vertices = arrayOf(vertices[0], vertices[1], vertices[5], vertices[4])),
+        Face(vertices = arrayOf(vertices[2], vertices[1], vertices[5], vertices[6])),
+        Face(vertices = arrayOf(vertices[3], vertices[2], vertices[6], vertices[5])),
+        Face(vertices = arrayOf(vertices[0], vertices[1], vertices[2], vertices[3])),
+        Face(vertices = arrayOf(vertices[4], vertices[7], vertices[6], vertices[5])),
+    )
+
     private fun updateVertices() {
         var i = 0
         while (i < vertices.size) {
@@ -78,9 +89,13 @@ class Cuboid(
             v.set(rawVertices[i]).mul(scale).rotate(q).add(pos)
             ++i
         }
+        
+        var j = 0
+        while (j < faces.size) {
+            faces[j].updateNormal()
+            j++
+        }
     }
-
-    override val vertices: Array<Vector3d> = Array(8) { Vector3d() }
 
     private fun updateBB() {
         tightBB.minX = Double.MAX_VALUE
@@ -120,8 +135,10 @@ class Cuboid(
     override val previousContacts: MutableList<Contact> = mutableListOf()
 
     private val envContactGen = EnvironmentContactGenerator2(this)
-//    private val envContactGen = EnvironmentSATContactGenerator(this)
-    private val SATContactGen = SATContactGenerator(this)
+
+    //    private val envContactGen = EnvironmentSATContactGenerator(this)
+//    private val SATContactGen = SATContactGenerator(this)
+    private val cuboidContactGen = CuboidSATContactGenerator(this)
 
     private val _rm = Matrix3d()
     private val _rmT = Matrix3d()
@@ -296,12 +313,12 @@ class Cuboid(
 
     override fun capableCollision(other: Body): Int {
         if (other is EnvironmentBody) return envContactGen.capableCollision(other)
-        return SATContactGen.capableCollision(other)
+        return cuboidContactGen.capableCollision(other)
     }
 
     override fun collides(other: Body, math: LocalMathUtil): List<Contact> {
         if (other is EnvironmentBody) return envContactGen.collides(other, math)
-        return SATContactGen.collides(other, math)
+        return cuboidContactGen.collides(other, math)
     }
 
     override fun support(dir: Vector3d): Vector3d {
@@ -419,8 +436,8 @@ class Cuboid(
 
         if (_naTemp.any {
                 it.distance(1.0, 0.0, 0.0) < tiny || it.distance(-1.0, 0.0, 0.0) < tiny ||
-                        it.distance(0.0, 1.0, 0.0) < tiny || it.distance(0.0, -1.0, 0.0) < tiny ||
-                        it.distance(0.0, 0.0, 1.0) < tiny || it.distance(0.0, 0.0, -1.0) < tiny
+                it.distance(0.0, 1.0, 0.0) < tiny || it.distance(0.0, -1.0, 0.0) < tiny ||
+                it.distance(0.0, 0.0, 1.0) < tiny || it.distance(0.0, 0.0, -1.0) < tiny
             }) {
 
             q.rotateXYZ(perturbation, perturbation, perturbation)
