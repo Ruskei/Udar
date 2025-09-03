@@ -16,11 +16,9 @@ import com.ixume.udar.testing.debugConnect
 import kotlinx.coroutines.*
 import org.bukkit.*
 import org.joml.Vector3d
-import java.nio.FloatBuffer
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.roundToInt
 import kotlin.system.measureNanoTime
 
@@ -30,18 +28,18 @@ class PhysicsWorld(
     private val bodiesToAdd = AtomicList<ActiveBody>()
     private val bodiesToRemove = AtomicList<ActiveBody>()
 
-    private val activeBodies = AtomicList<ActiveBody>()
+    private val activeBodies = ActiveBodiesCollection()
 
     private val bodyIDMap = BodyIDMap(this)
 
     fun bodiesSnapshot(): List<ActiveBody> {
-        return activeBodies.get()
+        return activeBodies.bodies()
     }
 
     var numPossibleContacts = 0
     val contacts = ConcurrentLinkedQueue<Contact>()
     val envContacts = mutableListOf<Contact>()
-    val flattenedContacts = AtomicReference(FloatBuffer.allocate(0))
+    val contactBuffer = ContactBuffer()
 
     val meshes: MutableList<Mesh> = mutableListOf()
 
@@ -129,11 +127,11 @@ class PhysicsWorld(
                 debugData.reset()
                 runningContactID.set(0)
                 contacts.clear()
-                flattenedContacts.set(FloatBuffer.allocate(0))
+                contactBuffer.clear()
                 envContacts.clear()
                 meshes.clear()
 
-                val bodiesSnapshot = activeBodies.get()
+                val bodiesSnapshot = activeBodies.bodies()
 
                 statusUpdater.updateBodies(bodiesSnapshot)
 
@@ -311,9 +309,9 @@ class PhysicsWorld(
         for (body in ss) {
             body.fatBB.body = body
             body.update()
-        }
 
-        activeBodies += ss
+            activeBodies.add(body)
+        }
     }
 
     private fun processToRemove() {
@@ -393,12 +391,12 @@ class PhysicsWorld(
     }
 
     fun clear() {
-        removeBodies(activeBodies.get())
+        removeBodies(activeBodies.bodies())
     }
 
     private fun kill(obj: ActiveBody) {
         aabbTree.remove(obj.fatBB.node!!)
-        activeBodies -= obj
+        activeBodies.remove(obj.uuid)
     }
 
     fun kill() {
@@ -408,7 +406,7 @@ class PhysicsWorld(
         realWorldHandler.kill()
         entityTask.cancel()
         scope.cancel()
-        
+
         worldMeshesManager.kill()
     }
 }

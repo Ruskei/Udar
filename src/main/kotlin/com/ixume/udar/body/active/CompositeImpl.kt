@@ -38,6 +38,7 @@ class CompositeImpl(
 
     override val uuid: UUID = UUID.randomUUID()
     override var id: Int = -1
+    override var idx: Int = -1
     override val physicsWorld: PhysicsWorld = world.physicsWorld!!
 
     override var isChild: Boolean = false

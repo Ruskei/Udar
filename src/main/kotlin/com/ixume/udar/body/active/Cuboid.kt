@@ -40,6 +40,7 @@ class Cuboid(
 ) : ActiveBody, GJKCapable, SDFCapable {
     override val uuid = UUID.randomUUID()!!
     override var id: Int = -1
+    override var idx: Int = -1
     override val physicsWorld: PhysicsWorld = world.physicsWorld!!
 
     override var isChild: Boolean = false
