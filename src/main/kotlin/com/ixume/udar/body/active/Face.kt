@@ -45,7 +45,7 @@ class Face(val vertices: Array<Vector3d>) {
         while (i < vertices.size) {
             val v = vertices[i]
             out.add(v.x / n, v.y / n, v.z / n)
-           
+
             i++
         }
     }

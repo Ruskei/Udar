@@ -3,7 +3,7 @@ package com.ixume.udar.collisiondetection.contactgeneration
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.Collidable
 import com.ixume.udar.body.active.Composite
-import com.ixume.udar.collisiondetection.LocalMathUtil
+import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.physics.Contact
 import com.ixume.udar.physicsWorld
 

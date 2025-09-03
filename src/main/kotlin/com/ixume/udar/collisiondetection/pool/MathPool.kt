@@ -1,7 +1,7 @@
 package com.ixume.udar.collisiondetection.pool
 
 import com.ixume.udar.PhysicsWorld
-import com.ixume.udar.collisiondetection.LocalMathUtil
+import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import java.util.concurrent.ConcurrentLinkedDeque
 
 class MathPool(

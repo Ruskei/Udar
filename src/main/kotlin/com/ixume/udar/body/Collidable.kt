@@ -1,6 +1,6 @@
 package com.ixume.udar.body
 
-import com.ixume.udar.collisiondetection.LocalMathUtil
+import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.physics.Contact
 
 interface Collidable {

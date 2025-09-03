@@ -1,6 +1,6 @@
 package com.ixume.udar.collisiondetection.mesh.aabbtree2d
 
-import com.ixume.udar.collisiondetection.LocalMathUtil
+import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.collisiondetection.mesh.aabbtree2d.AABB2D.Companion.withLevel
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.dynamicaabb.array.IntQueue

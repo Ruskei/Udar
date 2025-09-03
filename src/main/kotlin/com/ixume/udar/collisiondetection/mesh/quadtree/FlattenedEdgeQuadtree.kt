@@ -1,6 +1,6 @@
 package com.ixume.udar.collisiondetection.mesh.quadtree
 
-import com.ixume.udar.collisiondetection.LocalMathUtil
+import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFaces
 import com.ixume.udar.collisiondetection.mesh.mesh2.axiss

@@ -1,4 +1,4 @@
-package com.ixume.udar.collisiondetection
+package com.ixume.udar.collisiondetection.local
 
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.body.active.ActiveBody
@@ -8,6 +8,7 @@ import com.ixume.udar.collisiondetection.pool.TrackingD3Pool
 import com.ixume.udar.dynamicaabb.array.IntQueue
 import com.ixume.udar.physics.CollisionResult
 import org.joml.Vector3d
+import kotlin.collections.plusAssign
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -25,7 +26,9 @@ class LocalMathUtil(
     private val _trueAxis = Vector3d()
 
     private val _myAxiss = Array(3) { Vector3d() }
-    private val _tv = Vector3d()
+    
+    val envContactUtil = LocalEnvContactUtil(this)
+    val cuboidSATContactUtil = LocalCuboidSATContactUtil(this)
     
     val envOverlapQueue = IntQueue()
     val envEdgeOverlapQueue = IntQueue()

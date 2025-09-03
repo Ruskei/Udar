@@ -4,12 +4,12 @@ import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.Udar
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.EnvironmentBody
-import com.ixume.udar.collisiondetection.LocalMathUtil
 import com.ixume.udar.collisiondetection.broadphase.BoundAABB
 import com.ixume.udar.collisiondetection.capability.GJKCapable
 import com.ixume.udar.collisiondetection.capability.SDFCapable
 import com.ixume.udar.collisiondetection.contactgeneration.CuboidSATContactGenerator
 import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentContactGenerator2
+import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.physics.Contact
 import com.ixume.udar.physicsWorld
@@ -74,10 +74,10 @@ class Cuboid(
     override val vertices: Array<Vector3d> = Array(8) { Vector3d() }
     override val faces: Array<Face> = arrayOf(
         // wound counterclockwise
-        Face(vertices = arrayOf(vertices[0], vertices[4], vertices[7], vertices[3])),
+        Face(vertices = arrayOf(vertices[0], vertices[3], vertices[7], vertices[4])),
         Face(vertices = arrayOf(vertices[0], vertices[1], vertices[5], vertices[4])),
         Face(vertices = arrayOf(vertices[2], vertices[1], vertices[5], vertices[6])),
-        Face(vertices = arrayOf(vertices[3], vertices[2], vertices[6], vertices[5])),
+        Face(vertices = arrayOf(vertices[3], vertices[2], vertices[6], vertices[7])),
         Face(vertices = arrayOf(vertices[0], vertices[1], vertices[2], vertices[3])),
         Face(vertices = arrayOf(vertices[4], vertices[7], vertices[6], vertices[5])),
     )
@@ -92,7 +92,7 @@ class Cuboid(
         Edge(vertices[5], vertices[6]),
         Edge(vertices[6], vertices[7]),
         Edge(vertices[7], vertices[4]),
-        
+
         Edge(vertices[0], vertices[4]),
         Edge(vertices[1], vertices[5]),
         Edge(vertices[2], vertices[6]),
@@ -106,7 +106,7 @@ class Cuboid(
             v.set(rawVertices[i]).mul(scale).rotate(q).add(pos)
             ++i
         }
-        
+
         var j = 0
         while (j < faces.size) {
             faces[j].updateNormal()
@@ -240,6 +240,8 @@ class Cuboid(
         previousContacts.clear()
         previousContacts += contacts
         contacts.clear()
+
+        envContactGen.tick()
 
         updateVertices()
         updateBB()

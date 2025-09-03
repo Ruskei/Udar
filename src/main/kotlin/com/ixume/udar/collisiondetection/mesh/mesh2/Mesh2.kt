@@ -1,6 +1,6 @@
 package com.ixume.udar.collisiondetection.mesh.mesh2
 
-import com.ixume.udar.collisiondetection.LocalMathUtil
+import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.collisiondetection.mesh.quadtree.FlattenedEdgeQuadtree
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.dynamicaabb.array.FlattenedAABBTree
