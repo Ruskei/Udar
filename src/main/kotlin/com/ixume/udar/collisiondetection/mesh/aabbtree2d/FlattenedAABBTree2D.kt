@@ -49,7 +49,6 @@ class FlattenedAABBTree2D(
     private var freeIdx = -1 // head of free linked list
     private var rootIdx = -1
 
-    @Volatile
     var arr = DoubleArray(capacity * DATA_SIZE)
 
     init {

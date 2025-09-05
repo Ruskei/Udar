@@ -16,8 +16,8 @@ technically we don't need to store contact points for constraint solving but it'
  */
 
 class A2AContactBuffer : A2AContactCollection {
-    @Volatile
     internal var arr = FloatArray(0)
+
     private val lock = ReentrantReadWriteLock()
 
     private val cursor = AtomicInteger(0)

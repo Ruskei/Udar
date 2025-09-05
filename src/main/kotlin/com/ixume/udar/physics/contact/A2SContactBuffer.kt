@@ -17,7 +17,6 @@ Only stores data about the active body, omitting all static body data
 */
 
 class A2SContactBuffer : A2SContactCollection {
-    @Volatile
     internal var arr = FloatArray(0)
     private val lock = ReentrantReadWriteLock()
 
