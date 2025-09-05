@@ -16,8 +16,6 @@ import kotlin.math.min
 class LocalMathUtil(
     val world: PhysicsWorld,
 ) {
-    private val d3Pool = TrackingD3Pool(15)
-
     val envContactUtil = LocalEnvContactUtil(this)
     val cuboidSATContactUtil = LocalCuboidSATContactUtil(this)
     val compositeUtil = LocalCompositeUtil()
@@ -489,58 +487,6 @@ class LocalMathUtil(
         }
     }
 
-
-    private var _overlap = 0.0
-    private var _order = false
-
-    fun cycleSAT(
-        myMin: Double,
-        myMax: Double,
-        otherMin: Double,
-        otherMax: Double,
-    ): Boolean {
-        var order: Boolean? = null
-        val overlap = if (myMin < otherMax && myMax > otherMin) {
-            //overlapping
-            order = (otherMax - myMin) < (myMax - otherMin)
-
-            //check if contained or overlapping; if contained then choose smallest distance as overlap
-            if (myMin < otherMin && myMax > otherMax) {
-                //i contain other
-                min(myMax - otherMin, otherMax - myMin)
-            } else if (otherMin < myMin && otherMax > myMax) {
-                //other contains me
-                min(otherMax - myMin, myMax - otherMin)
-            } else {
-                //just overlapping
-                if (myMax > otherMax) otherMax - myMin
-                else myMax - otherMin
-            }
-        } else 0.0
-
-        if (overlap <= 0.0) {
-            return false
-        }
-
-        _overlap = overlap
-        _order = order!!
-        return true
-    }
-
-    private val _edgeArr = ArrayList<Vector3d>()
-
-    private fun _edgeCrosses(
-        edgesA: Collection<Vector3d>,
-        edgesB: Array<Vector3d>,
-    ) {
-        if (edgesA.isEmpty() || edgesB.isEmpty()) return
-        _edgeArr.clear()
-        for (edgeA in edgesA) {
-            for (edgeB in edgesB) {
-                _edgeArr += d3Pool.get().set(edgeA).cross(edgeB).normalize()
-            }
-        }
-    }
 
     private val _onLLA = Vector3d()
     private val _onLLB = Vector3d()

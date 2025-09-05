@@ -31,7 +31,6 @@ class LocalConstraintSolver(
     private var idMap: Array<ActiveBody>
     private var bodyCount: Int
 
-    @Volatile
     private var flatBodyData: FloatArray = FloatArray(1)
 
     private var any = false
