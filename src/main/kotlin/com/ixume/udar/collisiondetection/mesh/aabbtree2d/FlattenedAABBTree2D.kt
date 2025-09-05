@@ -48,6 +48,7 @@ class FlattenedAABBTree2D(
 
     private var freeIdx = -1 // head of free linked list
     private var rootIdx = -1
+
     @Volatile
     var arr = DoubleArray(capacity * DATA_SIZE)
 
@@ -220,7 +221,7 @@ class FlattenedAABBTree2D(
             maxX,
             maxY,
         )
-       
+
         if (best == -1) {
             rootIdx = newNode(
                 parent = -1,
@@ -953,19 +954,20 @@ class FlattenedAABBTree2D(
             q.enqueue(node.child2())
         }
     }
-    
+
     private val visualizationQueue = IntQueue()
 
     fun visualize(world: World, isHole: Boolean) {
         if (rootIdx == -1) return
-        
+
         visualizationQueue.enqueue(rootIdx)
-        
+
         while (visualizationQueue.hasNext()) {
             val node = visualizationQueue.dequeue()
-            
+
             if (node.isLeaf()) {
-                val options = if (isHole) Particle.DustOptions(Color.BLUE, 0.25f) else Particle.DustOptions(Color.RED, 0.25f)
+                val options =
+                    if (isHole) Particle.DustOptions(Color.BLUE, 0.25f) else Particle.DustOptions(Color.RED, 0.25f)
 
                 world.debugConnect(
                     start = withLevel(axis, node.minX(), node.minY(), level),

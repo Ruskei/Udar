@@ -187,7 +187,11 @@ object RPManager {
                 null
             }) ?: continue
 
-            modelMap += file.nameWithoutExtension to JavaModel(id = model.nameWithoutExtension, elems = elems, index = index)
+            modelMap += file.nameWithoutExtension to JavaModel(
+                id = model.nameWithoutExtension,
+                elems = elems,
+                index = index
+            )
 
             predicate.addProperty("custom_model_data", index)
             override.add("predicate", predicate)

@@ -12,7 +12,11 @@ class AABBTree {
     var root: AABBNode? = null
 
     fun collisions(): Map<ActiveBody, List<ActiveBody>> {
-        if (!blocked.compareAndSet(false, true)) throw IllegalStateException("Tried to get collisions while blocked! STATUS: ${status.get()}")
+        if (!blocked.compareAndSet(
+                false,
+                true
+            )
+        ) throw IllegalStateException("Tried to get collisions while blocked! STATUS: ${status.get()}")
         status.set(1)
 
         val r = root
@@ -40,7 +44,11 @@ class AABBTree {
     }
 
     fun insert(bb: AABB) {
-        if (!blocked.compareAndSet(false, true)) throw IllegalStateException("Tried to insert while blocked! STATUS: ${status.get()}")
+        if (!blocked.compareAndSet(
+                false,
+                true
+            )
+        ) throw IllegalStateException("Tried to insert while blocked! STATUS: ${status.get()}")
         status.set(2)
 
         val best = bestSibling(bb)
@@ -191,7 +199,11 @@ class AABBTree {
     }
 
     fun remove(node: AABBNode) {
-        if (!blocked.compareAndSet(false, true)) throw IllegalStateException("Tried to remove while blocked! STATUS: ${status.get()}")
+        if (!blocked.compareAndSet(
+                false,
+                true
+            )
+        ) throw IllegalStateException("Tried to remove while blocked! STATUS: ${status.get()}")
         status.set(3)
 
         val cp = node.parent

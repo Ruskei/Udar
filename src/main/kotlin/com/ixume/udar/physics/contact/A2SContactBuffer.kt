@@ -16,7 +16,7 @@ Thread-safe contact storage for Active-to-Static contacts
 Only stores data about the active body, omitting all static body data
 */
 
-class A2SContactBuffer {
+class A2SContactBuffer : A2SContactCollection {
     @Volatile
     internal var arr = FloatArray(0)
     private val lock = ReentrantReadWriteLock()
@@ -149,13 +149,13 @@ class A2SContactBuffer {
         t2Lambda: Float,
     ) {
         val aID = activeBody.uuid
-        
+
         // Store active body UUID (4 floats)
         arr[idx + AID_OFFSET] = Float.fromBits(aID.mostSignificantBits.toInt())
         arr[idx + AID_OFFSET + 1] = Float.fromBits((aID.mostSignificantBits ushr 32).toInt())
         arr[idx + AID_OFFSET + 2] = Float.fromBits(aID.leastSignificantBits.toInt())
         arr[idx + AID_OFFSET + 3] = Float.fromBits((aID.leastSignificantBits ushr 32).toInt())
-        
+
         // Store contact ID (2 floats)
         arr[idx + CONTACT_ID_OFFSET] = Float.fromBits(contactID.toInt())
         arr[idx + CONTACT_ID_OFFSET + 1] = Float.fromBits((contactID ushr 32).toInt())
@@ -201,12 +201,12 @@ class A2SContactBuffer {
         arr[idx + BODY_A_INVERSE_INERTIA_ZZ_OFFSET] = activeBody.inverseInertia.m22.toFloat()
     }
 
-    fun addCollision(
+    override fun addCollision(
         activeBody: ActiveBody,
         pointAX: Double, pointAY: Double, pointAZ: Double,
         normX: Double, normY: Double, normZ: Double,
         depth: Double,
-        contactID: Long = 0L
+        contactID: Long,
     ) {
         // Calculate tangent vectors following Contact class logic
         val norm = Vector3d(normX, normY, normZ)
@@ -358,9 +358,15 @@ class A2SContactBuffer {
     fun bodyAInverseInertia(idx: Int, out: Matrix3f): Matrix3f {
         val baseIdx = idx * A2S_CONTACT_DATA_SIZE
         return out.set(
-            arr[baseIdx + BODY_A_INVERSE_INERTIA_XX_OFFSET], arr[baseIdx + BODY_A_INVERSE_INERTIA_XY_OFFSET], arr[baseIdx + BODY_A_INVERSE_INERTIA_XZ_OFFSET],
-            arr[baseIdx + BODY_A_INVERSE_INERTIA_YX_OFFSET], arr[baseIdx + BODY_A_INVERSE_INERTIA_YY_OFFSET], arr[baseIdx + BODY_A_INVERSE_INERTIA_YZ_OFFSET],
-            arr[baseIdx + BODY_A_INVERSE_INERTIA_ZX_OFFSET], arr[baseIdx + BODY_A_INVERSE_INERTIA_ZY_OFFSET], arr[baseIdx + BODY_A_INVERSE_INERTIA_ZZ_OFFSET]
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_XX_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_XY_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_XZ_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_YX_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_YY_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_YZ_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_ZX_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_ZY_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_ZZ_OFFSET]
         )
     }
 

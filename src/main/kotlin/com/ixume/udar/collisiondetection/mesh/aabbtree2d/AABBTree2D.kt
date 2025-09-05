@@ -2,7 +2,7 @@ package com.ixume.udar.collisiondetection.mesh.aabbtree2d
 
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import org.bukkit.World
-import java.util.PriorityQueue
+import java.util.*
 
 /**
  * Not thread safe.

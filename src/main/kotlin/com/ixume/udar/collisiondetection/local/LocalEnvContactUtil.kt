@@ -10,7 +10,7 @@ import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFace
 import com.ixume.udar.collisiondetection.mesh.quadtree.FlattenedEdgeQuadtree
 import com.ixume.udar.physics.contact.A2SContactArray
 import com.ixume.udar.physics.contact.A2SContactBuffer
-import com.ixume.udar.physics.contact.Contact
+import com.ixume.udar.physics.contact.A2SContactCollection
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
 import it.unimi.dsi.fastutil.ints.IntArrayList
 import org.joml.Vector3d
@@ -24,7 +24,8 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         contactGen: EnvironmentContactGenerator2,
         activeBody: ActiveBody,
         other: Body,
-    ): List<Contact> {
+        out: A2SContactCollection,
+    ): Boolean {
         val bb = activeBody.tightBB
 
         activeBody.physicsWorld.worldMeshesManager.request(
@@ -36,32 +37,37 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         val mfs = contactGen.meshFaces.get()
         val mes = contactGen.meshEdges.get()
 
-        for (mf in mfs) {
+        var j = 0
+        while (j < mfs.size) {
+            val mf = mfs[j]
             _mf.clear()
             mf.facesIn(bb, _mf)
             collideFaces(activeBody, _mf, mf.axis, math, other, activeBody.physicsWorld.envContactBuffer)
+            j++
         }
 
         setupBodyAxiss(activeBody)
 
-        for (me in mes) {
+        var i = 0
+        while (i < mes.size) {
+            val me = mes[i]
+            
             collideEdges(
                 activeBody = activeBody,
                 tree = me,
                 math = math,
                 other = other,
-                out = activeBody.physicsWorld.envContactBuffer
+                out = out,
             )
+            i++
         }
 
-        return emptyList()
+        return false
     }
 
     private val _bb2d = AABB2D(doubleArrayOf(0.0, 0.0, 0.0, 0.0))
     private val _overlappingHoles = DoubleArrayList()
     private val _overlappingAntiHoles = DoubleArrayList()
-
-    private val _collisions = mutableListOf<Contact>()
 
     private fun collideFaces(
         activeBody: ActiveBody,
@@ -242,8 +248,8 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         tree: FlattenedEdgeQuadtree,
         math: LocalMathUtil,
         other: Body,
-        out: A2SContactBuffer,
-    ) {
+        out: A2SContactCollection,
+    ): Boolean {
         /*
         get all edges that we could possibly be colliding with; we could have a valid collision with each of these edges (not using discrete curvature graph rn)
          */
@@ -265,17 +271,19 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
             math = math,
         )
 
-        if (_outA.isEmpty) return
+        if (_outA.isEmpty) return false
 
         val vertices = activeBody.vertices
 
         val axis = tree.axis
 
-        if (!setupCrossAxiss(axis.vec)) return
+        if (!setupCrossAxiss(axis.vec)) return false
 
         val aItr = _outA.iterator()
         val bItr = _outB.iterator()
         val dataItr = _outData.iterator()
+
+        var collided = false
 
         while (aItr.hasNext()) {
             val a = aItr.nextDouble()
@@ -310,6 +318,8 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                 _edgeStart.setComponent(axis.levelOffset, d1)
                 _edgeEnd.setComponent(axis.levelOffset, d2)
 
+                collided = true
+
                 math.collideCuboidEdge(
                     activeBody = activeBody,
                     edgeStart = _edgeStart,
@@ -325,6 +335,8 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                 i++
             }
         }
+
+        return collided
     }
 }
 

@@ -7,12 +7,11 @@ import com.ixume.udar.collisiondetection.mesh.Mesh
 import com.ixume.udar.collisiondetection.pool.MathPool
 import com.ixume.udar.dynamicaabb.AABBTree
 import com.ixume.udar.physics.BodyIDMap
-import com.ixume.udar.physics.contact.Contact
 import com.ixume.udar.physics.EntityUpdater
 import com.ixume.udar.physics.StatusUpdater
 import com.ixume.udar.physics.constraint.ConstraintSolverManager
-import com.ixume.udar.physics.contact.A2SContactBuffer
 import com.ixume.udar.physics.contact.A2AContactBuffer
+import com.ixume.udar.physics.contact.A2SContactBuffer
 import com.ixume.udar.testing.PhysicsWorldTestDebugData
 import com.ixume.udar.testing.debugConnect
 import kotlinx.coroutines.*
@@ -142,7 +141,7 @@ class PhysicsWorld(
                 var job: Job? = null
 
                 val startNarrowTime = System.nanoTime()
-                
+
                 if (activePairs != null) {
                     check(activePairs.size == NARROWPHASE_PROCESSORS)
 
@@ -172,11 +171,11 @@ class PhysicsWorld(
 
                             if (body.capableCollision(environmentBody) < 0) continue
 
-                            val result = body.collides(environmentBody, math)
+                            val collided = body.collides(environmentBody, math, envContactBuffer)
 
                             debugData.totalEnvironmentCollisionChecks++
 
-                            if (result.isEmpty()) continue
+                            if (!collided) continue
 
                             debugData.environmentCollisions++
                         }
@@ -288,17 +287,34 @@ class PhysicsWorld(
                 while (j < es) {
                     world.spawnParticle(
                         Particle.REDSTONE,
-                        Location(world, envContactBuffer.pointAX(j).toDouble(), envContactBuffer.pointAY(j).toDouble(), envContactBuffer.pointAZ(j).toDouble()),
+                        Location(
+                            world,
+                            envContactBuffer.pointAX(j).toDouble(),
+                            envContactBuffer.pointAY(j).toDouble(),
+                            envContactBuffer.pointAZ(j).toDouble()
+                        ),
                         1,
                         Particle.DustOptions(Color.RED, 0.3f),
                     )
 
                     world.debugConnect(
-                        start = Vector3d(envContactBuffer.pointAX(j).toDouble(), envContactBuffer.pointAY(j).toDouble(), envContactBuffer.pointAZ(j).toDouble()),
-                        end = Vector3d(envContactBuffer.pointAX(j).toDouble(), envContactBuffer.pointAY(j).toDouble(), envContactBuffer.pointAZ(j).toDouble()).add(envContactBuffer.normX(j).toDouble(), envContactBuffer.normY(j).toDouble(), envContactBuffer.normZ(j).toDouble()),
+                        start = Vector3d(
+                            envContactBuffer.pointAX(j).toDouble(),
+                            envContactBuffer.pointAY(j).toDouble(),
+                            envContactBuffer.pointAZ(j).toDouble()
+                        ),
+                        end = Vector3d(
+                            envContactBuffer.pointAX(j).toDouble(),
+                            envContactBuffer.pointAY(j).toDouble(),
+                            envContactBuffer.pointAZ(j).toDouble()
+                        ).add(
+                            envContactBuffer.normX(j).toDouble(),
+                            envContactBuffer.normY(j).toDouble(),
+                            envContactBuffer.normZ(j).toDouble()
+                        ),
                         options = Particle.DustOptions(Color.BLUE, 0.25f),
                     )
-                    
+
                     j++
                 }
             }
@@ -349,13 +365,13 @@ class PhysicsWorld(
         try {
             for ((first, ls) in ps) {
                 for (second in ls) {
-                    val result: List<Contact>
+                    val collided: Boolean
 
                     val t = measureNanoTime {
-                        result = first.collides(second, math)
+                        collided = first.collides(second, math, contactBuffer)
                     }
 
-                    if (result.isEmpty()) continue
+                    if (!collided) continue
 
                     debugData.pairCollisions++
 

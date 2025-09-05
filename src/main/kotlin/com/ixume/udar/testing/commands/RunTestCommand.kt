@@ -12,10 +12,14 @@ object RunTestCommand : Command {
         sender: CommandSender,
         command: org.bukkit.command.Command,
         label: String,
-        args: Array<out String>
+        args: Array<out String>,
     ): Boolean {
-        if (sender !is Player) { return true }
-        if (args.isEmpty()) { return true }
+        if (sender !is Player) {
+            return true
+        }
+        if (args.isEmpty()) {
+            return true
+        }
 
         val test = Udar.CONFIG.debug.tests.tests[args.first()] ?: return true
 
@@ -28,7 +32,7 @@ object RunTestCommand : Command {
         sender: CommandSender,
         command: org.bukkit.command.Command,
         label: String,
-        args: Array<out String>
+        args: Array<out String>,
     ): List<String> {
         return Udar.CONFIG.debug.tests.tests.keys.toList()
     }

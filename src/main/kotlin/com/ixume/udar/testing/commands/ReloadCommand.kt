@@ -12,7 +12,7 @@ object ReloadCommand : Command {
         sender: CommandSender,
         command: org.bukkit.command.Command,
         label: String,
-        args: Array<out String>
+        args: Array<out String>,
     ): List<String?> {
         return emptyList()
     }
@@ -21,7 +21,7 @@ object ReloadCommand : Command {
         sender: CommandSender,
         command: org.bukkit.command.Command,
         label: String,
-        args: Array<out String>?
+        args: Array<out String>?,
     ): Boolean {
         ConfigLoader.load()
         TestCommand.load()

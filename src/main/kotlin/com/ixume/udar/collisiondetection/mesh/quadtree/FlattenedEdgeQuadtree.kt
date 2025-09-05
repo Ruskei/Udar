@@ -746,10 +746,10 @@ class FlattenedEdgeQuadtree(
      */
     private fun Int.xor(start: Double, end: Double, dataIdx: Int) {
         val _pts = _points(dataIdx)
-        
+
         _pts.add(start)
         _pts.add(end)
-        
+
 //        val xored = xoredPoints(dataIdx)
 //        if (xored.contains(start) || xored.contains(end)) return
 //
@@ -1092,7 +1092,7 @@ class FlattenedEdgeQuadtree(
 
                         _varr1[axis.levelOffset] = d1
                         _varr2[axis.levelOffset] = d2
-                        
+
                         val s = Vector3d(_varr1)
                         val e = Vector3d(_varr2)
 

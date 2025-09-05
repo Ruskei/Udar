@@ -1,6 +1,5 @@
 package com.ixume.udar.collisiondetection.mesh.mesh2
 
-import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.collisiondetection.mesh.quadtree.FlattenedEdgeQuadtree
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.dynamicaabb.array.FlattenedAABBTree
@@ -18,7 +17,7 @@ class LocalMesher {
     private lateinit var _xAxiss2: FlattenedEdgeQuadtree
     private lateinit var _yAxiss2: FlattenedEdgeQuadtree
     private lateinit var _zAxiss2: FlattenedEdgeQuadtree
-    
+
     /*
     since meshes are tiled, we deal with boundary issues by having each mesh only worry about its minimum bounds
      */
@@ -39,7 +38,7 @@ class LocalMesher {
             floor(boundingBox.maxY).toInt(),
             floor(boundingBox.maxZ).toInt(),
         )
-        
+
 //        println("| meshStart: $meshStart")
 //        println("| meshEnd: $meshEnd")
 //
@@ -137,7 +136,7 @@ class LocalMesher {
 
             val minFace = faces.placeFaceAt(_bb.minLevel(axis))
             minFace?.stamp(_bb, false)
-            
+
 
             val maxFace = faces.placeFaceAt(_bb.maxLevel(axis))
             maxFace?.stamp(_bb, true)
@@ -182,7 +181,7 @@ class LocalMesher {
     private inline fun DoubleArray.maxB(axis: AxisD): Double {
         return this[3 + axis.bOffset]
     }
-    
+
     private fun createMeshEdges2(
         meshStart: Vector3i,
         meshEnd: Vector3i,

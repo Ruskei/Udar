@@ -50,7 +50,7 @@ class AABB2D(
 
     fun overlaps(minX: Double, minY: Double, maxX: Double, maxY: Double): Boolean {
         return data[MIN_A] < maxX && data[MAX_A] > minX &&
-                data[MIN_B] < maxY && data[MAX_B] > minY
+               data[MIN_B] < maxY && data[MAX_B] > minY
     }
 
     fun contains(other: AABB2D): Boolean {
@@ -64,7 +64,7 @@ class AABB2D(
     fun contains(a: Double, b: Double): Boolean {
         return data[MIN_A] <= a && data[MAX_A] >= a && data[MIN_B] <= b && data[MAX_B] >= b
     }
-    
+
     fun minA(): Double {
         return data[MIN_A]
     }
@@ -80,7 +80,7 @@ class AABB2D(
     fun maxB(): Double {
         return data[MAX_B]
     }
-    
+
     fun updateTree(tree: AABBTree2D) {
         node?.let {
             tree.remove(it)

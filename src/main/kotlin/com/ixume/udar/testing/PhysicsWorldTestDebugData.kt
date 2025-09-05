@@ -39,7 +39,7 @@ class PhysicsWorldTestDebugData(
         println(" - totalEnvironmentCollisionChecks: $totalEnvironmentCollisionChecks")
         println(" - environmentCollisions: $environmentCollisions")
         println(" - ${environmentCollisions.toDouble() / totalEnvironmentCollisionChecks.toDouble() * 100.0}% of pairs collided")
-        println(" - missedEarlies: $missedEarlies ( ${(missedEarlies.toDouble() / (totalPairCollisionChecks.toDouble () - pairCollisions.toDouble())) * 100.0}% of waste )")
+        println(" - missedEarlies: $missedEarlies ( ${(missedEarlies.toDouble() / (totalPairCollisionChecks.toDouble() - pairCollisions.toDouble())) * 100.0}% of waste )")
         println("******************")
     }
 }

@@ -14,7 +14,7 @@ import org.joml.Vector3f
 class JavaModelBody private constructor(
     val composite: CompositeImpl,
     model: JavaModel,
-) : ActiveBody by composite, Composite by composite {
+) : Composite by composite {
     private val display: ItemDisplay
 
     init {

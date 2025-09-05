@@ -1,9 +1,11 @@
 package com.ixume.udar.body.active
 
-import com.ixume.udar.body.CollidableBody
+import com.ixume.udar.body.A2ACollidable
+import com.ixume.udar.body.A2SCollidable
+import com.ixume.udar.body.Body
 import com.ixume.udar.collisiondetection.broadphase.BoundAABB
-import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.collisiondetection.capability.Projectable
+import com.ixume.udar.dynamicaabb.AABB
 import org.joml.Quaterniond
 import org.joml.Vector2d
 import org.joml.Vector3d
@@ -11,7 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.max
 import kotlin.math.min
 
-interface ActiveBody : CollidableBody, Projectable {
+interface ActiveBody : A2ACollidable, A2SCollidable, Body, Projectable {
     var id: Int
     var idx: Int
 

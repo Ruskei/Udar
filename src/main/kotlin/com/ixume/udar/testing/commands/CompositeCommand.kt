@@ -18,7 +18,7 @@ object CompositeCommand : Command {
         sender: CommandSender,
         command: org.bukkit.command.Command,
         label: String,
-        args: Array<out String>?
+        args: Array<out String>?,
     ): List<String> {
         return listOf("t-handle", "coalesce")
     }
@@ -27,7 +27,7 @@ object CompositeCommand : Command {
         sender: CommandSender,
         command: org.bukkit.command.Command,
         label: String,
-        args: Array<out String>
+        args: Array<out String>,
     ): Boolean {
         if (sender !is Player) return true
 
@@ -38,7 +38,8 @@ object CompositeCommand : Command {
 
         when (args[0]) {
             "t-handle" -> {
-                val opts = if (args.size < 2) BodyOptions.default() else BodyOptions.fromArgs(args.copyOfRange(1, args.size))
+                val opts =
+                    if (args.size < 2) BodyOptions.default() else BodyOptions.fromArgs(args.copyOfRange(1, args.size))
 
                 val q = Quaterniond().rotateXYZ(opts.rot0.x, opts.rot0.y, opts.rot0.z)
                 val o = if (opts.trueOmega) opts.l.rotate(Quaterniond(q).conjugate()) else opts.l
@@ -89,6 +90,7 @@ object CompositeCommand : Command {
 
                 physicsWorld.registerBody(composite)
             }
+
             "coalesce" -> {
                 if (args.size < 2) return true
 
@@ -98,7 +100,12 @@ object CompositeCommand : Command {
 
                 val bodies = ss.take(num)
 
-                val opts = if (args.size < 3) BodyOptions.default() else BodyOptions.fromArgs(args.copyOfRange(2, args.size - 1))
+                val opts = if (args.size < 3) BodyOptions.default() else BodyOptions.fromArgs(
+                    args.copyOfRange(
+                        2,
+                        args.size - 1
+                    )
+                )
                 val q = Quaterniond().rotateXYZ(opts.rot0.x, opts.rot0.y, opts.rot0.z)
                 val o = if (opts.trueOmega) opts.l.rotate(Quaterniond(q).conjugate()) else opts.l
 

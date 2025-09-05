@@ -37,8 +37,8 @@ open class AABB(
 
     fun overlaps(minX: Double, minY: Double, minZ: Double, maxX: Double, maxY: Double, maxZ: Double): Boolean {
         return this.minX < maxX && this.maxX > minX
-                && this.minY < maxY && this.maxY > minY
-                && this.minZ < maxZ && this.maxZ > minZ
+               && this.minY < maxY && this.maxY > minY
+               && this.minZ < maxZ && this.maxZ > minZ
     }
 
     fun contains(other: AABB): Boolean {
@@ -68,10 +68,10 @@ open class AABB(
 
     fun contains(x: Double, y: Double, z: Double): Boolean {
         return x >= minX && x <= maxX &&
-                y >= minY && y <= maxY &&
-                z >= minZ && z <= maxZ
+               y >= minY && y <= maxY &&
+               z >= minZ && z <= maxZ
     }
-    
+
     fun writeTo(other: AABB) {
         other.minX = minX
         other.minY = minY

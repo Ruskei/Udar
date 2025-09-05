@@ -2,16 +2,14 @@ package com.ixume.udar.physics.constraint
 
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.Udar
-import com.ixume.udar.body.active.ActiveBody
-import com.ixume.udar.physics.contact.Contact
 
 class ConstraintSolverManager(val physicsWorld: PhysicsWorld) {
     private val constraintSolver = LocalConstraintSolver(physicsWorld)
-    
+
     fun prepare() {
         constraintSolver.prepare()
     }
-    
+
     fun solve() {
         constraintSolver.setup()
 

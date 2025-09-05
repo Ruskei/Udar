@@ -49,7 +49,7 @@ object PlayerInteractListener : Listener {
                         start
                     )
                 }
-                    ?: return
+                                                   ?: return
 
                 e.player.world.spawnParticle(
                     Particle.REDSTONE, Location(
@@ -92,14 +92,16 @@ object PlayerInteractListener : Listener {
                 }
 
                 val t = measureNanoTime {
-                    mesh = mesher.mesh(e.player.world, AABB(
-                        minX = min(ms.x.toDouble(), e.clickedBlock!!.location.x),
-                        minY = min(ms.y.toDouble(), e.clickedBlock!!.location.y),
-                        minZ = min(ms.z.toDouble(), e.clickedBlock!!.location.z),
-                        maxX = max(ms.x.toDouble(), e.clickedBlock!!.location.x),
-                        maxY = max(ms.y.toDouble(), e.clickedBlock!!.location.y),
-                        maxZ = max(ms.z.toDouble(), e.clickedBlock!!.location.z),
-                    ))
+                    mesh = mesher.mesh(
+                        e.player.world, AABB(
+                            minX = min(ms.x.toDouble(), e.clickedBlock!!.location.x),
+                            minY = min(ms.y.toDouble(), e.clickedBlock!!.location.y),
+                            minZ = min(ms.z.toDouble(), e.clickedBlock!!.location.z),
+                            maxX = max(ms.x.toDouble(), e.clickedBlock!!.location.x),
+                            maxY = max(ms.y.toDouble(), e.clickedBlock!!.location.y),
+                            maxZ = max(ms.z.toDouble(), e.clickedBlock!!.location.z),
+                        )
+                    )
 
                     meshStart = null
                 }

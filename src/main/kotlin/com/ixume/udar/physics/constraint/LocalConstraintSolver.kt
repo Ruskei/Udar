@@ -30,6 +30,7 @@ class LocalConstraintSolver(
 
     private var idMap: Array<ActiveBody>
     private var bodyCount: Int
+
     @Volatile
     private var flatBodyData: FloatArray = FloatArray(1)
 
@@ -58,7 +59,7 @@ class LocalConstraintSolver(
 
     private var envContactT1Data: FloatArray = FloatArray(1)
     private var envContactT2Data: FloatArray = FloatArray(1)
-    
+
     fun prepare() {
         updateIDMap()
         bodyCount = idMap.size
@@ -164,7 +165,7 @@ class LocalConstraintSolver(
                     .sub(contacts.bodyBPosX(i), contacts.bodyBPosY(i), contacts.bodyBPosZ(i))
                     .cross(_norm)
             ) //j3
-            
+
             val depth = contacts.depth(i)
 
             if (component == ContactComponent.NORMAL) {
@@ -178,7 +179,7 @@ class LocalConstraintSolver(
             val bodyBInverseMass = contacts.bodyBInverseMass(i)
             val bodyAInverseInertia = contacts.bodyAInverseInertia(i, _c_tempMatrix3f1)
             val bodyBInverseInertia = contacts.bodyBInverseInertia(i, _c_tempMatrix3f2)
-            
+
             val den =
                 _c_j0.set(
                     _norm.x * _norm.x,
@@ -200,7 +201,7 @@ class LocalConstraintSolver(
                     bodyBInverseMass,
                 ) +
                 _c_j3Temp.set(_c_j3)._mul(bodyBInverseInertia).dot(_c_j3)
-            
+
 
             n.put(den) // den
 
@@ -211,17 +212,17 @@ class LocalConstraintSolver(
                     ContactComponent.T2 -> contacts.t2Lambda(i)
                 }
             ) // lambda
-            
+
             val dva = _c_im.set(bodyAInverseMass).mul(_c_vec3.set(_norm).negate())
             n.putVector3f(dva) // DVA
             n.putVector3f(_c_j1Temp.set(_c_j1)._mul(bodyAInverseInertia)) // DOA
             val dvb = _c_im.set(bodyBInverseMass).mul(_norm)
             n.putVector3f(dvb) // DVB
             n.putVector3f(_c_j3Temp.set(_c_j3)._mul(bodyBInverseInertia)) // DOB
-            
+
             n.put(Float.fromBits(contacts.bodyAIdx(i))) // my id
             n.put(Float.fromBits(contacts.bodyBIdx(i))) // other id
-            
+
             check(n.position() == (i + 1) * A2A_N_CONTACT_DATA_FLOATS)
 
             i++
@@ -393,7 +394,7 @@ class LocalConstraintSolver(
 
         //set nn, j1, and j3
         val bias = data[contactIdx + A2A_N_BIAS_OFFSET]
-        
+
         val den = data[contactIdx + A2A_N_DEN_OFFSET]
 
         val myIdx = data[contactIdx + A2A_N_MY_IDX_OFFSET].toRawBits() * BODY_DATA_FLOATS
@@ -476,13 +477,6 @@ class LocalConstraintSolver(
         }
 
         lambda = data[contactIdx + A2A_N_LAMBDA_OFFSET] - l
-
-        if (component == ContactComponent.NORMAL) {
-            println("effective lambda: $lambda, den: $den")
-            println("| norm: ($nx, $ny, $nz)")
-            println("| dva: (${data[contactIdx + A2A_N_DELTA_OFFSET]}, ${data[contactIdx + A2A_N_DELTA_OFFSET + 1]}, ${data[contactIdx + A2A_N_DELTA_OFFSET + 2]})")
-            println("| dvb: (${data[contactIdx + A2A_N_DELTA_OFFSET + 6]}, ${data[contactIdx + A2A_N_DELTA_OFFSET + 7]}, ${data[contactIdx + A2A_N_DELTA_OFFSET + 8]})")
-        }
 
         flatBodyData[myIdx] -= (data[contactIdx + A2A_N_DELTA_OFFSET] * lambda)
         flatBodyData[myIdx + 1] -= (data[contactIdx + A2A_N_DELTA_OFFSET + 1] * lambda)
@@ -586,7 +580,6 @@ class LocalConstraintSolver(
             val body = idMap[i / BODY_DATA_FLOATS]
 
             body.velocity.from(i + V_OFFSET, flatBodyData)
-            println("body.velocity: ${body.velocity}")
             check(body.velocity.isFinite)
             body.omega.from(i + O_OFFSET, flatBodyData).rotate(_quatd.set(body.q).conjugate())
             check(body.omega.isFinite)

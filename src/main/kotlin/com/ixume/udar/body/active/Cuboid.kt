@@ -2,7 +2,6 @@ package com.ixume.udar.body.active
 
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.Udar
-import com.ixume.udar.body.Body
 import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.collisiondetection.broadphase.BoundAABB
 import com.ixume.udar.collisiondetection.capability.GJKCapable
@@ -11,7 +10,8 @@ import com.ixume.udar.collisiondetection.contactgeneration.CuboidSATContactGener
 import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentContactGenerator2
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.dynamicaabb.AABB
-import com.ixume.udar.physics.contact.Contact
+import com.ixume.udar.physics.contact.A2AContactCollection
+import com.ixume.udar.physics.contact.A2SContactCollection
 import com.ixume.udar.physicsWorld
 import org.bukkit.Material
 import org.bukkit.World
@@ -149,13 +149,7 @@ class Cuboid(
 
     override val isConvex: Boolean = true
 
-    override val contacts: MutableList<Contact> = mutableListOf()
-    override val previousContacts: MutableList<Contact> = mutableListOf()
-
     private val envContactGen = EnvironmentContactGenerator2(this)
-
-    //    private val envContactGen = EnvironmentSATContactGenerator(this)
-//    private val SATContactGen = SATContactGenerator(this)
     private val cuboidContactGen = CuboidSATContactGenerator(this)
 
     private val _rm = Matrix3d()
@@ -238,10 +232,6 @@ class Cuboid(
     }
 
     override fun update() {
-        previousContacts.clear()
-        previousContacts += contacts
-        contacts.clear()
-
         envContactGen.tick()
 
         updateVertices()
@@ -331,14 +321,20 @@ class Cuboid(
         velocity.add(linear)
     }
 
-    override fun capableCollision(other: Body): Int {
-        if (other is EnvironmentBody) return envContactGen.capableCollision(other)
+    override fun capableCollision(other: ActiveBody): Int {
         return cuboidContactGen.capableCollision(other)
     }
 
-    override fun collides(other: Body, math: LocalMathUtil): List<Contact> {
-        if (other is EnvironmentBody) return envContactGen.collides(other, math)
-        return cuboidContactGen.collides(other, math)
+    override fun capableCollision(other: EnvironmentBody): Int {
+        return envContactGen.capableCollision(other)
+    }
+
+    override fun collides(other: EnvironmentBody, math: LocalMathUtil, out: A2SContactCollection): Boolean {
+        return envContactGen.collides(other, math, out)
+    }
+
+    override fun collides(other: ActiveBody, math: LocalMathUtil, out: A2AContactCollection): Boolean {
+        return cuboidContactGen.collides(other, math, out)
     }
 
     override fun support(dir: Vector3d): Vector3d {
@@ -433,7 +429,7 @@ class Cuboid(
         })
 
         return l.rotate(q).apply {
-            normalize();
+            normalize()
             if (!isFinite)
                 set(0.0)
         }

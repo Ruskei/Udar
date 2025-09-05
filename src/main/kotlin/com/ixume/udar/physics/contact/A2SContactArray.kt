@@ -12,7 +12,7 @@ Single-threaded contact storage for Active-to-Static contacts
 Only stores data about the active body, omitting all static body data
 */
 
-class A2SContactArray {
+class A2SContactArray : A2SContactCollection {
     private var arr = FloatArray(0)
     private var cursor = 0
 
@@ -47,13 +47,13 @@ class A2SContactArray {
         grow(idx + A2S_CONTACT_DATA_SIZE)
 
         val aID = activeBody.uuid
-        
+
         // Store active body UUID (4 floats)
         arr[idx + AID_OFFSET] = Float.fromBits(aID.mostSignificantBits.toInt())
         arr[idx + AID_OFFSET + 1] = Float.fromBits((aID.mostSignificantBits ushr 32).toInt())
         arr[idx + AID_OFFSET + 2] = Float.fromBits(aID.leastSignificantBits.toInt())
         arr[idx + AID_OFFSET + 3] = Float.fromBits((aID.leastSignificantBits ushr 32).toInt())
-        
+
         // Store contact ID (2 floats)
         arr[idx + CONTACT_ID_OFFSET] = Float.fromBits(contactID.toInt())
         arr[idx + CONTACT_ID_OFFSET + 1] = Float.fromBits((contactID ushr 32).toInt())
@@ -99,12 +99,12 @@ class A2SContactArray {
         arr[idx + BODY_A_INVERSE_INERTIA_ZZ_OFFSET] = activeBody.inverseInertia.m22.toFloat()
     }
 
-    fun addCollision(
+    override fun addCollision(
         activeBody: ActiveBody,
         pointAX: Double, pointAY: Double, pointAZ: Double,
         normX: Double, normY: Double, normZ: Double,
         depth: Double,
-        contactID: Long = 0L
+        contactID: Long,
     ) {
         // Calculate tangent vectors following Contact class logic
         val norm = Vector3d(normX, normY, normZ)
@@ -158,13 +158,21 @@ class A2SContactArray {
         return UUID(mostSignificant, leastSignificant)
     }
 
+    fun aID(idx: Int, uuid: UUID) {
+        val baseIdx = idx * A2S_CONTACT_DATA_SIZE
+        arr[baseIdx + AID_OFFSET] = Float.fromBits(uuid.mostSignificantBits.toInt())
+        arr[baseIdx + AID_OFFSET + 1] = Float.fromBits((uuid.mostSignificantBits ushr 32).toInt())
+        arr[baseIdx + AID_OFFSET + 2] = Float.fromBits(uuid.leastSignificantBits.toInt())
+        arr[baseIdx + AID_OFFSET + 3] = Float.fromBits((uuid.leastSignificantBits ushr 32).toInt())
+    }
+
     fun contactID(idx: Int): Long {
         val baseIdx = idx * A2S_CONTACT_DATA_SIZE
         val low = arr[baseIdx + CONTACT_ID_OFFSET].toRawBits().toLong()
         val high = arr[baseIdx + CONTACT_ID_OFFSET + 1].toRawBits().toLong()
         return (high shl 32) or (low and LOWER_MASK)
     }
-    
+
     fun pointAComponent(contactIdx: Int, component: Int): Float {
         return arr[contactIdx * A2S_CONTACT_DATA_SIZE + POINT_A_X_OFFSET + component]
     }
@@ -241,6 +249,10 @@ class A2SContactArray {
         return arr[idx * A2S_CONTACT_DATA_SIZE + BODY_A_IDX_OFFSET].toBits()
     }
 
+    fun bodyAIdx(idx: Int, value: Int) {
+        arr[idx * A2S_CONTACT_DATA_SIZE + BODY_A_IDX_OFFSET] = Float.fromBits(value)
+    }
+
     fun bodyAPosX(idx: Int): Float {
         return arr[idx * A2S_CONTACT_DATA_SIZE + BODY_A_POS_X_OFFSET]
     }
@@ -260,9 +272,15 @@ class A2SContactArray {
     fun bodyAInverseInertia(idx: Int, out: Matrix3f): Matrix3f {
         val baseIdx = idx * A2S_CONTACT_DATA_SIZE
         return out.set(
-            arr[baseIdx + BODY_A_INVERSE_INERTIA_XX_OFFSET], arr[baseIdx + BODY_A_INVERSE_INERTIA_XY_OFFSET], arr[baseIdx + BODY_A_INVERSE_INERTIA_XZ_OFFSET],
-            arr[baseIdx + BODY_A_INVERSE_INERTIA_YX_OFFSET], arr[baseIdx + BODY_A_INVERSE_INERTIA_YY_OFFSET], arr[baseIdx + BODY_A_INVERSE_INERTIA_YZ_OFFSET],
-            arr[baseIdx + BODY_A_INVERSE_INERTIA_ZX_OFFSET], arr[baseIdx + BODY_A_INVERSE_INERTIA_ZY_OFFSET], arr[baseIdx + BODY_A_INVERSE_INERTIA_ZZ_OFFSET]
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_XX_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_XY_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_XZ_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_YX_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_YY_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_YZ_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_ZX_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_ZY_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_ZZ_OFFSET]
         )
     }
 
@@ -281,7 +299,7 @@ class A2SContactArray {
 
     fun transferToBuffer(contactIdx: Int, buffer: A2SContactBuffer, activeBody: ActiveBody) {
         val baseIdx = contactIdx * A2S_CONTACT_DATA_SIZE
-        
+
         buffer.add(
             activeBody = activeBody,
             contactID = contactID(contactIdx),
@@ -302,6 +320,10 @@ class A2SContactArray {
             t1Lambda = arr[baseIdx + T1_LAMBDA_OFFSET],
             t2Lambda = arr[baseIdx + T2_LAMBDA_OFFSET]
         )
+    }
+
+    fun nextIdx(i: Int): Int {
+        return if (i + A2S_CONTACT_DATA_SIZE >= size()) -1 else i + A2S_CONTACT_DATA_SIZE
     }
 
     private fun grow(required: Int) {

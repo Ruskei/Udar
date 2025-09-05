@@ -3,7 +3,7 @@ package com.ixume.udar.collisiondetection.pool
 import org.joml.Vector3d
 
 class TrackingD3Pool(
-    amount: Int
+    amount: Int,
 ) : Pool<Vector3d> {
     private val items = ArrayDeque<Vector3d>(amount)
     private val tracked = ArrayDeque<Vector3d>()

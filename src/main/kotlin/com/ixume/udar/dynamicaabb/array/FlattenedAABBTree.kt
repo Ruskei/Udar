@@ -59,10 +59,10 @@ class FlattenedAABBTree(
     }
 
     val containmentQueue = IntQueue()
-    
+
     fun contains(x: Double, y: Double, z: Double): Boolean {
         if (rootIdx == -1) return false
-       
+
         containmentQueue.enqueue(rootIdx)
 
         while (containmentQueue.hasNext()) {

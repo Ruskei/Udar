@@ -17,7 +17,7 @@ object SDFProjectionCommand : Command {
         sender: CommandSender,
         command: org.bukkit.command.Command,
         label: String,
-        args: Array<out String>?
+        args: Array<out String>?,
     ): List<String?> {
         return emptyList()
     }
@@ -30,7 +30,7 @@ object SDFProjectionCommand : Command {
         sender: CommandSender,
         command: org.bukkit.command.Command,
         label: String,
-        args: Array<out String>
+        args: Array<out String>,
     ): Boolean {
         if (sender !is Player) return true
 
@@ -49,9 +49,9 @@ object SDFProjectionCommand : Command {
                 val o = sender.location.toVector().toVector3d()
 
                 val obj = physicsWorld.bodiesSnapshot()
-                    .filter { it is SDFCapable }
-                    .minByOrNull { it.pos.distance(o) }
-                    ?: return@Runnable
+                              .filter { it is SDFCapable }
+                              .minByOrNull { it.pos.distance(o) }
+                          ?: return@Runnable
 
                 obj as SDFCapable
 

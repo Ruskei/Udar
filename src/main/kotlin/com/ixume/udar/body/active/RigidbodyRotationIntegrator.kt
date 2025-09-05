@@ -5,7 +5,7 @@ import org.joml.Quaterniond
 import org.joml.Vector3d
 
 class RigidbodyRotationIntegrator(
-    val body: ActiveBody
+    val body: ActiveBody,
 ) {
     private fun calcDerivatives(
         q: Quaterniond,

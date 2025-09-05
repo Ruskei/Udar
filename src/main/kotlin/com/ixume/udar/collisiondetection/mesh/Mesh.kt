@@ -322,7 +322,7 @@ class Mesh(
             return faces
         }
 
-        private fun MutableList<MeshFace>.optimizeFaces() : MutableList<MeshFace> {
+        private fun MutableList<MeshFace>.optimizeFaces(): MutableList<MeshFace> {
             val epsilon = 1e-11
             val facesToRemove = mutableListOf<MeshFace>()
 
@@ -333,7 +333,7 @@ class Mesh(
                         if (
                             (invalid.first.distance(valid.start) < epsilon && invalid.second.distance(valid.end) < epsilon)
                             || (invalid.first.distance(valid.end) < epsilon && invalid.second.distance(valid.start) < epsilon)
-                            ) {
+                        ) {
                             validToRemove += valid
                         }
                     }
@@ -576,7 +576,7 @@ class Mesh(
 
         private fun MutableList<Double>.xor(elem: Double) {
             indexOfFirst { abs(it - elem) < 1e-10 }.takeUnless { it == -1 }?.let { removeAt(it) }
-                ?: run { this += elem }
+            ?: run { this += elem }
         }
     }
 }
@@ -585,7 +585,7 @@ fun World.square(
     axis: Axis,
     min: Vector3d,
     max: Vector3d,
-    options: DustOptions, interval: Double
+    options: DustOptions, interval: Double,
 ) {
     fun Vector3d.deshuffle(): Vector3d {
         return when (axis) {

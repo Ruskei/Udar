@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentLinkedDeque
 
 class MathPool(
     world: PhysicsWorld,
-    amount: Int
+    amount: Int,
 ) : Pool<LocalMathUtil> {
     private val items = ConcurrentLinkedDeque<LocalMathUtil>()
 

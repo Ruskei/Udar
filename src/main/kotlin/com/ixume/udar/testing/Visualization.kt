@@ -31,7 +31,13 @@ fun World.debugConnect(start: Vector3d, end: Vector3d, options: Particle.DustOpt
     }
 }
 
-fun World.debugConnectProverka(start: Vector3d, end: Vector3d, color: Color, interval: Double = 0.1, post: (Feature) -> Unit) {
+fun World.debugConnectProverka(
+    start: Vector3d,
+    end: Vector3d,
+    color: Color,
+    interval: Double = 0.1,
+    post: (Feature) -> Unit,
+) {
     val wm = Proverka.INSTANCE.getWorldManager(this)
     val dir = Vector3d(end).sub(start).normalize()!!
     if (!dir.isFinite) return

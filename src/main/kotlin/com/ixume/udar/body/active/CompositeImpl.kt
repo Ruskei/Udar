@@ -2,13 +2,14 @@ package com.ixume.udar.body.active
 
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.Udar
-import com.ixume.udar.body.Body
-import com.ixume.udar.collisiondetection.local.LocalMathUtil
+import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.collisiondetection.broadphase.BoundAABB
 import com.ixume.udar.collisiondetection.contactgeneration.CompositeCompositeContactGenerator
+import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.jacobiEigenDecomposition
-import com.ixume.udar.physics.contact.Contact
+import com.ixume.udar.physics.contact.A2AContactCollection
+import com.ixume.udar.physics.contact.A2SContactCollection
 import com.ixume.udar.physicsWorld
 import org.bukkit.World
 import org.joml.Matrix3d
@@ -66,8 +67,6 @@ class CompositeImpl(
 
     val comOffset: Vector3d
     override var pos: Vector3d
-    override val contacts: MutableList<Contact> = mutableListOf()
-    override val previousContacts: MutableList<Contact> = mutableListOf()
 
     override val torque: Vector3d = Vector3d()
 
@@ -263,10 +262,6 @@ class CompositeImpl(
     }
 
     override fun update() {
-        previousContacts.clear()
-        previousContacts += contacts
-        contacts.clear()
-
         updateII()
         updateVertices()
         updateBB()
@@ -315,7 +310,7 @@ class CompositeImpl(
 
     private val compositeContactGenerator = CompositeCompositeContactGenerator(this)
 
-    override fun capableCollision(other: Body): Int {
+    override fun capableCollision(other: ActiveBody): Int {
         if (other is Composite) {
             return 0
         }
@@ -337,47 +332,56 @@ class CompositeImpl(
         return highestPriority
     }
 
-    override fun collides(other: Body, math: LocalMathUtil): List<Contact> {
+    override fun capableCollision(other: EnvironmentBody): Int {
+        return 0
+    }
+
+    override fun collides(other: ActiveBody, math: LocalMathUtil, out: A2AContactCollection): Boolean {
         if (other is Composite) {
-            return compositeContactGenerator.collides(other, math)
-                .map {
-                    Contact(
-                        first = this,
-                        second = other,
-                        result = it.result,
-                    )
-                }
-        } else if (other is ActiveBody) {
-            val cs = mutableListOf<Contact>()
+            return compositeContactGenerator.collides(other, math, out)
+        } else {
+            var isCollided = false
             for (part in parts) {
                 if (!part.tightBB.overlaps(other.tightBB)) continue
                 val d = part.pos.distance(other.pos)
                 if (d > part.radius + other.radius) continue
 
-                val r = part.collides(other, math)
-                cs += r.map {
-                    Contact(
-                        first = this,
-                        second = other,
-                        result = it.result,
-                    )
+                val r = part.collides(other, math, out)
+                if (r) {
+                    isCollided = true
                 }
             }
 
-            return cs
-        } else {
-            return parts
-                .flatMap {
-                    it.collides(other, math)
-                }
-                .map {
-                    Contact(
-                        first = this,
-                        second = other,
-                        result = it.result,
-                    )
-                }
+            return isCollided
         }
+    }
+
+    override fun collides(other: EnvironmentBody, math: LocalMathUtil, out: A2SContactCollection): Boolean {
+        val buf = math.compositeUtil.envBuf
+        buf.clear()
+
+        var isCollided = false
+
+        var j = 0
+        while (j < parts.size) {
+            val r = parts[j].collides(other, math, buf)
+
+            if (r) {
+                isCollided = true
+            }
+
+            j++
+        }
+
+        var i = 0
+        while (i != -1) {
+            buf.aID(i, uuid)
+            buf.bodyAIdx(i, id)
+
+            i = buf.nextIdx(i)
+        }
+
+        return isCollided
     }
 
     override fun equals(other: Any?): Boolean {

@@ -1,10 +1,10 @@
 package com.ixume.udar.collisiondetection.local
 
-import com.ixume.udar.physics.contact.A2AContactBuffer
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.Edge
 import com.ixume.udar.body.active.Face
+import com.ixume.udar.physics.contact.A2AContactCollection
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
 import org.joml.Vector3d
 import kotlin.math.abs
@@ -31,14 +31,20 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
     private val _tpProjected = Vector3d()
 
     private val _edgeNormal = Vector3d()
+    
+    private val _norm = Vector3d()
+    private val _tp2 = Vector3d()
+    
+    private val _cA = Vector3d()
+    private val _cB = Vector3d()
 
-    fun collides(activeBody: ActiveBody, other: ActiveBody, out: A2AContactBuffer) {
-        if (!setupAxiss(activeBody, other)) return
+    fun collides(activeBody: ActiveBody, other: ActiveBody, out: A2AContactCollection): Boolean {
+        if (!setupAxiss(activeBody, other)) return false
 
         val myVertices = activeBody.vertices
-        if (myVertices.isEmpty()) return
+        if (myVertices.isEmpty()) return false
         val otherVertices = other.vertices
-        if (otherVertices.isEmpty()) return
+        if (otherVertices.isEmpty()) return false
 
         var minMyBodyOverlap = Double.MAX_VALUE
         var minMyBodyAxis: Vector3d? = null
@@ -80,7 +86,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
              */
 
             if (!math.checkOverlap(myMin, myMax, otherMin, otherMax)) {
-                return
+                return false
             }
 
             if ((myMin < otherMin && myMax > otherMax) || (otherMin < myMin && otherMax > myMin)) {
@@ -136,7 +142,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
              */
 
             if (!math.checkOverlap(myMin, myMax, otherMin, otherMax)) {
-                return
+                return false
             }
 
             if ((myMin < otherMin && myMax > otherMax) || (otherMin < myMin && otherMax > myMin)) {
@@ -192,7 +198,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
              */
 
             if (!math.checkOverlap(myMin, myMax, otherMin, otherMax)) {
-                return
+                return false
             }
 
             if ((myMin < otherMin && myMax > otherMax) || (otherMin < myMin && otherMax > myMin)) {
@@ -222,15 +228,15 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
 
         if (minCrossOverlap < minMyBodyOverlap && minCrossOverlap < minOtherBodyOverlap) {
             // edge-edge!
-            if (minCrossAxis == null) return
+            if (minCrossAxis == null) return false
 
-            val norm = if (minCrossInDirOfAxis) {
-                Vector3d(minCrossAxis).normalize()
+            if (minCrossInDirOfAxis) {
+                _norm.set(minCrossAxis).normalize()
             } else {
-                Vector3d(minCrossAxis).negate().normalize()
+                _norm.set(minCrossAxis).negate().normalize()
             }
 
-            check(abs(norm.length() - 1.0) < 1e-5)
+            check(abs(_norm.length() - 1.0) < 1e-5)
 
             val myEdges = activeBody.edges
             val otherEdges = other.edges
@@ -245,8 +251,8 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
             while (m < myEdges.size) {
                 val edge = myEdges[m]
 
-                val a = edge.start.dot(norm)
-                val b = edge.end.dot(norm)
+                val a = edge.start.dot(_norm)
+                val b = edge.end.dot(_norm)
 
                 if (abs(a - b) < EDGE_EPSILON && min(a, b) < myMin) {
                     myMin = min(a, b)
@@ -265,8 +271,8 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
             while (n < otherEdges.size) {
                 val edge = otherEdges[n]
 
-                val a = edge.start.dot(norm)
-                val b = edge.end.dot(norm)
+                val a = edge.start.dot(_norm)
+                val b = edge.end.dot(_norm)
 
                 if (abs(a - b) < EDGE_EPSILON && max(a, b) > otherMax) {
                     otherMax = max(a, b)
@@ -278,34 +284,36 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
 
             checkNotNull(otherEdge)
 
-            val (cA, cB, _) = math.closestPointsBetweenSegments(
+            math.closestPointsBetweenSegments(
                 a0 = myEdge.start,
                 a1 = myEdge.end,
                 b0 = otherEdge.start,
                 b1 = otherEdge.end,
+                outA = _cA,
+                outB = _cB,
             )
-            
+
             out.addCollision(
                 first = activeBody,
                 second = other,
-                
-                pointAX = cA.x,
-                pointAY = cA.y,
-                pointAZ = cA.z,
-                
-                pointBX = cB.x,
-                pointBY = cB.y,
-                pointBZ = cB.z,
-                
-                normX = norm.x,
-                normY = norm.y,
-                normZ = norm.z,
-                
+
+                pointAX = _cA.x,
+                pointAY = _cA.y,
+                pointAZ = _cA.z,
+
+                pointBX = _cB.x,
+                pointBY = _cB.y,
+                pointBZ = _cB.z,
+
+                normX = _norm.x,
+                normY = _norm.y,
+                normZ = _norm.z,
+
                 depth = minCrossOverlap,
                 contactID = 0L
             )
-            
-            return
+
+            return true
         } else {
             /*
             face-face:
@@ -316,15 +324,15 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
              */
 
             val axis = if (minMyBodyOverlap < minOtherBodyOverlap) minMyBodyAxis else minOtherBodyAxis
-            if (axis == null) return
+            if (axis == null) return false
 
             val inDirOfAxis =
                 if (minMyBodyOverlap < minOtherBodyOverlap) minMyBodyInDirOfAxis else minOtherBodyInDirOfAxis
 
-            val norm = if (inDirOfAxis) {
-                Vector3d(axis).normalize()
+            if (inDirOfAxis) {
+                _norm.set(axis).normalize()
             } else {
-                Vector3d(axis).negate().normalize()
+                _norm.set(axis).negate().normalize()
             }
 
             val myFaces = activeBody.faces
@@ -336,7 +344,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
             var q = 0
             while (q < myFaces.size) {
                 val face = myFaces[q]
-                val p = face.normal.dot(norm)
+                val p = face.normal.dot(_norm)
 
                 if (p > refMax) {
                     refMax = p
@@ -352,7 +360,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
             var l = 0
             while (l < otherFaces.size) {
                 val face = otherFaces[l]
-                val p = face.normal.dot(norm)
+                val p = face.normal.dot(_norm)
 
                 if (p < incidentMin) {
                     incidentMin = p
@@ -377,17 +385,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                 val v1 = refFace.vertices[o]
                 val v2 = refFace.vertices[(o + 1).mod(refFace.vertices.size)]
 
-                val edgeNormal = _edgeNormal.set(v2).sub(v1).cross(norm).normalize()
-
-                check(edgeNormal.dot(Vector3d(_refCenter).sub(v1)) < 0) {"""
-                    Edge normal not facing away from ref center!
-                    | refFace: $refFace
-                    | refCenter: $_refCenter
-                    | v1: $v1
-                    | v2: $v2
-                    | edgeNormal: $edgeNormal
-                    | diff: ${Vector3d(_refCenter).sub(v1)}
-                """.trimIndent()}
+                val edgeNormal = _edgeNormal.set(v2).sub(v1).cross(_norm).normalize()
 
                 _incidentVertices.clear()
                 _incidentVertices.addAll(_output)
@@ -442,6 +440,8 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
 
             // now check if the incident vertices are behind the reference face
 
+            var collided = false
+
             var p = 0
             while (p < _output.size / 3) {
                 _tp.set(
@@ -453,22 +453,23 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                 val d = -_tpProjected.set(_tp).sub(refFace.point()).dot(refFace.normal)
 
                 if (d < 0.0) {
-                    val v = Vector3d(_tp).sub(d * refFace.normal.x, d * refFace.normal.y, d * refFace.normal.z)
+                    _tp2.set(_tp).sub(d * refFace.normal.x, d * refFace.normal.y, d * refFace.normal.z)
+                    collided = true
                     out.addCollision(
                         first = activeBody,
                         second = other,
 
-                        pointAX = v.x,
-                        pointAY = v.y,
-                        pointAZ = v.z,
+                        pointAX = _tp2.x,
+                        pointAY = _tp2.y,
+                        pointAZ = _tp2.z,
 
                         pointBX = _tp.x,
                         pointBY = _tp.y,
                         pointBZ = _tp.z,
 
-                        normX = norm.x,
-                        normY = norm.y,
-                        normZ = norm.z,
+                        normX = _norm.x,
+                        normY = _norm.y,
+                        normZ = _norm.z,
 
                         depth = -d,
                         contactID = 0L
@@ -477,6 +478,8 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
 
                 p++
             }
+
+            return collided
         }
     }
 
@@ -528,9 +531,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
         _crossAxiss[7].set(_myBodyAxiss[2]).cross(_otherBodyAxiss[1]).normalize()
         if (!_crossAxiss[7].isFinite) return false
         _crossAxiss[8].set(_myBodyAxiss[2]).cross(_otherBodyAxiss[2]).normalize()
-        if (!_crossAxiss[8].isFinite) return false
-
-        return true
+        return _crossAxiss[8].isFinite
     }
 }
 

@@ -33,7 +33,7 @@ class TestCommand : BukkitCommand("udar") {
     override fun execute(
         sender: CommandSender,
         commandLabel: String,
-        args: Array<out String>
+        args: Array<out String>,
     ): Boolean {
         if (args.isEmpty()) {
             sendHelp(sender)
@@ -49,7 +49,7 @@ class TestCommand : BukkitCommand("udar") {
     override fun tabComplete(
         sender: CommandSender,
         alias: String,
-        args: Array<out String>
+        args: Array<out String>,
     ): List<String> {
         if (args.isEmpty()) return emptyList()
         if (args.size == 1) return commandMap.keys.toList()

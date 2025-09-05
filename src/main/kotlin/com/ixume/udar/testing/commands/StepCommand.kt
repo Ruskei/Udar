@@ -9,7 +9,7 @@ object StepCommand : Command {
         sender: CommandSender,
         command: org.bukkit.command.Command,
         label: String,
-        args: Array<out String>?
+        args: Array<out String>?,
     ): List<String?>? {
         return listOf("<ticks>", "collision")
     }
@@ -18,7 +18,7 @@ object StepCommand : Command {
         sender: CommandSender,
         command: org.bukkit.command.Command,
         label: String,
-        args: Array<out String>
+        args: Array<out String>,
     ): Boolean {
         if (sender !is Player) return true
         val world = sender.world

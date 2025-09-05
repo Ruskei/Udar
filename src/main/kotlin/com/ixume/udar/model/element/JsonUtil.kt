@@ -46,11 +46,11 @@ fun JsonObject.vec3d(path: String): Vector3d? {
     if (toArr.size() != 3) return null
     return Vector3d(
         (toArr.get(0).asNumber()
-            ?: return null).toDouble(),
+         ?: return null).toDouble(),
         (toArr.get(1).asNumber()
-            ?: return null).toDouble(),
+         ?: return null).toDouble(),
         (toArr.get(2).asNumber()
-            ?: return null).toDouble(),
+         ?: return null).toDouble(),
     )
 }
 
@@ -59,7 +59,7 @@ enum class Axis {
 }
 
 fun String.axis(): Axis? {
-    return when(this) {
+    return when (this) {
         "x" -> Axis.X
         "y" -> Axis.Y
         "z" -> Axis.Z

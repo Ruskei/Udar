@@ -5,24 +5,18 @@ import com.ixume.udar.collisiondetection.mesh.aabbtree2d.LOWER_MASK
 import org.joml.Matrix3f
 import org.joml.Vector3d
 import java.util.*
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.locks.ReentrantReadWriteLock
-import kotlin.concurrent.read
-import kotlin.concurrent.write
 import kotlin.math.max
 
 /*
-technically we don't need to store contact points for constraint solving but it's REALLY helpful for debugging
- */
+Single-threaded contact storage for Active-to-Active contacts
+Only stores data about both active bodies
+*/
 
-class A2AContactBuffer : A2AContactCollection {
-    @Volatile
-    internal var arr = FloatArray(0)
-    private val lock = ReentrantReadWriteLock()
+class A2AContactArray : A2AContactCollection {
+    private var arr = FloatArray(0)
+    private var cursor = 0
 
-    private val cursor = AtomicInteger(0)
-
-    private fun add(
+    fun add(
         a: ActiveBody,
         b: ActiveBody,
 
@@ -54,120 +48,10 @@ class A2AContactBuffer : A2AContactCollection {
         t1Lambda: Float,
         t2Lambda: Float,
     ) {
-        val idx = cursor.getAndIncrement() * CONTACT_DATA_SIZE
+        val idx = cursor * CONTACT_DATA_SIZE
+        cursor++
+        grow(idx + CONTACT_DATA_SIZE)
 
-        lock.read {
-            if (idx + CONTACT_DATA_SIZE < arr.size) {
-                _add(
-                    idx,
-                    a,
-                    b,
-
-                    contactID,
-
-                    pointAX,
-                    pointAY,
-                    pointAZ,
-
-                    pointBX,
-                    pointBY,
-                    pointBZ,
-
-                    normX,
-                    normY,
-                    normZ,
-
-                    t1X,
-                    t1Y,
-                    t1Z,
-
-                    t2X,
-                    t2Y,
-                    t2Z,
-
-                    depth,
-
-                    normalLambda,
-                    t1Lambda,
-                    t2Lambda,
-                )
-
-                return
-            }
-        }
-
-        lock.write {
-            grow(idx + CONTACT_DATA_SIZE)
-
-            _add(
-                idx,
-                a,
-                b,
-
-                contactID,
-
-                pointAX,
-                pointAY,
-                pointAZ,
-
-                pointBX,
-                pointBY,
-                pointBZ,
-
-                normX,
-                normY,
-                normZ,
-
-                t1X,
-                t1Y,
-                t1Z,
-
-                t2X,
-                t2Y,
-                t2Z,
-
-                depth,
-
-                normalLambda,
-                t1Lambda,
-                t2Lambda,
-            )
-        }
-    }
-
-    private fun _add(
-        idx: Int,
-        a: ActiveBody,
-        b: ActiveBody,
-
-        contactID: Long,
-
-        pointAX: Float,
-        pointAY: Float,
-        pointAZ: Float,
-
-        pointBX: Float,
-        pointBY: Float,
-        pointBZ: Float,
-
-        normX: Float,
-        normY: Float,
-        normZ: Float,
-
-        t1X: Float,
-        t1Y: Float,
-        t1Z: Float,
-
-        t2X: Float,
-        t2Y: Float,
-        t2Z: Float,
-
-        depth: Float,
-
-        normalLambda: Float,
-        t1Lambda: Float,
-        t2Lambda: Float,
-    ) {
         val aID = a.uuid
         val bID = b.uuid
 
@@ -214,15 +98,15 @@ class A2AContactBuffer : A2AContactCollection {
         arr[idx + BODY_A_POS_Y_OFFSET] = a.pos.y.toFloat()
         arr[idx + BODY_A_POS_Z_OFFSET] = a.pos.z.toFloat()
         arr[idx + BODY_A_INVERSE_MASS_OFFSET] = a.inverseMass.toFloat()
-        arr[idx + BODY_A_INVERSE_INERTIA_XX_OFFSET] = a.inverseInertia.m00.toFloat()
-        arr[idx + BODY_A_INVERSE_INERTIA_XY_OFFSET] = a.inverseInertia.m01.toFloat()
-        arr[idx + BODY_A_INVERSE_INERTIA_XZ_OFFSET] = a.inverseInertia.m02.toFloat()
-        arr[idx + BODY_A_INVERSE_INERTIA_YX_OFFSET] = a.inverseInertia.m10.toFloat()
-        arr[idx + BODY_A_INVERSE_INERTIA_YY_OFFSET] = a.inverseInertia.m11.toFloat()
-        arr[idx + BODY_A_INVERSE_INERTIA_YZ_OFFSET] = a.inverseInertia.m12.toFloat()
-        arr[idx + BODY_A_INVERSE_INERTIA_ZX_OFFSET] = a.inverseInertia.m20.toFloat()
-        arr[idx + BODY_A_INVERSE_INERTIA_ZY_OFFSET] = a.inverseInertia.m21.toFloat()
-        arr[idx + BODY_A_INVERSE_INERTIA_ZZ_OFFSET] = a.inverseInertia.m22.toFloat()
+        arr[idx + BODY_A_INVERSE_INERTIA_00_OFFSET] = a.inverseInertia.m00.toFloat()
+        arr[idx + BODY_A_INVERSE_INERTIA_01_OFFSET] = a.inverseInertia.m01.toFloat()
+        arr[idx + BODY_A_INVERSE_INERTIA_02_OFFSET] = a.inverseInertia.m02.toFloat()
+        arr[idx + BODY_A_INVERSE_INERTIA_10_OFFSET] = a.inverseInertia.m10.toFloat()
+        arr[idx + BODY_A_INVERSE_INERTIA_11_OFFSET] = a.inverseInertia.m11.toFloat()
+        arr[idx + BODY_A_INVERSE_INERTIA_12_OFFSET] = a.inverseInertia.m12.toFloat()
+        arr[idx + BODY_A_INVERSE_INERTIA_20_OFFSET] = a.inverseInertia.m20.toFloat()
+        arr[idx + BODY_A_INVERSE_INERTIA_21_OFFSET] = a.inverseInertia.m21.toFloat()
+        arr[idx + BODY_A_INVERSE_INERTIA_22_OFFSET] = a.inverseInertia.m22.toFloat()
 
         // Store body B data
         arr[idx + BODY_B_IDX_OFFSET] = Float.fromBits(b.id)
@@ -230,15 +114,15 @@ class A2AContactBuffer : A2AContactCollection {
         arr[idx + BODY_B_POS_Y_OFFSET] = b.pos.y.toFloat()
         arr[idx + BODY_B_POS_Z_OFFSET] = b.pos.z.toFloat()
         arr[idx + BODY_B_INVERSE_MASS_OFFSET] = b.inverseMass.toFloat()
-        arr[idx + BODY_B_INVERSE_INERTIA_XX_OFFSET] = b.inverseInertia.m00.toFloat()
-        arr[idx + BODY_B_INVERSE_INERTIA_XY_OFFSET] = b.inverseInertia.m01.toFloat()
-        arr[idx + BODY_B_INVERSE_INERTIA_XZ_OFFSET] = b.inverseInertia.m02.toFloat()
-        arr[idx + BODY_B_INVERSE_INERTIA_YX_OFFSET] = b.inverseInertia.m10.toFloat()
-        arr[idx + BODY_B_INVERSE_INERTIA_YY_OFFSET] = b.inverseInertia.m11.toFloat()
-        arr[idx + BODY_B_INVERSE_INERTIA_YZ_OFFSET] = b.inverseInertia.m12.toFloat()
-        arr[idx + BODY_B_INVERSE_INERTIA_ZX_OFFSET] = b.inverseInertia.m20.toFloat()
-        arr[idx + BODY_B_INVERSE_INERTIA_ZY_OFFSET] = b.inverseInertia.m21.toFloat()
-        arr[idx + BODY_B_INVERSE_INERTIA_ZZ_OFFSET] = b.inverseInertia.m22.toFloat()
+        arr[idx + BODY_B_INVERSE_INERTIA_00_OFFSET] = b.inverseInertia.m00.toFloat()
+        arr[idx + BODY_B_INVERSE_INERTIA_01_OFFSET] = b.inverseInertia.m01.toFloat()
+        arr[idx + BODY_B_INVERSE_INERTIA_02_OFFSET] = b.inverseInertia.m02.toFloat()
+        arr[idx + BODY_B_INVERSE_INERTIA_10_OFFSET] = b.inverseInertia.m10.toFloat()
+        arr[idx + BODY_B_INVERSE_INERTIA_11_OFFSET] = b.inverseInertia.m11.toFloat()
+        arr[idx + BODY_B_INVERSE_INERTIA_12_OFFSET] = b.inverseInertia.m12.toFloat()
+        arr[idx + BODY_B_INVERSE_INERTIA_20_OFFSET] = b.inverseInertia.m20.toFloat()
+        arr[idx + BODY_B_INVERSE_INERTIA_21_OFFSET] = b.inverseInertia.m21.toFloat()
+        arr[idx + BODY_B_INVERSE_INERTIA_22_OFFSET] = b.inverseInertia.m22.toFloat()
     }
 
     override fun addCollision(
@@ -251,7 +135,6 @@ class A2AContactBuffer : A2AContactCollection {
         contactID: Long,
     ) {
         // Calculate tangent vectors following Contact class logic
-        // t1 = Vector3d(1.0).orthogonalizeUnit(norm)
         val norm = Vector3d(normX, normY, normZ)
         val t1 = Vector3d(1.0).orthogonalizeUnit(norm)
         val t2 = Vector3d(t1).cross(norm).normalize()
@@ -284,15 +167,15 @@ class A2AContactBuffer : A2AContactCollection {
     }
 
     fun clear() {
-        cursor.set(0)
+        cursor = 0
     }
 
     fun isEmpty(): Boolean {
-        return cursor.get() == 0
+        return cursor == 0
     }
 
     fun size(): Int {
-        return cursor.get()
+        return cursor
     }
 
     fun aID(idx: Int): UUID {
@@ -306,6 +189,14 @@ class A2AContactBuffer : A2AContactCollection {
         return UUID(mostSignificant, leastSignificant)
     }
 
+    fun aID(idx: Int, uuid: UUID) {
+        val baseIdx = idx * CONTACT_DATA_SIZE
+        arr[baseIdx + AID_OFFSET] = Float.fromBits(uuid.mostSignificantBits.toInt())
+        arr[baseIdx + AID_OFFSET + 1] = Float.fromBits((uuid.mostSignificantBits ushr 32).toInt())
+        arr[baseIdx + AID_OFFSET + 2] = Float.fromBits(uuid.leastSignificantBits.toInt())
+        arr[baseIdx + AID_OFFSET + 3] = Float.fromBits((uuid.leastSignificantBits ushr 32).toInt())
+    }
+
     fun bID(idx: Int): UUID {
         val baseIdx = idx * CONTACT_DATA_SIZE
         val msb1 = arr[baseIdx + BID_OFFSET].toRawBits().toLong()
@@ -315,6 +206,14 @@ class A2AContactBuffer : A2AContactCollection {
         val mostSignificant = (msb2 shl 32) or (msb1 and LOWER_MASK)
         val leastSignificant = (lsb2 shl 32) or (lsb1 and LOWER_MASK)
         return UUID(mostSignificant, leastSignificant)
+    }
+
+    fun bID(idx: Int, uuid: UUID) {
+        val baseIdx = idx * CONTACT_DATA_SIZE
+        arr[baseIdx + BID_OFFSET] = Float.fromBits(uuid.mostSignificantBits.toInt())
+        arr[baseIdx + BID_OFFSET + 1] = Float.fromBits((uuid.mostSignificantBits ushr 32).toInt())
+        arr[baseIdx + BID_OFFSET + 2] = Float.fromBits(uuid.leastSignificantBits.toInt())
+        arr[baseIdx + BID_OFFSET + 3] = Float.fromBits((uuid.leastSignificantBits ushr 32).toInt())
     }
 
     fun contactID(idx: Int): Long {
@@ -405,6 +304,11 @@ class A2AContactBuffer : A2AContactCollection {
         return arr[idx * CONTACT_DATA_SIZE + BODY_A_IDX_OFFSET].toBits()
     }
 
+    // Body B index setter
+    fun bodyAIdx(idx: Int, value: Int) {
+        arr[idx * CONTACT_DATA_SIZE + BODY_A_IDX_OFFSET] = Float.fromBits(value)
+    }
+
     // Body A position accessors
     fun bodyAPosX(idx: Int): Float {
         return arr[idx * CONTACT_DATA_SIZE + BODY_A_POS_X_OFFSET]
@@ -427,21 +331,26 @@ class A2AContactBuffer : A2AContactCollection {
     fun bodyAInverseInertia(idx: Int, out: Matrix3f): Matrix3f {
         val baseIdx = idx * CONTACT_DATA_SIZE
         return out.set(
-            arr[baseIdx + BODY_A_INVERSE_INERTIA_XX_OFFSET],
-            arr[baseIdx + BODY_A_INVERSE_INERTIA_XY_OFFSET],
-            arr[baseIdx + BODY_A_INVERSE_INERTIA_XZ_OFFSET],
-            arr[baseIdx + BODY_A_INVERSE_INERTIA_YX_OFFSET],
-            arr[baseIdx + BODY_A_INVERSE_INERTIA_YY_OFFSET],
-            arr[baseIdx + BODY_A_INVERSE_INERTIA_YZ_OFFSET],
-            arr[baseIdx + BODY_A_INVERSE_INERTIA_ZX_OFFSET],
-            arr[baseIdx + BODY_A_INVERSE_INERTIA_ZY_OFFSET],
-            arr[baseIdx + BODY_A_INVERSE_INERTIA_ZZ_OFFSET]
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_00_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_01_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_02_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_10_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_11_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_12_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_20_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_21_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_22_OFFSET]
         )
     }
 
     // Body B index accessor
     fun bodyBIdx(idx: Int): Int {
         return arr[idx * CONTACT_DATA_SIZE + BODY_B_IDX_OFFSET].toBits()
+    }
+
+    // Body B index setter
+    fun bodyBIdx(idx: Int, value: Int) {
+        arr[idx * CONTACT_DATA_SIZE + BODY_B_IDX_OFFSET] = Float.fromBits(value)
     }
 
     // Body B position accessors
@@ -454,7 +363,7 @@ class A2AContactBuffer : A2AContactCollection {
     }
 
     fun bodyBPosZ(idx: Int): Float {
-        return arr[idx * CONTACT_DATA_SIZE + BODY_B_POS_Z_OFFSET]
+        return arr[idx + BODY_B_POS_Z_OFFSET]
     }
 
     // Body B inverse mass accessor
@@ -466,18 +375,19 @@ class A2AContactBuffer : A2AContactCollection {
     fun bodyBInverseInertia(idx: Int, out: Matrix3f): Matrix3f {
         val baseIdx = idx * CONTACT_DATA_SIZE
         return out.set(
-            arr[baseIdx + BODY_B_INVERSE_INERTIA_XX_OFFSET],
-            arr[baseIdx + BODY_B_INVERSE_INERTIA_XY_OFFSET],
-            arr[baseIdx + BODY_B_INVERSE_INERTIA_XZ_OFFSET],
-            arr[baseIdx + BODY_B_INVERSE_INERTIA_YX_OFFSET],
-            arr[baseIdx + BODY_B_INVERSE_INERTIA_YY_OFFSET],
-            arr[baseIdx + BODY_B_INVERSE_INERTIA_YZ_OFFSET],
-            arr[baseIdx + BODY_B_INVERSE_INERTIA_ZX_OFFSET],
-            arr[baseIdx + BODY_B_INVERSE_INERTIA_ZY_OFFSET],
-            arr[baseIdx + BODY_B_INVERSE_INERTIA_ZZ_OFFSET]
+            arr[baseIdx + BODY_B_INVERSE_INERTIA_00_OFFSET],
+            arr[baseIdx + BODY_B_INVERSE_INERTIA_01_OFFSET],
+            arr[baseIdx + BODY_B_INVERSE_INERTIA_02_OFFSET],
+            arr[baseIdx + BODY_B_INVERSE_INERTIA_10_OFFSET],
+            arr[baseIdx + BODY_B_INVERSE_INERTIA_11_OFFSET],
+            arr[baseIdx + BODY_B_INVERSE_INERTIA_12_OFFSET],
+            arr[baseIdx + BODY_B_INVERSE_INERTIA_20_OFFSET],
+            arr[baseIdx + BODY_B_INVERSE_INERTIA_21_OFFSET],
+            arr[baseIdx + BODY_B_INVERSE_INERTIA_22_OFFSET]
         )
     }
 
+    // Lambda setters
     fun setNormalLambda(idx: Int, value: Float) {
         arr[idx * CONTACT_DATA_SIZE + NORMAL_LAMBDA_OFFSET] = value
     }
@@ -490,11 +400,35 @@ class A2AContactBuffer : A2AContactCollection {
         arr[idx * CONTACT_DATA_SIZE + T2_LAMBDA_OFFSET] = value
     }
 
+    fun transferToBuffer(contactIdx: Int, buffer: A2AContactBuffer, activeBodyA: ActiveBody, activeBodyB: ActiveBody) {
+        val baseIdx = contactIdx * CONTACT_DATA_SIZE
+
+        buffer.addCollision(
+            first = activeBodyA,
+            second = activeBodyB,
+            pointAX = arr[baseIdx + POINT_A_X_OFFSET].toDouble(),
+            pointAY = arr[baseIdx + POINT_A_Y_OFFSET].toDouble(),
+            pointAZ = arr[baseIdx + POINT_A_Z_OFFSET].toDouble(),
+            pointBX = arr[baseIdx + POINT_B_X_OFFSET].toDouble(),
+            pointBY = arr[baseIdx + POINT_B_Y_OFFSET].toDouble(),
+            pointBZ = arr[baseIdx + POINT_B_Z_OFFSET].toDouble(),
+            normX = arr[baseIdx + NORM_X_OFFSET].toDouble(),
+            normY = arr[baseIdx + NORM_Y_OFFSET].toDouble(),
+            normZ = arr[baseIdx + NORM_Z_OFFSET].toDouble(),
+            depth = arr[baseIdx + DEPTH_OFFSET].toDouble(),
+            contactID = contactID(contactIdx)
+        )
+    }
+
+    fun nextIdx(i: Int): Int {
+        return if (i + CONTACT_DATA_SIZE >= size()) -1 else i + CONTACT_DATA_SIZE
+    }
+
     private fun grow(required: Int) {
         if (arr.size >= required) return
 
-        val ns = max(required, arr.size * 3 / 2)
-        arr = arr.copyOf(ns)
+        val newSize = max(required, arr.size * 3 / 2)
+        arr = arr.copyOf(newSize)
     }
 }
 
@@ -536,15 +470,15 @@ private const val BODY_A_POS_X_OFFSET = 30
 private const val BODY_A_POS_Y_OFFSET = 31
 private const val BODY_A_POS_Z_OFFSET = 32
 private const val BODY_A_INVERSE_MASS_OFFSET = 33
-private const val BODY_A_INVERSE_INERTIA_XX_OFFSET = 34
-private const val BODY_A_INVERSE_INERTIA_XY_OFFSET = 35
-private const val BODY_A_INVERSE_INERTIA_XZ_OFFSET = 36
-private const val BODY_A_INVERSE_INERTIA_YX_OFFSET = 37
-private const val BODY_A_INVERSE_INERTIA_YY_OFFSET = 38
-private const val BODY_A_INVERSE_INERTIA_YZ_OFFSET = 39
-private const val BODY_A_INVERSE_INERTIA_ZX_OFFSET = 40
-private const val BODY_A_INVERSE_INERTIA_ZY_OFFSET = 41
-private const val BODY_A_INVERSE_INERTIA_ZZ_OFFSET = 42
+private const val BODY_A_INVERSE_INERTIA_00_OFFSET = 34
+private const val BODY_A_INVERSE_INERTIA_01_OFFSET = 35
+private const val BODY_A_INVERSE_INERTIA_02_OFFSET = 36
+private const val BODY_A_INVERSE_INERTIA_10_OFFSET = 37
+private const val BODY_A_INVERSE_INERTIA_11_OFFSET = 38
+private const val BODY_A_INVERSE_INERTIA_12_OFFSET = 39
+private const val BODY_A_INVERSE_INERTIA_20_OFFSET = 40
+private const val BODY_A_INVERSE_INERTIA_21_OFFSET = 41
+private const val BODY_A_INVERSE_INERTIA_22_OFFSET = 42
 
 // Body B data
 private const val BODY_B_IDX_OFFSET = 43
@@ -552,12 +486,12 @@ private const val BODY_B_POS_X_OFFSET = 44
 private const val BODY_B_POS_Y_OFFSET = 45
 private const val BODY_B_POS_Z_OFFSET = 46
 private const val BODY_B_INVERSE_MASS_OFFSET = 47
-private const val BODY_B_INVERSE_INERTIA_XX_OFFSET = 48
-private const val BODY_B_INVERSE_INERTIA_XY_OFFSET = 49
-private const val BODY_B_INVERSE_INERTIA_XZ_OFFSET = 50
-private const val BODY_B_INVERSE_INERTIA_YX_OFFSET = 51
-private const val BODY_B_INVERSE_INERTIA_YY_OFFSET = 52
-private const val BODY_B_INVERSE_INERTIA_YZ_OFFSET = 53
-private const val BODY_B_INVERSE_INERTIA_ZX_OFFSET = 54
-private const val BODY_B_INVERSE_INERTIA_ZY_OFFSET = 55
-private const val BODY_B_INVERSE_INERTIA_ZZ_OFFSET = 56
+private const val BODY_B_INVERSE_INERTIA_00_OFFSET = 48
+private const val BODY_B_INVERSE_INERTIA_01_OFFSET = 49
+private const val BODY_B_INVERSE_INERTIA_02_OFFSET = 50
+private const val BODY_B_INVERSE_INERTIA_10_OFFSET = 51
+private const val BODY_B_INVERSE_INERTIA_11_OFFSET = 52
+private const val BODY_B_INVERSE_INERTIA_12_OFFSET = 53
+private const val BODY_B_INVERSE_INERTIA_20_OFFSET = 54
+private const val BODY_B_INVERSE_INERTIA_21_OFFSET = 55
+private const val BODY_B_INVERSE_INERTIA_22_OFFSET = 56

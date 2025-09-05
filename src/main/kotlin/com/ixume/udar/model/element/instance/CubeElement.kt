@@ -10,7 +10,7 @@ import org.joml.Vector3d
 class CubeElement(
     val from: Vector3d,
     val to: Vector3d,
-    val rotation: Rotation?
+    val rotation: Rotation?,
 ) : ModelElement {
     override fun realize(pw: PhysicsWorld, origin: Vector3d): ActiveBody {
         val dims = Vector3d(to).sub(from).div(16.0)
@@ -28,10 +28,12 @@ class CubeElement(
                     o.rotateX(Math.toRadians(rotation.angle))
                     q.rotationX(Math.toRadians(rotation.angle))
                 }
+
                 Axis.Y -> {
                     o.rotateY(Math.toRadians(rotation.angle))
                     q.rotationY(Math.toRadians(rotation.angle))
                 }
+
                 Axis.Z -> {
                     o.rotateZ(Math.toRadians(rotation.angle))
                     q.rotationZ(Math.toRadians(rotation.angle))

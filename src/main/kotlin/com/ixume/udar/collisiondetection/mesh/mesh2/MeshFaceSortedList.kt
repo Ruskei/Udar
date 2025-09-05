@@ -14,7 +14,7 @@ class MeshFaceSortedList(
 
     fun placeFaceAt(level: Double): MeshFace? {
         if (level <= meshStart.get(axis.levelOffset) - 1.0 || level >= meshEnd.get(axis.levelOffset) + 2.0) return null
-        
+
         var low = 0
         var high = ls.size - 1
 

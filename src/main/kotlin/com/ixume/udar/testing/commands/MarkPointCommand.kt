@@ -16,7 +16,7 @@ object MarkPointCommand : Command {
         sender: CommandSender,
         command: org.bukkit.command.Command,
         label: String,
-        args: Array<out String>
+        args: Array<out String>,
     ): List<String> {
         return when (args.size) {
             1 -> listOf("point", "kill")
@@ -31,7 +31,7 @@ object MarkPointCommand : Command {
         sender: CommandSender,
         command: org.bukkit.command.Command,
         label: String,
-        args: Array<out String>
+        args: Array<out String>,
     ): Boolean {
         if (sender !is Player) return true
 
@@ -68,6 +68,7 @@ object MarkPointCommand : Command {
 
                 Proverka.INSTANCE.getWorldManager(w).register(feature)
             }
+
             "kill" -> {
                 Proverka.INSTANCE.getWorldManager(w).kill()
             }

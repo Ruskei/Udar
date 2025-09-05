@@ -13,7 +13,7 @@ data class BodyOptions(
 ) {
     companion object {
         fun fromArgs(
-            args: Array<out String>
+            args: Array<out String>,
         ): BodyOptions {
             var v0 = Vector3d(0.0)
             var dims = Vector3d(0.99)
@@ -35,7 +35,7 @@ data class BodyOptions(
                         val arg2 = args[i]
                         val d = arg2.toDoubleOrNull()
                         if (d == null) {
-                            i--;
+                            i--
                             break
                         }
 
@@ -57,7 +57,7 @@ data class BodyOptions(
                         val arg2 = args[i]
                         val d = arg2.toDoubleOrNull()
                         if (d == null) {
-                            i--;
+                            i--
                             break
                         }
 
@@ -79,7 +79,7 @@ data class BodyOptions(
                         val arg2 = args[i]
                         val d = arg2.toDoubleOrNull()
                         if (d == null) {
-                            i--;
+                            i--
                             break
                         }
 
@@ -101,7 +101,7 @@ data class BodyOptions(
                         val arg2 = args[i]
                         val d = arg2.toDoubleOrNull()
                         if (d == null) {
-                            i--;
+                            i--
                             break
                         }
 

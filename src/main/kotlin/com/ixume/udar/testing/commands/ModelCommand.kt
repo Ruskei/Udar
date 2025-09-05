@@ -15,7 +15,7 @@ object ModelCommand : Command {
         sender: CommandSender,
         command: org.bukkit.command.Command,
         label: String,
-        args: Array<String>
+        args: Array<String>,
     ): List<String> {
         return RPManager.modelMap.keys.toList()
     }
@@ -24,7 +24,7 @@ object ModelCommand : Command {
         sender: CommandSender,
         command: org.bukkit.command.Command,
         label: String,
-        args: Array<String>
+        args: Array<String>,
     ): Boolean {
         if (sender !is Player) return true
 

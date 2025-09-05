@@ -4,7 +4,6 @@ import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFaces
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.dynamicaabb.AABBTree
-import com.ixume.udar.dynamicaabb.array.FlattenedAABBTree
 import org.bukkit.World
 import org.joml.Vector2d
 

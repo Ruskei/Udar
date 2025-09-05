@@ -12,13 +12,14 @@ import org.joml.Vector3d
 
 object CuboidCommand : com.ixume.udar.testing.commands.Command {
     override val arg: String = "cube"
-    override val description: String = "--velocity|-v <x> <y> <z> --dims|-d <x> <y> <z> --omega|-o <x> <y> <z> --rot|-r <x> <y> <z> --density <d> --gravity|-g --no-gravity|-ng --true-omega|-to; Spawns cuboid"
+    override val description: String =
+        "--velocity|-v <x> <y> <z> --dims|-d <x> <y> <z> --omega|-o <x> <y> <z> --rot|-r <x> <y> <z> --density <d> --gravity|-g --no-gravity|-ng --true-omega|-to; Spawns cuboid"
 
     override fun onCommand(
         sender: CommandSender,
         command: Command,
         alias: String,
-        args: Array<out String>
+        args: Array<out String>,
     ): Boolean {
         if (sender !is Player) return true
 
@@ -49,7 +50,7 @@ object CuboidCommand : com.ixume.udar.testing.commands.Command {
         sender: CommandSender,
         command: Command,
         label: String,
-        args: Array<out String>
+        args: Array<out String>,
     ): List<String>? {
         return emptyList()
     }

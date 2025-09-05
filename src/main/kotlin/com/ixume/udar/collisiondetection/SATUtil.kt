@@ -28,16 +28,16 @@ fun collidesBlocks(
     val ees = edges.filterNot {
         it.normalize()
         (abs(it.dot(1.0, 0.0, 0.0)) < epsilon) ||
-                (abs(it.dot(0.0, 1.0, 0.0)) < epsilon) ||
-                (abs(it.dot(0.0, 1.0, 0.0)) < epsilon)
+        (abs(it.dot(0.0, 1.0, 0.0)) < epsilon) ||
+        (abs(it.dot(0.0, 1.0, 0.0)) < epsilon)
     }
 
     val nns = normals.filterNot {
         it.normalize()
         (abs(it.dot(1.0, 0.0, 0.0)) < epsilon) ||
-                (abs(it.dot(0.0, 1.0, 0.0)) < epsilon) ||
-                (abs(it.dot(0.0, 1.0, 0.0)) < epsilon)
-                && (it in ees)
+        (abs(it.dot(0.0, 1.0, 0.0)) < epsilon) ||
+        (abs(it.dot(0.0, 1.0, 0.0)) < epsilon)
+        && (it in ees)
     }
 
     val bbns = listOf(
@@ -59,13 +59,14 @@ fun collidesBlocks(
         )
 
         if (collides(
-            verticesA = vertices,
-            normalsA = nns,
-            edgesA = ees,
-            verticesB = vs,
-            normalsB = bbns,
-            edgesB = bbns,
-        )) return true
+                verticesA = vertices,
+                normalsA = nns,
+                edgesA = ees,
+                verticesB = vs,
+                normalsB = bbns,
+                edgesB = bbns,
+            )
+        ) return true
     }
 
     return false
@@ -80,7 +81,7 @@ fun collides(
     edgesA: List<Vector3d>,
     verticesB: List<Vector3d>,
     normalsB: List<Vector3d>,
-    edgesB: List<Vector3d>
+    edgesB: List<Vector3d>,
 ): Boolean {
     //no set because it's probably not faster at small scales due to memory usage
     val axiss =

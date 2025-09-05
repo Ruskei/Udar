@@ -15,5 +15,5 @@ data class MeshFace(
 data class MeshFacePass(
     val start: Vector2d,
     val end: Vector2d,
-    val inAxisDir: Boolean
+    val inAxisDir: Boolean,
 )

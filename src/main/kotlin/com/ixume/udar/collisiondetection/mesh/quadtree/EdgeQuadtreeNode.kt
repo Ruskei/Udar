@@ -4,7 +4,6 @@ import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFaces
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.dynamicaabb.AABBTree
-import com.ixume.udar.dynamicaabb.array.FlattenedAABBTree
 import com.ixume.udar.testing.debugConnect
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
 import it.unimi.dsi.fastutil.ints.IntArrayList
@@ -420,7 +419,7 @@ class EdgeQuadtreeNode(
         children!![2].overlaps(bb, axis, out)
         children!![3].overlaps(bb, axis, out)
     }
-    
+
     fun visualize(world: World, axis: LocalMesher.AxisD) {
         if (isLeaf) {
             var i = 0
@@ -444,7 +443,7 @@ class EdgeQuadtreeNode(
 
                     arr1[axis.levelOffset] = d1
                     arr2[axis.levelOffset] = d2
-                    
+
                     val v1 = Vector3d(arr1)
                     val v2 = Vector3d(arr2)
 
