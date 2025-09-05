@@ -8,7 +8,7 @@ import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFaceSortedList
 import com.ixume.udar.collisiondetection.mesh.quadtree.FlattenedEdgeQuadtree
 import com.ixume.udar.dynamicaabb.AABB
-import com.ixume.udar.physics.Contact
+import com.ixume.udar.physics.contact.Contact
 import java.util.concurrent.atomic.AtomicReference
 
 class EnvironmentContactGenerator2(

@@ -8,7 +8,7 @@ import com.ixume.udar.collisiondetection.broadphase.BoundAABB
 import com.ixume.udar.collisiondetection.contactgeneration.CompositeCompositeContactGenerator
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.jacobiEigenDecomposition
-import com.ixume.udar.physics.Contact
+import com.ixume.udar.physics.contact.Contact
 import com.ixume.udar.physicsWorld
 import org.bukkit.World
 import org.joml.Matrix3d

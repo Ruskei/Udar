@@ -52,4 +52,12 @@ class ActiveBodiesCollection {
     operator fun get(uuid: UUID): ActiveBody? = lock.read {
         return lookupMap[uuid]
     }
+    
+    operator fun contains(body: ActiveBody): Boolean = lock.read {
+        return this[body.uuid] != null
+    }
+
+    operator fun contains(uuid: UUID): Boolean = lock.read {
+        return this[uuid] != null
+    }
 }

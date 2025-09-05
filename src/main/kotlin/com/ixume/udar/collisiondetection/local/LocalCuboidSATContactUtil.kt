@@ -1,11 +1,10 @@
 package com.ixume.udar.collisiondetection.local
 
+import com.ixume.udar.physics.contact.A2AContactBuffer
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.Edge
 import com.ixume.udar.body.active.Face
-import com.ixume.udar.physics.CollisionResult
-import com.ixume.udar.physics.Contact
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
 import org.joml.Vector3d
 import kotlin.math.abs
@@ -16,8 +15,6 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
     private val _myBodyAxiss = Array(3) { Vector3d() }
     private val _otherBodyAxiss = Array(3) { Vector3d() }
     private val _crossAxiss = Array(9) { Vector3d() }
-
-    private val contacts = mutableListOf<Contact>()
 
     private val _output = DoubleArrayList()
     private val _incidentVertices = DoubleArrayList()
@@ -35,16 +32,13 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
 
     private val _edgeNormal = Vector3d()
 
-    fun collides(activeBody: ActiveBody, other: ActiveBody): List<Contact> {
-
-        contacts.clear()
-
-        if (!setupAxiss(activeBody, other)) return contacts
+    fun collides(activeBody: ActiveBody, other: ActiveBody, out: A2AContactBuffer) {
+        if (!setupAxiss(activeBody, other)) return
 
         val myVertices = activeBody.vertices
-        if (myVertices.isEmpty()) return contacts
+        if (myVertices.isEmpty()) return
         val otherVertices = other.vertices
-        if (otherVertices.isEmpty()) return contacts
+        if (otherVertices.isEmpty()) return
 
         var minMyBodyOverlap = Double.MAX_VALUE
         var minMyBodyAxis: Vector3d? = null
@@ -86,7 +80,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
              */
 
             if (!math.checkOverlap(myMin, myMax, otherMin, otherMax)) {
-                return contacts
+                return
             }
 
             if ((myMin < otherMin && myMax > otherMax) || (otherMin < myMin && otherMax > myMin)) {
@@ -142,7 +136,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
              */
 
             if (!math.checkOverlap(myMin, myMax, otherMin, otherMax)) {
-                return contacts
+                return
             }
 
             if ((myMin < otherMin && myMax > otherMax) || (otherMin < myMin && otherMax > myMin)) {
@@ -198,7 +192,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
              */
 
             if (!math.checkOverlap(myMin, myMax, otherMin, otherMax)) {
-                return contacts
+                return
             }
 
             if ((myMin < otherMin && myMax > otherMax) || (otherMin < myMin && otherMax > myMin)) {
@@ -228,7 +222,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
 
         if (minCrossOverlap < minMyBodyOverlap && minCrossOverlap < minOtherBodyOverlap) {
             // edge-edge!
-            if (minCrossAxis == null) return emptyList()
+            if (minCrossAxis == null) return
 
             val norm = if (minCrossInDirOfAxis) {
                 Vector3d(minCrossAxis).normalize()
@@ -290,19 +284,28 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                 b0 = otherEdge.start,
                 b1 = otherEdge.end,
             )
-
-            return listOf(
-                Contact(
-                    first = activeBody,
-                    second = other,
-                    result = CollisionResult(
-                        pointA = cA,
-                        pointB = cB,
-                        norm = norm,
-                        depth = minCrossOverlap,
-                    ),
-                )
+            
+            out.addCollision(
+                first = activeBody,
+                second = other,
+                
+                pointAX = cA.x,
+                pointAY = cA.y,
+                pointAZ = cA.z,
+                
+                pointBX = cB.x,
+                pointBY = cB.y,
+                pointBZ = cB.z,
+                
+                normX = norm.x,
+                normY = norm.y,
+                normZ = norm.z,
+                
+                depth = minCrossOverlap,
+                contactID = 0L
             )
+            
+            return
         } else {
             /*
             face-face:
@@ -313,7 +316,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
              */
 
             val axis = if (minMyBodyOverlap < minOtherBodyOverlap) minMyBodyAxis else minOtherBodyAxis
-            if (axis == null) return emptyList()
+            if (axis == null) return
 
             val inDirOfAxis =
                 if (minMyBodyOverlap < minOtherBodyOverlap) minMyBodyInDirOfAxis else minOtherBodyInDirOfAxis
@@ -439,8 +442,6 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
 
             // now check if the incident vertices are behind the reference face
 
-            val collisions = mutableListOf<Contact>()
-
             var p = 0
             while (p < _output.size / 3) {
                 _tp.set(
@@ -453,22 +454,29 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
 
                 if (d < 0.0) {
                     val v = Vector3d(_tp).sub(d * refFace.normal.x, d * refFace.normal.y, d * refFace.normal.z)
-                    collisions += Contact(
+                    out.addCollision(
                         first = activeBody,
                         second = other,
-                        result = CollisionResult(
-                            pointA = v,
-                            pointB = Vector3d(_tp),
-                            norm = norm,
-                            depth = -d,
-                        )
+
+                        pointAX = v.x,
+                        pointAY = v.y,
+                        pointAZ = v.z,
+
+                        pointBX = _tp.x,
+                        pointBY = _tp.y,
+                        pointBZ = _tp.z,
+
+                        normX = norm.x,
+                        normY = norm.y,
+                        normZ = norm.z,
+
+                        depth = -d,
+                        contactID = 0L
                     )
                 }
 
                 p++
             }
-
-            return collisions
         }
     }
 

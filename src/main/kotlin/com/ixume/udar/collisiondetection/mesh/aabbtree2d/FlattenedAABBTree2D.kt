@@ -48,6 +48,7 @@ class FlattenedAABBTree2D(
 
     private var freeIdx = -1 // head of free linked list
     private var rootIdx = -1
+    @Volatile
     var arr = DoubleArray(capacity * DATA_SIZE)
 
     init {
@@ -1032,8 +1033,8 @@ private fun unifiedCost(
     return (maxX - minX) * (maxY - minY)
 }
 
-private const val LOWER_MASK = 0xFFFFFFFFL
-private const val UPPER_MASK = LOWER_MASK.inv()
+const val LOWER_MASK = 0xFFFFFFFFL
+const val UPPER_MASK = LOWER_MASK.inv()
 
 fun Double.withLower(i: Int): Double {
     return Double.fromBits((this.toRawBits() and UPPER_MASK) or i.toLong())

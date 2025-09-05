@@ -5,7 +5,7 @@ import com.ixume.udar.body.Collidable
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.collisiondetection.capability.Projectable
-import com.ixume.udar.physics.Contact
+import com.ixume.udar.physics.contact.Contact
 import org.joml.Vector3d
 
 class SATContactGenerator(

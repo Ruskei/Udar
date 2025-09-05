@@ -88,8 +88,7 @@ class MeshFaceSortedList(
         return -1
     }
 
-    fun facesIn(bb: AABB): List<MeshFace> {
-        val out = mutableListOf<MeshFace>()
+    fun facesIn(bb: AABB, out: MutableList<MeshFace>): List<MeshFace> {
         when (axis) {
             LocalMesher.AxisD.X -> {
                 var i = 0

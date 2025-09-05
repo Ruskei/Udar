@@ -1,8 +1,8 @@
-package com.ixume.udar.physics
+package com.ixume.udar.physics.contact
 
 import com.ixume.udar.body.Body
+import com.ixume.udar.physics.CollisionResult
 import org.joml.Vector3d
-import kotlin.math.abs
 
 class Contact(
     val first: Body,

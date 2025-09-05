@@ -7,8 +7,9 @@ import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.collisiondetection.pool.TrackingD3Pool
 import com.ixume.udar.dynamicaabb.array.IntQueue
 import com.ixume.udar.physics.CollisionResult
+import com.ixume.udar.physics.contact.A2SContactArray
+import com.ixume.udar.physics.contact.A2SContactBuffer
 import org.joml.Vector3d
-import kotlin.collections.plusAssign
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -26,10 +27,10 @@ class LocalMathUtil(
     private val _trueAxis = Vector3d()
 
     private val _myAxiss = Array(3) { Vector3d() }
-    
+
     val envContactUtil = LocalEnvContactUtil(this)
     val cuboidSATContactUtil = LocalCuboidSATContactUtil(this)
-    
+
     val envOverlapQueue = IntQueue()
     val envEdgeOverlapQueue = IntQueue()
 
@@ -345,18 +346,20 @@ class LocalMathUtil(
     }
 
     private val _mm = DoubleArray(2)
-    
+
     fun collidePlane(
+        first: ActiveBody,
         axis: LocalMesher.AxisD,
         level: Double,
         vertices: Array<Vector3d>,
-    ): List<CollisionResult>? {
+        out: A2SContactArray,
+    ): Boolean {
         axis.project(vertices, _mm)
         val min = _mm[0]
         val max = _mm[1]
 
         if (level < min || level > max) {
-            return null
+            return false
         }
 
         /*
@@ -372,8 +375,6 @@ class LocalMathUtil(
         find all penetrating points
          */
 
-        val collisions = mutableListOf<CollisionResult>()
-
         if (level - min < max - level) {
             var i = 0
             while (i < vertices.size) {
@@ -381,11 +382,16 @@ class LocalMathUtil(
                 val p = axis.project(v)
 
                 if (p < level) {
-                    collisions += CollisionResult(
-                        pointA = v,
-                        pointB = _empty,
-                        norm = axis.vec,
+                    out.addCollision(
+                        activeBody = first,
+                        pointAX = v.x,
+                        pointAY = v.y,
+                        pointAZ = v.z,
+                        normX = axis.vec.x,
+                        normY = axis.vec.y,
+                        normZ = axis.vec.z,
                         depth = level - p,
+                        contactID = 0L,
                     )
                 }
 
@@ -400,11 +406,17 @@ class LocalMathUtil(
                 val p = axis.project(v)
 
                 if (p > level) {
-                    collisions += CollisionResult(
-                        pointA = v,
-                        pointB = _empty,
-                        norm = negatedAxis,
+                    out.addCollision(
+                        activeBody = first,
+                        pointAX = v.x,
+                        pointAY = v.y,
+                        pointAZ = v.z,
+
+                        normX = negatedAxis.x,
+                        normY = negatedAxis.y,
+                        normZ = negatedAxis.z,
                         depth = p - level,
+                        contactID = 0L,
                     )
                 }
 
@@ -412,7 +424,7 @@ class LocalMathUtil(
             }
         }
 
-        return collisions
+        return true
     }
 
     private val _empty = Vector3d()
@@ -421,6 +433,8 @@ class LocalMathUtil(
      * MUST NOT BE PARALLEL TO EDGE!! USE DIFFERENT METHOD IF THEY ARE!
      */
     fun collideCuboidEdge(
+        activeBody: ActiveBody,
+
         edgeStart: Vector3d,
         edgeEnd: Vector3d,
 
@@ -432,7 +446,8 @@ class LocalMathUtil(
         edges: Array<Edge>,
 
         allowedNormals: Array<Vector3d>,
-    ): CollisionResult? {
+        out: A2SContactBuffer,
+    ) {
         var minBodyOverlap = Double.MAX_VALUE
         var minBodyAxis: Vector3d? = null
         var minBodyInDirOfAxis = true
@@ -467,7 +482,7 @@ class LocalMathUtil(
 
             if (!checkOverlap(bodyMin, bodyMax, edgeMin, edgeMax)) {
                 //if no overlap, we found a non-overlapping axis between the edge and the cuboid, meaning they don't collide
-                return null
+                return
             }
 
             /*
@@ -548,7 +563,7 @@ class LocalMathUtil(
                 edgeStart.dot(axis) // since this is a cross between the edge normal and the body, min and max are equal
 
             if (es > crossMax || es < crossMin) {
-                return null
+                return
             }
 
             /*
@@ -593,10 +608,10 @@ class LocalMathUtil(
             check(abs(norm.length() - 1.0) < 1e-5)
 
             if (norm.dot(allowedNormals[0]) < 0.0) {
-                return null
+                return
             }
             if (norm.dot(allowedNormals[1]) < 0.0) {
-                return null
+                return
             }
 
             /*
@@ -632,12 +647,22 @@ class LocalMathUtil(
 
             check(closestEdgeDistance != Double.MAX_VALUE)
 
-            return CollisionResult(
-                pointA = closestA,
-                pointB = _empty,
-                norm = norm,
+            out.addCollision(
+                activeBody = activeBody,
+
+                pointAX = closestA.x,
+                pointAY = closestA.y,
+                pointAZ = closestA.z,
+
+                normX = norm.x,
+                normY = norm.y,
+                normZ = norm.z,
+
                 depth = minCrossOverlap,
+                contactID = 0L
             )
+
+            return
         } else {
             minBodyAxis!!
 
@@ -648,10 +673,10 @@ class LocalMathUtil(
             }
 
             if (norm.dot(allowedNormals[0]) < 0.0) {
-                return null
+                return
             }
             if (norm.dot(allowedNormals[1]) < 0.0) {
-                return null
+                return
             }
 
 
@@ -668,57 +693,84 @@ class LocalMathUtil(
 
             if (es1 < es2) {
                 // edgeStart is min, edgeEnd is max
-                return if (minBodyInDirOfAxis) {
+                if (minBodyInDirOfAxis) {
                     check(abs(norm.length() - 1.0) < 1e-5)
-                    CollisionResult(
-                        pointA = Vector3d(edgeEnd).sub(
-                            minBodyAxis.x * minBodyOverlap,
-                            minBodyAxis.y * minBodyOverlap,
-                            minBodyAxis.z * minBodyOverlap
-                        ),
-                        pointB = _empty, // since this is a collision with a static body, pointB doesn't even matter ( see LocalConstraintSolver )
-                        norm = norm,
+                    out.addCollision(
+                        activeBody = activeBody,
+
+                        pointAX = edgeEnd.x - minBodyAxis.x * minBodyOverlap,
+                        pointAY = edgeEnd.y - minBodyAxis.y * minBodyOverlap,
+                        pointAZ = edgeEnd.z - minBodyAxis.z * minBodyOverlap,
+
+                        normX = norm.x,
+                        normY = norm.y,
+                        normZ = norm.z,
+                        
                         depth = minBodyOverlap,
+                        contactID = 0L,
                     )
+
+                    return
                 } else {
                     check(abs(norm.length() - 1.0) < 1e-5)
-                    CollisionResult(
-                        pointA = Vector3d(edgeStart).add(
-                            minBodyAxis.x * minBodyOverlap,
-                            minBodyAxis.y * minBodyOverlap,
-                            minBodyAxis.z * minBodyOverlap
-                        ),
-                        pointB = _empty,
-                        norm = norm,
+                    
+                    out.addCollision(
+                        activeBody = activeBody,
+
+                        pointAX = edgeStart.x + minBodyAxis.x * minBodyOverlap,
+                        pointAY = edgeStart.y + minBodyAxis.y * minBodyOverlap,
+                        pointAZ = edgeStart.z + minBodyAxis.z * minBodyOverlap,
+
+                        normX = norm.x,
+                        normY = norm.y,
+                        normZ = norm.z,
+                        
                         depth = minBodyOverlap,
+                        contactID = 0L,
                     )
                 }
+
+                return
             } else {
                 // edgeStart is max, edgeEnd is min
-                return if (minBodyInDirOfAxis) {
+                if (minBodyInDirOfAxis) {
                     check(abs(norm.length() - 1.0) < 1e-5)
-                    CollisionResult(
-                        pointA = Vector3d(edgeStart).sub(
-                            minBodyAxis.x * minBodyOverlap,
-                            minBodyAxis.y * minBodyOverlap,
-                            minBodyAxis.z * minBodyOverlap
-                        ),
-                        pointB = _empty,
-                        norm = norm,
+
+                    out.addCollision(
+                        activeBody = activeBody,
+
+                        pointAX = edgeStart.x - minBodyAxis.x * minBodyOverlap,
+                        pointAY = edgeStart.y - minBodyAxis.y * minBodyOverlap,
+                        pointAZ = edgeStart.z - minBodyAxis.z * minBodyOverlap,
+
+                        normX = norm.x,
+                        normY = norm.y,
+                        normZ = norm.z,
+
                         depth = minBodyOverlap,
+                        contactID = 0L,
                     )
+
+                    return
                 } else {
                     check(abs(norm.length() - 1.0) < 1e-5)
-                    CollisionResult(
-                        pointA = Vector3d(edgeEnd).add(
-                            minBodyAxis.x * minBodyOverlap,
-                            minBodyAxis.y * minBodyOverlap,
-                            minBodyAxis.z * minBodyOverlap
-                        ),
-                        pointB = _empty,
-                        norm = norm,
+
+                    out.addCollision(
+                        activeBody = activeBody,
+
+                        pointAX = edgeEnd.x + minBodyAxis.x * minBodyOverlap,
+                        pointAY = edgeEnd.y + minBodyAxis.y * minBodyOverlap,
+                        pointAZ = edgeEnd.z + minBodyAxis.z * minBodyOverlap,
+
+                        normX = norm.x,
+                        normY = norm.y,
+                        normZ = norm.z,
+
                         depth = minBodyOverlap,
+                        contactID = 0L,
                     )
+
+                    return
                 }
             }
         }

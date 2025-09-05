@@ -5,7 +5,7 @@ import com.ixume.udar.body.Collidable
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.collisiondetection.capability.Projectable
-import com.ixume.udar.physics.Contact
+import com.ixume.udar.physics.contact.Contact
 
 class CuboidSATContactGenerator(
     val activeBody: ActiveBody,
@@ -17,6 +17,8 @@ class CuboidSATContactGenerator(
     override fun collides(other: Body, math: LocalMathUtil): List<Contact> {
         require(other is ActiveBody)
 
-        return math.cuboidSATContactUtil.collides(activeBody, other)
+        math.cuboidSATContactUtil.collides(activeBody, other, activeBody.physicsWorld.contactBuffer)
+        
+        return emptyList()
     }
 }

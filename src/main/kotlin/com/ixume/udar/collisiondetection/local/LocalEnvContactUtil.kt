@@ -8,13 +8,17 @@ import com.ixume.udar.collisiondetection.mesh.mesh2.EdgeMountAllowedNormals
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFace
 import com.ixume.udar.collisiondetection.mesh.quadtree.FlattenedEdgeQuadtree
-import com.ixume.udar.physics.Contact
+import com.ixume.udar.physics.contact.A2SContactArray
+import com.ixume.udar.physics.contact.A2SContactBuffer
+import com.ixume.udar.physics.contact.Contact
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
 import it.unimi.dsi.fastutil.ints.IntArrayList
 import org.joml.Vector3d
 
 class LocalEnvContactUtil(val math: LocalMathUtil) {
-    val contacts = mutableListOf<Contact>()
+    private val _mf = mutableListOf<MeshFace>()
+
+    private val _contacts = A2SContactArray()
 
     fun collides(
         contactGen: EnvironmentContactGenerator2,
@@ -22,8 +26,6 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         other: Body,
     ): List<Contact> {
         val bb = activeBody.tightBB
-
-        contacts.clear()
 
         activeBody.physicsWorld.worldMeshesManager.request(
             prevBB = contactGen.prevBB,
@@ -35,7 +37,9 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         val mes = contactGen.meshEdges.get()
 
         for (mf in mfs) {
-            collideFaces(activeBody, mf.facesIn(bb), mf.axis, math, other, contacts)
+            _mf.clear()
+            mf.facesIn(bb, _mf)
+            collideFaces(activeBody, _mf, mf.axis, math, other, activeBody.physicsWorld.envContactBuffer)
         }
 
         setupBodyAxiss(activeBody)
@@ -46,16 +50,18 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                 tree = me,
                 math = math,
                 other = other,
-                out = contacts
+                out = activeBody.physicsWorld.envContactBuffer
             )
         }
 
-        return contacts
+        return emptyList()
     }
 
     private val _bb2d = AABB2D(doubleArrayOf(0.0, 0.0, 0.0, 0.0))
     private val _overlappingHoles = DoubleArrayList()
     private val _overlappingAntiHoles = DoubleArrayList()
+
+    private val _collisions = mutableListOf<Contact>()
 
     private fun collideFaces(
         activeBody: ActiveBody,
@@ -63,7 +69,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         axis: LocalMesher.AxisD,
         math: LocalMathUtil,
         other: Body,
-        out: MutableList<Contact>,
+        out: A2SContactBuffer,
     ) {
 //        println("COLLIDING $axis FACES!")
         val bb = activeBody.tightBB
@@ -96,13 +102,16 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         var i = 0
         while (i < faces.size) {
             val face = faces[i]
-            val collisions = math.collidePlane(
+            _contacts.clear()
+            val any = math.collidePlane(
+                first = activeBody,
                 axis = axis,
                 level = face.level,
-                vertices = vertices
+                vertices = vertices,
+                out = _contacts,
             )
 
-            if (collisions == null) {
+            if (!any) {
                 i++
                 continue
             }
@@ -135,28 +144,20 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
             )
 
             var j = 0
-            while (j < collisions.size) {
-                val collision = collisions[j]
-
-                val pa = collision.pointA.get(axis.aOffset)
-                val pb = collision.pointA.get(axis.bOffset)
+            while (j < _contacts.size()) {
+                val pa = _contacts.pointAComponent(j, axis.aOffset).toDouble()
 
                 var valid = true
                 var k = 0
                 check(_overlappingAntiHoles.size % 4 == 0)
                 while (k < _overlappingAntiHoles.size / 4) {
                     val minA = _overlappingAntiHoles.getDouble(k * 4)
-                    val minB = _overlappingAntiHoles.getDouble(k * 4 + 1)
                     val maxA = _overlappingAntiHoles.getDouble(k * 4 + 2)
-                    val maxB = _overlappingAntiHoles.getDouble(k * 4 + 3)
 
                     if (contains(
                             minA = minA,
-                            minB = minB,
                             maxA = maxA,
-                            maxB = maxB,
                             a = pa,
-                            b = pb,
                         )
                     ) {
                         valid = false
@@ -177,17 +178,12 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                 check(_overlappingHoles.size % 4 == 0)
                 while (l < _overlappingHoles.size / 4) {
                     val minA = _overlappingHoles.getDouble(l * 4)
-                    val minB = _overlappingHoles.getDouble(l * 4 + 1)
                     val maxA = _overlappingHoles.getDouble(l * 4 + 2)
-                    val maxB = _overlappingHoles.getDouble(l * 4 + 3)
 
                     if (contains(
                             minA = minA,
-                            minB = minB,
                             maxA = maxA,
-                            maxB = maxB,
                             a = pa,
-                            b = pb,
                         )
                     ) {
                         valid = true
@@ -202,10 +198,10 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                     continue
                 }
 
-                out += Contact(
-                    first = activeBody,
-                    second = other,
-                    result = collision,
+                _contacts.transferToBuffer(
+                    contactIdx = j,
+                    buffer = out,
+                    activeBody = activeBody,
                 )
 
                 j++
@@ -246,7 +242,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         tree: FlattenedEdgeQuadtree,
         math: LocalMathUtil,
         other: Body,
-        out: MutableList<Contact>,
+        out: A2SContactBuffer,
     ) {
         /*
         get all edges that we could possibly be colliding with; we could have a valid collision with each of these edges (not using discrete curvature graph rn)
@@ -314,7 +310,8 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                 _edgeStart.setComponent(axis.levelOffset, d1)
                 _edgeEnd.setComponent(axis.levelOffset, d2)
 
-                val r = math.collideCuboidEdge(
+                math.collideCuboidEdge(
+                    activeBody = activeBody,
                     edgeStart = _edgeStart,
                     edgeEnd = _edgeEnd,
                     bodyAxiss = _bodyAxiss,
@@ -322,28 +319,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                     vertices = vertices,
                     allowedNormals = _allowedNormals,
                     edges = activeBody.edges,
-                )
-
-                if (r == null) {
-                    i++
-                    continue
-                }
-
-                check(true) {
-                    """
-                    Edge Contact:
-                    | norm: ${r.norm}
-                    | point: ${r.pointA}
-                    | allowedNormal[0]: ${_allowedNormals[0]}
-                    | allowedNormal[1]: ${_allowedNormals[1]}
-                    | mount: $mount
-                """.trimIndent()
-                }
-
-                out += Contact(
-                    first = activeBody,
-                    second = other,
-                    result = r,
+                    out = out,
                 )
 
                 i++
@@ -351,14 +327,12 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         }
     }
 }
+
 fun contains(
     minA: Double,
-    minB: Double,
     maxA: Double,
-    maxB: Double,
 
     a: Double,
-    b: Double,
 ): Boolean {
-    return minA <= a && maxA >= a && minB <= b && maxB >= b
+    return minA <= a && maxA >= a
 }

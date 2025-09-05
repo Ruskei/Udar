@@ -7,16 +7,17 @@ import com.ixume.udar.collisiondetection.mesh.Mesh
 import com.ixume.udar.collisiondetection.pool.MathPool
 import com.ixume.udar.dynamicaabb.AABBTree
 import com.ixume.udar.physics.BodyIDMap
-import com.ixume.udar.physics.Contact
+import com.ixume.udar.physics.contact.Contact
 import com.ixume.udar.physics.EntityUpdater
 import com.ixume.udar.physics.StatusUpdater
 import com.ixume.udar.physics.constraint.ConstraintSolverManager
+import com.ixume.udar.physics.contact.A2SContactBuffer
+import com.ixume.udar.physics.contact.A2AContactBuffer
 import com.ixume.udar.testing.PhysicsWorldTestDebugData
 import com.ixume.udar.testing.debugConnect
 import kotlinx.coroutines.*
 import org.bukkit.*
 import org.joml.Vector3d
-import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.roundToInt
@@ -28,7 +29,7 @@ class PhysicsWorld(
     private val bodiesToAdd = AtomicList<ActiveBody>()
     private val bodiesToRemove = AtomicList<ActiveBody>()
 
-    private val activeBodies = ActiveBodiesCollection()
+    val activeBodies = ActiveBodiesCollection()
 
     private val bodyIDMap = BodyIDMap(this)
 
@@ -37,9 +38,8 @@ class PhysicsWorld(
     }
 
     var numPossibleContacts = 0
-    val contacts = ConcurrentLinkedQueue<Contact>()
-    val envContacts = mutableListOf<Contact>()
-    val contactBuffer = ContactBuffer()
+    val contactBuffer = A2AContactBuffer()
+    val envContactBuffer = A2SContactBuffer()
 
     val meshes: MutableList<Mesh> = mutableListOf()
 
@@ -56,7 +56,6 @@ class PhysicsWorld(
     private val entityUpdater = EntityUpdater(this)
     private val statusUpdater = StatusUpdater(this)
 
-    val realWorldHandler = RealWorldHandler(world)
     val worldMeshesManager = WorldMeshesManager(this)
 
     val runningContactID = AtomicInteger(0)
@@ -126,14 +125,14 @@ class PhysicsWorld(
 
                 debugData.reset()
                 runningContactID.set(0)
-                contacts.clear()
                 contactBuffer.clear()
-                envContacts.clear()
+                envContactBuffer.clear()
                 meshes.clear()
 
                 val bodiesSnapshot = activeBodies.bodies()
 
                 statusUpdater.updateBodies(bodiesSnapshot)
+                constraintSolverManager.prepare()
 
                 val startBroadTime = System.nanoTime()
                 val activePairs = broadPhase(bodiesSnapshot, NARROWPHASE_PROCESSORS)
@@ -143,7 +142,7 @@ class PhysicsWorld(
                 var job: Job? = null
 
                 val startNarrowTime = System.nanoTime()
-
+                
                 if (activePairs != null) {
                     check(activePairs.size == NARROWPHASE_PROCESSORS)
 
@@ -180,24 +179,6 @@ class PhysicsWorld(
                             if (result.isEmpty()) continue
 
                             debugData.environmentCollisions++
-
-                            for (c in result) {
-                                c.id = runningContactID.andIncrement
-                                val ourContacts =
-                                    body.previousContacts.filter { it.first is EnvironmentBody || it.second is EnvironmentBody }
-
-                                for (ourContact in ourContacts) {
-                                    if (ourContact.result.pointA.distance(c.result.pointA) < 1e-2) {
-                                        c.lambdaSum += ourContact.lambdaSum * Udar.CONFIG.collision.lambdaCarryover
-
-                                        break
-
-                                    }
-                                }
-
-                                body.contacts += c
-                                envContacts += c
-                            }
                         }
 
                     } finally {
@@ -225,7 +206,7 @@ class PhysicsWorld(
                     }
                 }
 
-                if (untilCollision.get() && (contacts.isNotEmpty() || envContacts.isNotEmpty())) {
+                if (untilCollision.get() && (!contactBuffer.isEmpty() || !envContactBuffer.isEmpty())) {
                     untilCollision.set(false)
                     frozen.set(true)
                 }
@@ -267,34 +248,58 @@ class PhysicsWorld(
             }
 
             if (Udar.CONFIG.debug.normals > 0) {
-                for (contact in contacts) {
+                val s = contactBuffer.size()
+                var i = 0
+                while (i < s) {
                     world.spawnParticle(
                         Particle.REDSTONE,
-                        Location(world, contact.result.pointA.x, contact.result.pointA.y, contact.result.pointA.z),
+                        Location(
+                            world,
+                            contactBuffer.pointAX(i).toDouble(),
+                            contactBuffer.pointAY(i).toDouble(),
+                            contactBuffer.pointAZ(i).toDouble()
+                        ),
                         1,
                         Particle.DustOptions(Color.RED, 0.3f),
                     )
 
                     world.debugConnect(
-                        start = contact.result.pointA,
-                        end = Vector3d(contact.result.pointA).add(contact.result.norm),
+                        start = Vector3d(
+                            contactBuffer.pointAX(i).toDouble(),
+                            contactBuffer.pointAY(i).toDouble(),
+                            contactBuffer.pointAZ(i).toDouble()
+                        ),
+                        end = Vector3d(
+                            contactBuffer.pointAX(i).toDouble(),
+                            contactBuffer.pointAY(i).toDouble(),
+                            contactBuffer.pointAZ(i).toDouble()
+                        ).add(
+                            contactBuffer.normX(i).toDouble(),
+                            contactBuffer.normY(i).toDouble(),
+                            contactBuffer.normZ(i).toDouble()
+                        ),
                         options = Particle.DustOptions(Color.BLUE, 0.25f),
                     )
+                    i++
                 }
 
-                for (contact in envContacts) {
+                val es = envContactBuffer.size()
+                var j = 0
+                while (j < es) {
                     world.spawnParticle(
                         Particle.REDSTONE,
-                        Location(world, contact.result.pointA.x, contact.result.pointA.y, contact.result.pointA.z),
+                        Location(world, envContactBuffer.pointAX(j).toDouble(), envContactBuffer.pointAY(j).toDouble(), envContactBuffer.pointAZ(j).toDouble()),
                         1,
                         Particle.DustOptions(Color.RED, 0.3f),
                     )
 
                     world.debugConnect(
-                        start = contact.result.pointA,
-                        end = Vector3d(contact.result.pointA).add(contact.result.norm),
+                        start = Vector3d(envContactBuffer.pointAX(j).toDouble(), envContactBuffer.pointAY(j).toDouble(), envContactBuffer.pointAZ(j).toDouble()),
+                        end = Vector3d(envContactBuffer.pointAX(j).toDouble(), envContactBuffer.pointAY(j).toDouble(), envContactBuffer.pointAZ(j).toDouble()).add(envContactBuffer.normX(j).toDouble(), envContactBuffer.normY(j).toDouble(), envContactBuffer.normZ(j).toDouble()),
                         options = Particle.DustOptions(Color.BLUE, 0.25f),
                     )
+                    
+                    j++
                 }
             }
         }
@@ -341,8 +346,6 @@ class PhysicsWorld(
     private fun narrowPhase(ps: Map<ActiveBody, List<ActiveBody>>) {
         val math = mathPool.get()
 
-        val lcc = mutableListOf<Contact>()
-
         try {
             for ((first, ls) in ps) {
                 for (second in ls) {
@@ -362,32 +365,11 @@ class PhysicsWorld(
                     if (Udar.CONFIG.debug.collisionTimes > 0) {
                         println("B-B COLLISION TOOK: ${t.toDouble() / 1_000_000.0} ms")
                     }
-
-                    val ourContacts =
-                        first.previousContacts.filter { it.second.uuid === second.uuid }
-
-                    for (contact in result) {
-                        contact.id = runningContactID.andIncrement
-                        for (ourContact in ourContacts) {
-                            if (ourContact.result.pointA.distance(contact.result.pointA) < 1.0) {
-                                contact.lambdaSum = ourContact.lambdaSum * Udar.CONFIG.collision.lambdaCarryover
-                                contact.t1Sum = ourContact.t1Sum * Udar.CONFIG.collision.lambdaCarryover
-                                contact.t2Sum = ourContact.t2Sum * Udar.CONFIG.collision.lambdaCarryover
-
-                                break
-                            }
-                        }
-
-                        lcc += contact
-                        first.contacts += contact
-                    }
                 }
             }
         } finally {
             mathPool.put(math)
         }
-
-        contacts += lcc
     }
 
     fun clear() {
@@ -403,7 +385,6 @@ class PhysicsWorld(
         clear()
 
         simTask.cancel()
-        realWorldHandler.kill()
         entityTask.cancel()
         scope.cancel()
 
