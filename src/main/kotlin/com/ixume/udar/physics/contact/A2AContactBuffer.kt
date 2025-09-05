@@ -467,7 +467,6 @@ class A2AContactBuffer {
     }
     
     fun setNormalLambda(idx: Int, value: Float) {
-        println("lambda = $value")
         arr[idx * CONTACT_DATA_SIZE + NORMAL_LAMBDA_OFFSET] = value
     }
 
