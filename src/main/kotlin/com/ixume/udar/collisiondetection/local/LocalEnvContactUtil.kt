@@ -11,6 +11,9 @@ import com.ixume.udar.collisiondetection.mesh.quadtree.FlattenedEdgeQuadtree
 import com.ixume.udar.physics.contact.A2SContactArray
 import com.ixume.udar.physics.contact.A2SContactBuffer
 import com.ixume.udar.physics.contact.A2SContactCollection
+import com.ixume.udar.physics.contact.A2SManifoldArray
+import com.ixume.udar.physics.contact.A2SManifoldCollection
+import com.ixume.udar.physics.contact.ContactDataBuffer
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
 import it.unimi.dsi.fastutil.ints.IntArrayList
 import org.joml.Vector3d
@@ -18,13 +21,15 @@ import org.joml.Vector3d
 class LocalEnvContactUtil(val math: LocalMathUtil) {
     private val _mf = mutableListOf<MeshFace>()
 
-    private val _contacts = A2SContactArray()
+    private val _contacts2 = ContactDataBuffer(8)
+    private val _validContacts2 = ContactDataBuffer(8)
 
+    // TODO: manifold for edge contacts
     fun collides(
         contactGen: EnvironmentContactGenerator2,
         activeBody: ActiveBody,
         other: Body,
-        out: A2SContactCollection,
+        out: A2SManifoldCollection,
     ): Boolean {
         val bb = activeBody.tightBB
 
@@ -42,7 +47,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
             val mf = mfs[j]
             _mf.clear()
             mf.facesIn(bb, _mf)
-            collideFaces(activeBody, _mf, mf.axis, math, other, activeBody.physicsWorld.envContactBuffer)
+            collideFaces(activeBody, _mf, mf.axis, math, other, activeBody.physicsWorld.envManifoldBuffer)
             j++
         }
 
@@ -75,7 +80,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         axis: LocalMesher.AxisD,
         math: LocalMathUtil,
         other: Body,
-        out: A2SContactBuffer,
+        out: A2SManifoldCollection,
     ) {
 //        println("COLLIDING $axis FACES!")
         val bb = activeBody.tightBB
@@ -104,17 +109,21 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         }
 
         val vertices = activeBody.vertices
+        
+        
+        var count = 0
 
         var i = 0
         while (i < faces.size) {
+            _contacts2.clear()
+            _validContacts2.clear()
             val face = faces[i]
-            _contacts.clear()
             val any = math.collidePlane(
                 first = activeBody,
                 axis = axis,
                 level = face.level,
                 vertices = vertices,
-                out = _contacts,
+                out = _contacts2,
             )
 
             if (!any) {
@@ -150,8 +159,8 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
             )
 
             var j = 0
-            while (j < _contacts.size()) {
-                val pa = _contacts.pointAComponent(j, axis.aOffset).toDouble()
+            while (j < _contacts2.size()) {
+                val pa = _contacts2.pointAComponent(j, axis.aOffset).toDouble()
 
                 var valid = true
                 var k = 0
@@ -204,17 +213,25 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                     continue
                 }
 
-                _contacts.transferToBuffer(
-                    contactIdx = j,
-                    buffer = out,
-                    activeBody = activeBody,
-                )
-
+                _contacts2.loadInto(count, _validContacts2)
+//                _contacts.transferToBuffer(
+//                    contactIdx = j,
+//                    buffer = out,
+//                    activeBody = activeBody,
+//                )
+                
+                count++
                 j++
             }
 
             i++
         }
+        
+        out.addManifold(
+            activeBody = activeBody,
+            contactID = 0L,
+            buf = _validContacts2,
+        )
     }
 
     private val _bodyAxiss = Array(3) { Vector3d() }
@@ -248,7 +265,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         tree: FlattenedEdgeQuadtree,
         math: LocalMathUtil,
         other: Body,
-        out: A2SContactCollection,
+        out: A2SManifoldCollection,
     ): Boolean {
         /*
         get all edges that we could possibly be colliding with; we could have a valid collision with each of these edges (not using discrete curvature graph rn)

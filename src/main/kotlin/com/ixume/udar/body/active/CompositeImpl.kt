@@ -10,6 +10,7 @@ import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.jacobiEigenDecomposition
 import com.ixume.udar.physics.contact.A2AContactCollection
 import com.ixume.udar.physics.contact.A2SContactCollection
+import com.ixume.udar.physics.contact.A2SManifoldCollection
 import com.ixume.udar.physicsWorld
 import org.bukkit.World
 import org.joml.Matrix3d
@@ -356,15 +357,15 @@ class CompositeImpl(
         }
     }
 
-    override fun collides(other: EnvironmentBody, math: LocalMathUtil, out: A2SContactCollection): Boolean {
-        val buf = math.compositeUtil.envBuf
-        buf.clear()
+    override fun collides(other: EnvironmentBody, math: LocalMathUtil, out: A2SManifoldCollection): Boolean {
+        val buf2 = math.compositeUtil.envContactBuf
+        buf2.clear()
 
         var isCollided = false
 
         var j = 0
         while (j < parts.size) {
-            val r = parts[j].collides(other, math, buf)
+            val r = parts[j].collides(other, math, buf2)
 
             if (r) {
                 isCollided = true
@@ -372,14 +373,16 @@ class CompositeImpl(
 
             j++
         }
+        
+        // TODO : replace id's for manifolds
 
-        var i = 0
-        while (i != -1) {
-            buf.aID(i, uuid)
-            buf.bodyAIdx(i, id)
-
-            i = buf.nextIdx(i)
-        }
+//        var i = 0
+//        while (i != -1) {
+//            buf.aID(i, uuid)
+//            buf.bodyAIdx(i, id)
+//
+//            i = buf.nextIdx(i)
+//        }
 
         return isCollided
     }

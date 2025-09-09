@@ -12,6 +12,7 @@ import com.ixume.udar.physics.StatusUpdater
 import com.ixume.udar.physics.constraint.ConstraintSolverManager
 import com.ixume.udar.physics.contact.A2AContactBuffer
 import com.ixume.udar.physics.contact.A2SContactBuffer
+import com.ixume.udar.physics.contact.A2SManifoldBuffer
 import com.ixume.udar.testing.PhysicsWorldTestDebugData
 import com.ixume.udar.testing.debugConnect
 import kotlinx.coroutines.*
@@ -38,7 +39,7 @@ class PhysicsWorld(
 
     var numPossibleContacts = 0
     val contactBuffer = A2AContactBuffer()
-    val envContactBuffer = A2SContactBuffer()
+    val envManifoldBuffer = A2SManifoldBuffer(8)
 
     val meshes: MutableList<Mesh> = mutableListOf()
 
@@ -125,7 +126,7 @@ class PhysicsWorld(
                 debugData.reset()
                 runningContactID.set(0)
                 contactBuffer.clear()
-                envContactBuffer.clear()
+                envManifoldBuffer.clear()
                 meshes.clear()
 
                 val bodiesSnapshot = activeBodies.bodies()
@@ -171,7 +172,7 @@ class PhysicsWorld(
 
                             if (body.capableCollision(environmentBody) < 0) continue
 
-                            val collided = body.collides(environmentBody, math, envContactBuffer)
+                            val collided = body.collides(environmentBody, math, envManifoldBuffer)
 
                             debugData.totalEnvironmentCollisionChecks++
 
@@ -205,7 +206,7 @@ class PhysicsWorld(
                     }
                 }
 
-                if (untilCollision.get() && (!contactBuffer.isEmpty() || !envContactBuffer.isEmpty())) {
+                if (untilCollision.get() && (!contactBuffer.isEmpty() || !envManifoldBuffer.isEmpty())) {
                     untilCollision.set(false)
                     frozen.set(true)
                 }
@@ -282,38 +283,44 @@ class PhysicsWorld(
                     i++
                 }
 
-                val es = envContactBuffer.size()
+                val es = envManifoldBuffer.size()
                 var j = 0
                 while (j < es) {
-                    world.spawnParticle(
-                        Particle.REDSTONE,
-                        Location(
-                            world,
-                            envContactBuffer.pointAX(j).toDouble(),
-                            envContactBuffer.pointAY(j).toDouble(),
-                            envContactBuffer.pointAZ(j).toDouble()
-                        ),
-                        1,
-                        Particle.DustOptions(Color.RED, 0.3f),
-                    )
+                    val num = envManifoldBuffer.numContacts(j)
+                    var k = 0
+                    while (k < num) {
+                        world.spawnParticle(
+                            Particle.REDSTONE,
+                            Location(
+                                world,
+                                envManifoldBuffer.pointAX(j, k).toDouble(),
+                                envManifoldBuffer.pointAY(j, k).toDouble(),
+                                envManifoldBuffer.pointAZ(j, k).toDouble()
+                            ),
+                            1,
+                            Particle.DustOptions(Color.RED, 0.3f),
+                        )
 
-                    world.debugConnect(
-                        start = Vector3d(
-                            envContactBuffer.pointAX(j).toDouble(),
-                            envContactBuffer.pointAY(j).toDouble(),
-                            envContactBuffer.pointAZ(j).toDouble()
-                        ),
-                        end = Vector3d(
-                            envContactBuffer.pointAX(j).toDouble(),
-                            envContactBuffer.pointAY(j).toDouble(),
-                            envContactBuffer.pointAZ(j).toDouble()
-                        ).add(
-                            envContactBuffer.normX(j).toDouble(),
-                            envContactBuffer.normY(j).toDouble(),
-                            envContactBuffer.normZ(j).toDouble()
-                        ),
-                        options = Particle.DustOptions(Color.BLUE, 0.25f),
-                    )
+                        world.debugConnect(
+                            start = Vector3d(
+                                envManifoldBuffer.pointAX(j, k).toDouble(),
+                                envManifoldBuffer.pointAY(j, k).toDouble(),
+                                envManifoldBuffer.pointAZ(j, k).toDouble()
+                            ),
+                            end = Vector3d(
+                                envManifoldBuffer.pointAX(j, k).toDouble(),
+                                envManifoldBuffer.pointAY(j, k).toDouble(),
+                                envManifoldBuffer.pointAZ(j, k).toDouble()
+                            ).add(
+                                envManifoldBuffer.normX(j, k).toDouble(),
+                                envManifoldBuffer.normY(j, k).toDouble(),
+                                envManifoldBuffer.normZ(j, k).toDouble()
+                            ),
+                            options = Particle.DustOptions(Color.BLUE, 0.25f),
+                        )
+                        
+                        k++
+                    }
 
                     j++
                 }

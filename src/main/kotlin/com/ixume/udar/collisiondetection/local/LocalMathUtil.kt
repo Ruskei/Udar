@@ -8,6 +8,8 @@ import com.ixume.udar.collisiondetection.pool.TrackingD3Pool
 import com.ixume.udar.dynamicaabb.array.IntQueue
 import com.ixume.udar.physics.contact.A2SContactArray
 import com.ixume.udar.physics.contact.A2SContactCollection
+import com.ixume.udar.physics.contact.A2SManifoldCollection
+import com.ixume.udar.physics.contact.ContactDataBuffer
 import org.joml.Vector3d
 import kotlin.math.abs
 import kotlin.math.max
@@ -33,7 +35,7 @@ class LocalMathUtil(
         axis: LocalMesher.AxisD,
         level: Double,
         vertices: Array<Vector3d>,
-        out: A2SContactArray,
+        out: ContactDataBuffer,
     ): Boolean {
         axis.project(vertices, _mm)
         val min = _mm[0]
@@ -63,16 +65,15 @@ class LocalMathUtil(
                 val p = axis.project(v)
 
                 if (p < level) {
-                    out.addCollision(
-                        activeBody = first,
-                        pointAX = v.x,
-                        pointAY = v.y,
-                        pointAZ = v.z,
-                        normX = axis.vec.x,
-                        normY = axis.vec.y,
-                        normZ = axis.vec.z,
-                        depth = level - p,
-                        contactID = 0L,
+                    out.loadInto(
+                        pointAX = v.x.toFloat(),
+                        pointAY = v.y.toFloat(),
+                        pointAZ = v.z.toFloat(),
+
+                        normX = axis.vec.x.toFloat(),
+                        normY = axis.vec.y.toFloat(),
+                        normZ = axis.vec.z.toFloat(),
+                        depth = (level - p).toFloat(),
                     )
                 }
 
@@ -87,17 +88,15 @@ class LocalMathUtil(
                 val p = axis.project(v)
 
                 if (p > level) {
-                    out.addCollision(
-                        activeBody = first,
-                        pointAX = v.x,
-                        pointAY = v.y,
-                        pointAZ = v.z,
+                    out.loadInto(
+                        pointAX = v.x.toFloat(),
+                        pointAY = v.y.toFloat(),
+                        pointAZ = v.z.toFloat(),
 
-                        normX = negatedAxis.x,
-                        normY = negatedAxis.y,
-                        normZ = negatedAxis.z,
-                        depth = p - level,
-                        contactID = 0L,
+                        normX = negatedAxis.x.toFloat(),
+                        normY = negatedAxis.y.toFloat(),
+                        normZ = negatedAxis.z.toFloat(),
+                        depth = (p - level).toFloat(),
                     )
                 }
 
@@ -107,8 +106,6 @@ class LocalMathUtil(
 
         return true
     }
-
-    private val _empty = Vector3d()
 
     /**
      * MUST NOT BE PARALLEL TO EDGE!! USE DIFFERENT METHOD IF THEY ARE!
@@ -127,7 +124,7 @@ class LocalMathUtil(
         edges: Array<Edge>,
 
         allowedNormals: Array<Vector3d>,
-        out: A2SContactCollection,
+        out: A2SManifoldCollection,
     ) {
         var minBodyOverlap = Double.MAX_VALUE
         var minBodyAxis: Vector3d? = null
@@ -329,19 +326,19 @@ class LocalMathUtil(
             }
 
             check(closestEdgeDistance != Double.MAX_VALUE)
-
-            out.addCollision(
+            
+            out.addSingleManifold(
                 activeBody = activeBody,
 
-                pointAX = closestA.x,
-                pointAY = closestA.y,
-                pointAZ = closestA.z,
+                pointAX = closestA.x.toFloat(),
+                pointAY = closestA.y.toFloat(),
+                pointAZ = closestA.z.toFloat(),
 
-                normX = norm.x,
-                normY = norm.y,
-                normZ = norm.z,
+                normX = norm.x.toFloat(),
+                normY = norm.y.toFloat(),
+                normZ = norm.z.toFloat(),
 
-                depth = minCrossOverlap,
+                depth = minCrossOverlap.toFloat(),
                 contactID = 0L
             )
 
@@ -378,18 +375,18 @@ class LocalMathUtil(
                 // edgeStart is min, edgeEnd is max
                 if (minBodyInDirOfAxis) {
                     check(abs(norm.length() - 1.0) < 1e-5)
-                    out.addCollision(
+                    out.addSingleManifold(
                         activeBody = activeBody,
 
-                        pointAX = edgeEnd.x - minBodyAxis.x * minBodyOverlap,
-                        pointAY = edgeEnd.y - minBodyAxis.y * minBodyOverlap,
-                        pointAZ = edgeEnd.z - minBodyAxis.z * minBodyOverlap,
+                        pointAX = (edgeEnd.x - minBodyAxis.x * minBodyOverlap).toFloat(),
+                        pointAY = (edgeEnd.y - minBodyAxis.y * minBodyOverlap).toFloat(),
+                        pointAZ = (edgeEnd.z - minBodyAxis.z * minBodyOverlap).toFloat(),
 
-                        normX = norm.x,
-                        normY = norm.y,
-                        normZ = norm.z,
+                        normX = norm.x.toFloat(),
+                        normY = norm.y.toFloat(),
+                        normZ = norm.z.toFloat(),
 
-                        depth = minBodyOverlap,
+                        depth = minBodyOverlap.toFloat(),
                         contactID = 0L,
                     )
 
@@ -397,18 +394,18 @@ class LocalMathUtil(
                 } else {
                     check(abs(norm.length() - 1.0) < 1e-5)
 
-                    out.addCollision(
+                    out.addSingleManifold(
                         activeBody = activeBody,
 
-                        pointAX = edgeStart.x + minBodyAxis.x * minBodyOverlap,
-                        pointAY = edgeStart.y + minBodyAxis.y * minBodyOverlap,
-                        pointAZ = edgeStart.z + minBodyAxis.z * minBodyOverlap,
+                        pointAX = (edgeStart.x + minBodyAxis.x * minBodyOverlap).toFloat(),
+                        pointAY = (edgeStart.y + minBodyAxis.y * minBodyOverlap).toFloat(),
+                        pointAZ = (edgeStart.z + minBodyAxis.z * minBodyOverlap).toFloat(),
 
-                        normX = norm.x,
-                        normY = norm.y,
-                        normZ = norm.z,
+                        normX = norm.x.toFloat(),
+                        normY = norm.y.toFloat(),
+                        normZ = norm.z.toFloat(),
 
-                        depth = minBodyOverlap,
+                        depth = minBodyOverlap.toFloat(),
                         contactID = 0L,
                     )
                 }
@@ -419,18 +416,18 @@ class LocalMathUtil(
                 if (minBodyInDirOfAxis) {
                     check(abs(norm.length() - 1.0) < 1e-5)
 
-                    out.addCollision(
+                    out.addSingleManifold(
                         activeBody = activeBody,
 
-                        pointAX = edgeStart.x - minBodyAxis.x * minBodyOverlap,
-                        pointAY = edgeStart.y - minBodyAxis.y * minBodyOverlap,
-                        pointAZ = edgeStart.z - minBodyAxis.z * minBodyOverlap,
+                        pointAX = (edgeStart.x - minBodyAxis.x * minBodyOverlap).toFloat(),
+                        pointAY = (edgeStart.y - minBodyAxis.y * minBodyOverlap).toFloat(),
+                        pointAZ = (edgeStart.z - minBodyAxis.z * minBodyOverlap).toFloat(),
 
-                        normX = norm.x,
-                        normY = norm.y,
-                        normZ = norm.z,
+                        normX = norm.x.toFloat(),
+                        normY = norm.y.toFloat(),
+                        normZ = norm.z.toFloat(),
 
-                        depth = minBodyOverlap,
+                        depth = minBodyOverlap.toFloat(),
                         contactID = 0L,
                     )
 
@@ -438,18 +435,18 @@ class LocalMathUtil(
                 } else {
                     check(abs(norm.length() - 1.0) < 1e-5)
 
-                    out.addCollision(
+                    out.addSingleManifold(
                         activeBody = activeBody,
 
-                        pointAX = edgeEnd.x + minBodyAxis.x * minBodyOverlap,
-                        pointAY = edgeEnd.y + minBodyAxis.y * minBodyOverlap,
-                        pointAZ = edgeEnd.z + minBodyAxis.z * minBodyOverlap,
+                        pointAX = (edgeEnd.x + minBodyAxis.x * minBodyOverlap).toFloat(),
+                        pointAY = (edgeEnd.y + minBodyAxis.y * minBodyOverlap).toFloat(),
+                        pointAZ = (edgeEnd.z + minBodyAxis.z * minBodyOverlap).toFloat(),
 
-                        normX = norm.x,
-                        normY = norm.y,
-                        normZ = norm.z,
+                        normX = norm.x.toFloat(),
+                        normY = norm.y.toFloat(),
+                        normZ = norm.z.toFloat(),
 
-                        depth = minBodyOverlap,
+                        depth = minBodyOverlap.toFloat(),
                         contactID = 0L,
                     )
 
