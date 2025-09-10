@@ -27,8 +27,9 @@ class A2SManifoldBuffer(maxContactNum: Int) : A2SManifoldCollection {
     override fun addManifold(
         activeBody: ActiveBody,
         contactID: Long,
-        buf: ContactDataBuffer,
+        buf: A2SContactDataBuffer,
     ) {
+        if (buf.size() == 0) return
         val idx = cursor.andIncrement * manifoldDataSize
         lock.read {
             if (idx + manifoldDataSize < arr.size) {

@@ -10,8 +10,7 @@ import com.ixume.udar.collisiondetection.contactgeneration.CuboidSATContactGener
 import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentContactGenerator2
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.dynamicaabb.AABB
-import com.ixume.udar.physics.contact.A2AContactCollection
-import com.ixume.udar.physics.contact.A2SContactCollection
+import com.ixume.udar.physics.contact.A2AManifoldCollection
 import com.ixume.udar.physics.contact.A2SManifoldCollection
 import com.ixume.udar.physicsWorld
 import org.bukkit.Material
@@ -334,7 +333,7 @@ class Cuboid(
         return envContactGen.collides(other, math, out)
     }
 
-    override fun collides(other: ActiveBody, math: LocalMathUtil, out: A2AContactCollection): Boolean {
+    override fun collides(other: ActiveBody, math: LocalMathUtil, out: A2AManifoldCollection): Boolean {
         return cuboidContactGen.collides(other, math, out)
     }
 

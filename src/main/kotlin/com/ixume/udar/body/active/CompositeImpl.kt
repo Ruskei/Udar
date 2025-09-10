@@ -8,8 +8,7 @@ import com.ixume.udar.collisiondetection.contactgeneration.CompositeCompositeCon
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.jacobiEigenDecomposition
-import com.ixume.udar.physics.contact.A2AContactCollection
-import com.ixume.udar.physics.contact.A2SContactCollection
+import com.ixume.udar.physics.contact.A2AManifoldCollection
 import com.ixume.udar.physics.contact.A2SManifoldCollection
 import com.ixume.udar.physicsWorld
 import org.bukkit.World
@@ -337,7 +336,7 @@ class CompositeImpl(
         return 0
     }
 
-    override fun collides(other: ActiveBody, math: LocalMathUtil, out: A2AContactCollection): Boolean {
+    override fun collides(other: ActiveBody, math: LocalMathUtil, out: A2AManifoldCollection): Boolean {
         if (other is Composite) {
             return compositeContactGenerator.collides(other, math, out)
         } else {

@@ -4,7 +4,7 @@ import com.ixume.udar.body.A2ACollidable
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.Composite
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
-import com.ixume.udar.physics.contact.A2AContactCollection
+import com.ixume.udar.physics.contact.A2AManifoldCollection
 import com.ixume.udar.physicsWorld
 
 class CompositeCompositeContactGenerator(
@@ -14,7 +14,7 @@ class CompositeCompositeContactGenerator(
         return if (other is Composite) 0 else -1
     }
 
-    override fun collides(other: ActiveBody, math: LocalMathUtil, out: A2AContactCollection): Boolean {
+    override fun collides(other: ActiveBody, math: LocalMathUtil, out: A2AManifoldCollection): Boolean {
         require(other is Composite)
 
         val pw = other.world.physicsWorld!!
@@ -50,13 +50,14 @@ class CompositeCompositeContactGenerator(
             }
         }
 
-        var i = 0
-        while (i != -1) {
-            buf.aID(i, composite.uuid)
-            buf.bodyAIdx(i, composite.id)
-
-            i = buf.nextIdx(i)
-        }
+        // TODO: set id's
+//        var i = 0
+//        while (i != -1) {
+//            buf.aID(i, composite.uuid)
+//            buf.bodyAIdx(i, composite.id)
+//
+//            i = buf.nextIdx(i)
+//        }
 
         return collided
     }

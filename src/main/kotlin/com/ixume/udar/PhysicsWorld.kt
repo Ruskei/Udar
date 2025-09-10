@@ -10,8 +10,7 @@ import com.ixume.udar.physics.BodyIDMap
 import com.ixume.udar.physics.EntityUpdater
 import com.ixume.udar.physics.StatusUpdater
 import com.ixume.udar.physics.constraint.ConstraintSolverManager
-import com.ixume.udar.physics.contact.A2AContactBuffer
-import com.ixume.udar.physics.contact.A2SContactBuffer
+import com.ixume.udar.physics.contact.A2AManifoldBuffer
 import com.ixume.udar.physics.contact.A2SManifoldBuffer
 import com.ixume.udar.testing.PhysicsWorldTestDebugData
 import com.ixume.udar.testing.debugConnect
@@ -38,7 +37,7 @@ class PhysicsWorld(
     }
 
     var numPossibleContacts = 0
-    val contactBuffer = A2AContactBuffer()
+    val manifoldBuffer = A2AManifoldBuffer(8)
     val envManifoldBuffer = A2SManifoldBuffer(8)
 
     val meshes: MutableList<Mesh> = mutableListOf()
@@ -57,8 +56,6 @@ class PhysicsWorld(
     private val statusUpdater = StatusUpdater(this)
 
     val worldMeshesManager = WorldMeshesManager(this)
-
-    val runningContactID = AtomicInteger(0)
 
     private val simTask = Bukkit.getScheduler().runTaskTimerAsynchronously(Udar.INSTANCE, Runnable { tick() }, 1, 1)
     private val entityTask = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { entityUpdater.tick() }, 1, 2)
@@ -124,8 +121,7 @@ class PhysicsWorld(
                 physicsTime++
 
                 debugData.reset()
-                runningContactID.set(0)
-                contactBuffer.clear()
+                manifoldBuffer.clear()
                 envManifoldBuffer.clear()
                 meshes.clear()
 
@@ -206,7 +202,7 @@ class PhysicsWorld(
                     }
                 }
 
-                if (untilCollision.get() && (!contactBuffer.isEmpty() || !envManifoldBuffer.isEmpty())) {
+                if (untilCollision.get() && (!manifoldBuffer.isEmpty() || !envManifoldBuffer.isEmpty())) {
                     untilCollision.set(false)
                     frozen.set(true)
                 }
@@ -248,54 +244,19 @@ class PhysicsWorld(
             }
 
             if (Udar.CONFIG.debug.normals > 0) {
-                val s = contactBuffer.size()
+                val s = manifoldBuffer.size()
                 var i = 0
                 while (i < s) {
-                    world.spawnParticle(
-                        Particle.REDSTONE,
-                        Location(
-                            world,
-                            contactBuffer.pointAX(i).toDouble(),
-                            contactBuffer.pointAY(i).toDouble(),
-                            contactBuffer.pointAZ(i).toDouble()
-                        ),
-                        1,
-                        Particle.DustOptions(Color.RED, 0.3f),
-                    )
-
-                    world.debugConnect(
-                        start = Vector3d(
-                            contactBuffer.pointAX(i).toDouble(),
-                            contactBuffer.pointAY(i).toDouble(),
-                            contactBuffer.pointAZ(i).toDouble()
-                        ),
-                        end = Vector3d(
-                            contactBuffer.pointAX(i).toDouble(),
-                            contactBuffer.pointAY(i).toDouble(),
-                            contactBuffer.pointAZ(i).toDouble()
-                        ).add(
-                            contactBuffer.normX(i).toDouble(),
-                            contactBuffer.normY(i).toDouble(),
-                            contactBuffer.normZ(i).toDouble()
-                        ),
-                        options = Particle.DustOptions(Color.BLUE, 0.25f),
-                    )
-                    i++
-                }
-
-                val es = envManifoldBuffer.size()
-                var j = 0
-                while (j < es) {
-                    val num = envManifoldBuffer.numContacts(j)
+                    val num = manifoldBuffer.numContacts(i)
                     var k = 0
                     while (k < num) {
                         world.spawnParticle(
                             Particle.REDSTONE,
                             Location(
                                 world,
-                                envManifoldBuffer.pointAX(j, k).toDouble(),
-                                envManifoldBuffer.pointAY(j, k).toDouble(),
-                                envManifoldBuffer.pointAZ(j, k).toDouble()
+                                manifoldBuffer.pointAX(i, k).toDouble(),
+                                manifoldBuffer.pointAY(i, k).toDouble(),
+                                manifoldBuffer.pointAZ(i, k).toDouble()
                             ),
                             1,
                             Particle.DustOptions(Color.RED, 0.3f),
@@ -303,27 +264,69 @@ class PhysicsWorld(
 
                         world.debugConnect(
                             start = Vector3d(
-                                envManifoldBuffer.pointAX(j, k).toDouble(),
-                                envManifoldBuffer.pointAY(j, k).toDouble(),
-                                envManifoldBuffer.pointAZ(j, k).toDouble()
+                                manifoldBuffer.pointAX(i, k).toDouble(),
+                                manifoldBuffer.pointAY(i, k).toDouble(),
+                                manifoldBuffer.pointAZ(i, k).toDouble()
                             ),
                             end = Vector3d(
-                                envManifoldBuffer.pointAX(j, k).toDouble(),
-                                envManifoldBuffer.pointAY(j, k).toDouble(),
-                                envManifoldBuffer.pointAZ(j, k).toDouble()
+                                manifoldBuffer.pointAX(i, k).toDouble(),
+                                manifoldBuffer.pointAY(i, k).toDouble(),
+                                manifoldBuffer.pointAZ(i, k).toDouble()
                             ).add(
-                                envManifoldBuffer.normX(j, k).toDouble(),
-                                envManifoldBuffer.normY(j, k).toDouble(),
-                                envManifoldBuffer.normZ(j, k).toDouble()
+                                manifoldBuffer.normX(i, k).toDouble(),
+                                manifoldBuffer.normY(i, k).toDouble(),
+                                manifoldBuffer.normZ(i, k).toDouble()
                             ),
                             options = Particle.DustOptions(Color.BLUE, 0.25f),
                         )
                         
                         k++
                     }
-
-                    j++
+                    
+                    i++
                 }
+
+//                val es = envManifoldBuffer.size()
+//                var j = 0
+//                while (j < es) {
+//                    val num = envManifoldBuffer.numContacts(j)
+//                    var k = 0
+//                    while (k < num) {
+//                        world.spawnParticle(
+//                            Particle.REDSTONE,
+//                            Location(
+//                                world,
+//                                envManifoldBuffer.pointAX(j, k).toDouble(),
+//                                envManifoldBuffer.pointAY(j, k).toDouble(),
+//                                envManifoldBuffer.pointAZ(j, k).toDouble()
+//                            ),
+//                            1,
+//                            Particle.DustOptions(Color.RED, 0.3f),
+//                        )
+//
+//                        world.debugConnect(
+//                            start = Vector3d(
+//                                envManifoldBuffer.pointAX(j, k).toDouble(),
+//                                envManifoldBuffer.pointAY(j, k).toDouble(),
+//                                envManifoldBuffer.pointAZ(j, k).toDouble()
+//                            ),
+//                            end = Vector3d(
+//                                envManifoldBuffer.pointAX(j, k).toDouble(),
+//                                envManifoldBuffer.pointAY(j, k).toDouble(),
+//                                envManifoldBuffer.pointAZ(j, k).toDouble()
+//                            ).add(
+//                                envManifoldBuffer.normX(j, k).toDouble(),
+//                                envManifoldBuffer.normY(j, k).toDouble(),
+//                                envManifoldBuffer.normZ(j, k).toDouble()
+//                            ),
+//                            options = Particle.DustOptions(Color.BLUE, 0.25f),
+//                        )
+//                        
+//                        k++
+//                    }
+//
+//                    j++
+//                }
             }
         }
     }
@@ -375,7 +378,7 @@ class PhysicsWorld(
                     val collided: Boolean
 
                     val t = measureNanoTime {
-                        collided = first.collides(second, math, contactBuffer)
+                        collided = first.collides(second, math, manifoldBuffer)
                     }
 
                     if (!collided) continue

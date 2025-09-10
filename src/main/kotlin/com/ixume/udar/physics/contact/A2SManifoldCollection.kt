@@ -6,7 +6,7 @@ interface A2SManifoldCollection {
     fun addManifold(
         activeBody: ActiveBody,
         contactID: Long,
-        buf: ContactDataBuffer,
+        buf: A2SContactDataBuffer,
     )
     
     fun addSingleManifold(

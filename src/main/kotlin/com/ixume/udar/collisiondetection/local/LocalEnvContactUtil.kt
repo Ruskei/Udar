@@ -8,12 +8,8 @@ import com.ixume.udar.collisiondetection.mesh.mesh2.EdgeMountAllowedNormals
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFace
 import com.ixume.udar.collisiondetection.mesh.quadtree.FlattenedEdgeQuadtree
-import com.ixume.udar.physics.contact.A2SContactArray
-import com.ixume.udar.physics.contact.A2SContactBuffer
-import com.ixume.udar.physics.contact.A2SContactCollection
-import com.ixume.udar.physics.contact.A2SManifoldArray
 import com.ixume.udar.physics.contact.A2SManifoldCollection
-import com.ixume.udar.physics.contact.ContactDataBuffer
+import com.ixume.udar.physics.contact.A2SContactDataBuffer
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
 import it.unimi.dsi.fastutil.ints.IntArrayList
 import org.joml.Vector3d
@@ -21,8 +17,8 @@ import org.joml.Vector3d
 class LocalEnvContactUtil(val math: LocalMathUtil) {
     private val _mf = mutableListOf<MeshFace>()
 
-    private val _contacts2 = ContactDataBuffer(8)
-    private val _validContacts2 = ContactDataBuffer(8)
+    private val _contacts2 = A2SContactDataBuffer(8)
+    private val _validContacts2 = A2SContactDataBuffer(8)
 
     // TODO: manifold for edge contacts
     fun collides(
@@ -224,14 +220,14 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                 j++
             }
 
+            out.addManifold(
+                activeBody = activeBody,
+                contactID = 0L,
+                buf = _validContacts2,
+            )
+
             i++
         }
-        
-        out.addManifold(
-            activeBody = activeBody,
-            contactID = 0L,
-            buf = _validContacts2,
-        )
     }
 
     private val _bodyAxiss = Array(3) { Vector3d() }

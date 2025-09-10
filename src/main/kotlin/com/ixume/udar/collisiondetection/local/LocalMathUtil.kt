@@ -4,12 +4,9 @@ import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.Edge
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
-import com.ixume.udar.collisiondetection.pool.TrackingD3Pool
 import com.ixume.udar.dynamicaabb.array.IntQueue
-import com.ixume.udar.physics.contact.A2SContactArray
-import com.ixume.udar.physics.contact.A2SContactCollection
 import com.ixume.udar.physics.contact.A2SManifoldCollection
-import com.ixume.udar.physics.contact.ContactDataBuffer
+import com.ixume.udar.physics.contact.A2SContactDataBuffer
 import org.joml.Vector3d
 import kotlin.math.abs
 import kotlin.math.max
@@ -35,7 +32,7 @@ class LocalMathUtil(
         axis: LocalMesher.AxisD,
         level: Double,
         vertices: Array<Vector3d>,
-        out: ContactDataBuffer,
+        out: A2SContactDataBuffer,
     ): Boolean {
         axis.project(vertices, _mm)
         val min = _mm[0]

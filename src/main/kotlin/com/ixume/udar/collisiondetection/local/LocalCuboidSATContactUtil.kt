@@ -4,7 +4,8 @@ import com.ixume.udar.body.Body
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.Edge
 import com.ixume.udar.body.active.Face
-import com.ixume.udar.physics.contact.A2AContactCollection
+import com.ixume.udar.physics.contact.A2AContactDataBuffer
+import com.ixume.udar.physics.contact.A2AManifoldCollection
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
 import org.joml.Vector3d
 import kotlin.math.abs
@@ -31,14 +32,16 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
     private val _tpProjected = Vector3d()
 
     private val _edgeNormal = Vector3d()
-    
+
     private val _norm = Vector3d()
     private val _tp2 = Vector3d()
-    
+
     private val _cA = Vector3d()
     private val _cB = Vector3d()
 
-    fun collides(activeBody: ActiveBody, other: ActiveBody, out: A2AContactCollection): Boolean {
+    private val _faceManifold = A2AContactDataBuffer(8)
+
+    fun collides(activeBody: ActiveBody, other: ActiveBody, out: A2AManifoldCollection): Boolean {
         if (!setupAxiss(activeBody, other)) return false
 
         val myVertices = activeBody.vertices
@@ -293,23 +296,23 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                 outB = _cB,
             )
 
-            out.addCollision(
+            out.addSingleManifold(
                 first = activeBody,
                 second = other,
 
-                pointAX = _cA.x,
-                pointAY = _cA.y,
-                pointAZ = _cA.z,
+                pointAX = _cA.x.toFloat(),
+                pointAY = _cA.y.toFloat(),
+                pointAZ = _cA.z.toFloat(),
 
-                pointBX = _cB.x,
-                pointBY = _cB.y,
-                pointBZ = _cB.z,
+                pointBX = _cB.x.toFloat(),
+                pointBY = _cB.y.toFloat(),
+                pointBZ = _cB.z.toFloat(),
 
-                normX = _norm.x,
-                normY = _norm.y,
-                normZ = _norm.z,
+                normX = _norm.x.toFloat(),
+                normY = _norm.y.toFloat(),
+                normZ = _norm.z.toFloat(),
 
-                depth = minCrossOverlap,
+                depth = minCrossOverlap.toFloat(),
                 contactID = 0L
             )
 
@@ -334,6 +337,8 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
             } else {
                 _norm.set(axis).negate().normalize()
             }
+
+            _faceManifold.clear()
 
             val myFaces = activeBody.faces
             val otherFaces = other.faces
@@ -455,29 +460,32 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                 if (d < 0.0) {
                     _tp2.set(_tp).sub(d * refFace.normal.x, d * refFace.normal.y, d * refFace.normal.z)
                     collided = true
-                    out.addCollision(
-                        first = activeBody,
-                        second = other,
+                    _faceManifold.loadInto(
+                        pointAX = _tp2.x.toFloat(),
+                        pointAY = _tp2.y.toFloat(),
+                        pointAZ = _tp2.z.toFloat(),
 
-                        pointAX = _tp2.x,
-                        pointAY = _tp2.y,
-                        pointAZ = _tp2.z,
+                        pointBX = _tp.x.toFloat(),
+                        pointBY = _tp.y.toFloat(),
+                        pointBZ = _tp.z.toFloat(),
 
-                        pointBX = _tp.x,
-                        pointBY = _tp.y,
-                        pointBZ = _tp.z,
+                        normX = _norm.x.toFloat(),
+                        normY = _norm.y.toFloat(),
+                        normZ = _norm.z.toFloat(),
 
-                        normX = _norm.x,
-                        normY = _norm.y,
-                        normZ = _norm.z,
-
-                        depth = -d,
-                        contactID = 0L
+                        depth = -d.toFloat(),
                     )
                 }
 
                 p++
             }
+
+            out.addManifold(
+                first = activeBody,
+                second = other,
+                contactID = 0L,
+                buf = _faceManifold,
+            )
 
             return collided
         }

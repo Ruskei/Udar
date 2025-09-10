@@ -2,7 +2,7 @@ package com.ixume.udar.physics.contact
 
 import org.joml.Vector3f
 
-class ContactDataBuffer(private val numContacts: Int) {
+class A2SContactDataBuffer(private val numContacts: Int) {
     val arr = FloatArray(CONTACT_DATA_SIZE * numContacts)
     var cursor = 0
     
@@ -50,7 +50,7 @@ class ContactDataBuffer(private val numContacts: Int) {
         )
     }
     
-    fun loadInto(idx: Int, other: ContactDataBuffer) {
+    fun loadInto(idx: Int, other: A2SContactDataBuffer) {
         other._loadInto(
             pointAX = arr[idx * CONTACT_DATA_SIZE + POINT_A_X_OFFSET],
             pointAY = arr[idx * CONTACT_DATA_SIZE + POINT_A_Y_OFFSET],
