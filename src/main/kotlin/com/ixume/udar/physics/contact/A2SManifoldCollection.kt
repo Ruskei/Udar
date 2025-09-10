@@ -14,15 +14,13 @@ interface A2SManifoldCollection {
         activeBody: ActiveBody,
         contactID: Long,
 
-        pointAX: Float,
-        pointAY: Float,
-        pointAZ: Float,
+        pointAX: Float, pointAY: Float, pointAZ: Float,
 
-        normX: Float,
-        normY: Float,
-        normZ: Float,
+        normX: Float, normY: Float, normZ: Float,
 
         depth: Float,
         math: LocalMathUtil,
+        
+        normalLambda: Float, t1Lambda: Float, t2Lambda: Float,
     )
 }

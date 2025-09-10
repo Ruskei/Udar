@@ -5,6 +5,7 @@ import com.ixume.udar.Udar
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.physics.contact.A2AManifoldBuffer
 import com.ixume.udar.physics.contact.A2SManifoldBuffer
+import com.ixume.udar.physics.contact.A2SPrevContactDataBuffer
 import org.joml.Matrix3d
 import org.joml.Matrix3f
 import org.joml.Quaterniond
@@ -339,6 +340,9 @@ class LocalConstraintSolver(
                 n.putVector3f(_c_j1Temp.set(_c_j1)._mul(bodyAInverseInertia)) // DOA
 
                 n.put(Float.fromBits(envManifolds.bodyIdx(ns))) // my id
+                val cID = envManifolds.manifoldID(ns)
+                n.put(cID.toFloat())
+                n.put((cID ushr 32).toFloat())
 
                 count++
                 m++
@@ -610,8 +614,13 @@ class LocalConstraintSolver(
         flatBodyData[myIdx + 4] -= (data[contactIdx + A2S_N_DELTA_OFFSET + 4] * lambda)
         flatBodyData[myIdx + 5] -= (data[contactIdx + A2S_N_DELTA_OFFSET + 5] * lambda)
     }
+    
+    private val _a2sContactDataBuffer = A2SPrevContactDataBuffer()
 
     fun write() {
+        physicsWorld.prevEnvContactMap.clear()
+        physicsWorld.prevEnvContactData.clear()
+        
         if (!any) return
 
         var i = 0
@@ -647,18 +656,36 @@ class LocalConstraintSolver(
         
         var envCount = 0
 
+        val numEnvManifolds = envManifolds.size()
+        
         var k = 0
-        while (k < envManifolds.size()) {
+        while (k < numEnvManifolds) {
+            _a2sContactDataBuffer.clear()
             val numContacts = envManifolds.numContacts(k)
+            val manifoldID = envManifolds.manifoldID(k)
+            if (physicsWorld.prevEnvContactMap.containsKey(manifoldID)) {
+                k++
+                continue
+            }
+            
             var l = 0
             while (l < numContacts) {
-                envManifolds.setNormalLambda(k, l, envContactNormalData[envCount * A2S_N_CONTACT_DATA_FLOATS + A2S_N_LAMBDA_OFFSET])
-                envManifolds.setT1Lambda(k, l, envContactT1Data[envCount * A2S_N_CONTACT_DATA_FLOATS + A2S_N_LAMBDA_OFFSET])
-                envManifolds.setT2Lambda(k, l, envContactT2Data[envCount * A2S_N_CONTACT_DATA_FLOATS + A2S_N_LAMBDA_OFFSET])
+                _a2sContactDataBuffer.add(
+                    x = envManifolds.pointAX(k, l),
+                    y = envManifolds.pointAY(k, l),
+                    z = envManifolds.pointAZ(k, l),
+
+                    normalLambda = envContactNormalData[envCount * A2S_N_CONTACT_DATA_FLOATS + A2S_N_LAMBDA_OFFSET],
+                    t1Lambda = envContactT1Data[envCount * A2S_N_CONTACT_DATA_FLOATS + A2S_N_LAMBDA_OFFSET],
+                    t2Lambda = envContactT2Data[envCount * A2S_N_CONTACT_DATA_FLOATS + A2S_N_LAMBDA_OFFSET],
+                )
                 
                 envCount++
                 l++
             }
+            
+            val idx = physicsWorld.prevEnvContactData.add(numContacts, _a2sContactDataBuffer)
+            physicsWorld.prevEnvContactMap.put(manifoldID, idx)
 
             k++
         }

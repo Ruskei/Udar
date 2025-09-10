@@ -5,11 +5,11 @@ import com.ixume.udar.collisiondetection.local.LocalMathUtil
 class A2SContactDataBuffer(private val numContacts: Int) {
     val arr = FloatArray(CONTACT_DATA_SIZE * numContacts)
     var cursor = 0
-    
+
     fun clear() {
         cursor = 0
     }
-    
+
     fun size(): Int {
         return cursor
     }
@@ -25,6 +25,8 @@ class A2SContactDataBuffer(private val numContacts: Int) {
 
         depth: Float,
         math: LocalMathUtil,
+
+        normalLambda: Float, t1Lambda: Float, t2Lambda: Float,
     ) {
         val norm = math._n.set(normX, normY, normZ)
         val t1 = math._t1v.set(1f).orthogonalizeUnit(norm)
@@ -48,28 +50,36 @@ class A2SContactDataBuffer(private val numContacts: Int) {
             t2Z = t2.z,
 
             depth = depth,
+
+            normalLambda = normalLambda,
+            t1Lambda = t1Lambda,
+            t2Lambda = t2Lambda,
         )
     }
-    
-    fun loadInto(idx: Int, other: A2SContactDataBuffer) {
+
+    fun loadInto(otherIdx: Int, other: A2SContactDataBuffer) {
         other._loadInto(
-            pointAX = arr[idx * CONTACT_DATA_SIZE + POINT_A_X_OFFSET],
-            pointAY = arr[idx * CONTACT_DATA_SIZE + POINT_A_Y_OFFSET],
-            pointAZ = arr[idx * CONTACT_DATA_SIZE + POINT_A_Z_OFFSET],
-            
-            normX = arr[idx * CONTACT_DATA_SIZE + NORM_X_OFFSET],
-            normY = arr[idx * CONTACT_DATA_SIZE + NORM_Y_OFFSET],
-            normZ = arr[idx * CONTACT_DATA_SIZE + NORM_Z_OFFSET],
-            
-            t1X = arr[idx * CONTACT_DATA_SIZE + T1_X_OFFSET],
-            t1Y = arr[idx * CONTACT_DATA_SIZE + T1_Y_OFFSET],
-            t1Z = arr[idx * CONTACT_DATA_SIZE + T1_Z_OFFSET],
-            
-            t2X = arr[idx * CONTACT_DATA_SIZE + T2_X_OFFSET],
-            t2Y = arr[idx * CONTACT_DATA_SIZE + T2_Y_OFFSET],
-            t2Z = arr[idx * CONTACT_DATA_SIZE + T2_Z_OFFSET],
-            
-            depth = arr[idx * CONTACT_DATA_SIZE + DEPTH_OFFSET]
+            pointAX = arr[otherIdx * CONTACT_DATA_SIZE + POINT_A_X_OFFSET],
+            pointAY = arr[otherIdx * CONTACT_DATA_SIZE + POINT_A_Y_OFFSET],
+            pointAZ = arr[otherIdx * CONTACT_DATA_SIZE + POINT_A_Z_OFFSET],
+
+            normX = arr[otherIdx * CONTACT_DATA_SIZE + NORM_X_OFFSET],
+            normY = arr[otherIdx * CONTACT_DATA_SIZE + NORM_Y_OFFSET],
+            normZ = arr[otherIdx * CONTACT_DATA_SIZE + NORM_Z_OFFSET],
+
+            t1X = arr[otherIdx * CONTACT_DATA_SIZE + T1_X_OFFSET],
+            t1Y = arr[otherIdx * CONTACT_DATA_SIZE + T1_Y_OFFSET],
+            t1Z = arr[otherIdx * CONTACT_DATA_SIZE + T1_Z_OFFSET],
+
+            t2X = arr[otherIdx * CONTACT_DATA_SIZE + T2_X_OFFSET],
+            t2Y = arr[otherIdx * CONTACT_DATA_SIZE + T2_Y_OFFSET],
+            t2Z = arr[otherIdx * CONTACT_DATA_SIZE + T2_Z_OFFSET],
+
+            depth = arr[otherIdx * CONTACT_DATA_SIZE + DEPTH_OFFSET],
+
+            normalLambda = arr[otherIdx * CONTACT_DATA_SIZE + NORMAL_LAMBDA_OFFSET],
+            t1Lambda = arr[otherIdx * CONTACT_DATA_SIZE + T1_LAMBDA_OFFSET],
+            t2Lambda = arr[otherIdx * CONTACT_DATA_SIZE + T2_LAMBDA_OFFSET],
         )
     }
 
@@ -91,6 +101,8 @@ class A2SContactDataBuffer(private val numContacts: Int) {
         t2Z: Float,
 
         depth: Float,
+
+        normalLambda: Float, t1Lambda: Float, t2Lambda: Float,
     ) {
         require(cursor < numContacts)
 
@@ -114,11 +126,24 @@ class A2SContactDataBuffer(private val numContacts: Int) {
 
         arr[contactArrIdx + DEPTH_OFFSET] = depth
 
-        arr[contactArrIdx + NORMAL_LAMBDA_OFFSET] = 0f
-        arr[contactArrIdx + T1_LAMBDA_OFFSET] = 0f
-        arr[contactArrIdx + T2_LAMBDA_OFFSET] = 0f
+        arr[contactArrIdx + NORMAL_LAMBDA_OFFSET] = normalLambda
+        arr[contactArrIdx + T1_LAMBDA_OFFSET] = t1Lambda
+        arr[contactArrIdx + T2_LAMBDA_OFFSET] = t2Lambda
 
+        
         cursor++
+    }
+
+    fun setNormalLambda(contactIdx: Int, value: Float) {
+        arr[contactIdx * CONTACT_DATA_SIZE + NORMAL_LAMBDA_OFFSET] = value
+    }
+
+    fun setT1Lambda(contactIdx: Int, value: Float) {
+        arr[contactIdx * CONTACT_DATA_SIZE + T1_LAMBDA_OFFSET] = value
+    }
+
+    fun setT2Lambda(contactIdx: Int, value: Float) {
+        arr[contactIdx * CONTACT_DATA_SIZE + T2_LAMBDA_OFFSET] = value
     }
 
     fun pointAComponent(contactIdx: Int, component: Int): Float {

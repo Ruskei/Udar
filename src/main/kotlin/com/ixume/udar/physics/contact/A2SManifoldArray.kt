@@ -67,6 +67,10 @@ class A2SManifoldArray(maxContactNum: Int) : A2SManifoldCollection {
 
         depth: Float,
         math: LocalMathUtil,
+
+        normalLambda: Float,
+        t1Lambda: Float,
+        t2Lambda: Float,
     ) {
         val idx = cursor * manifoldDataSize
         cursor++
@@ -116,9 +120,9 @@ class A2SManifoldArray(maxContactNum: Int) : A2SManifoldCollection {
 
         arr[contactArrIdx + DEPTH_OFFSET] = depth
 
-        arr[contactArrIdx + NORMAL_LAMBDA_OFFSET] = 0f
-        arr[contactArrIdx + T1_LAMBDA_OFFSET] = 0f
-        arr[contactArrIdx + T2_LAMBDA_OFFSET] = 0f
+        arr[contactArrIdx + NORMAL_LAMBDA_OFFSET] = normalLambda
+        arr[contactArrIdx + T1_LAMBDA_OFFSET] = t1Lambda
+        arr[contactArrIdx + T2_LAMBDA_OFFSET] = t2Lambda
     }
 
     fun clear() {
@@ -130,7 +134,7 @@ class A2SManifoldArray(maxContactNum: Int) : A2SManifoldCollection {
     }
 
     fun numContacts(manifoldIdx: Int): Int {
-        return arr[manifoldIdx * manifoldDataSize + CONTACT_NUM_OFFSET].toBits()
+        return arr[manifoldIdx * manifoldDataSize + CONTACT_NUM_OFFSET].toRawBits()
     }
 
     fun contactID(manifoldIdx: Int): Long {
@@ -147,7 +151,7 @@ class A2SManifoldArray(maxContactNum: Int) : A2SManifoldCollection {
     }
 
     fun bodyIdx(manifoldIdx: Int): Int {
-        return arr[manifoldIdx * manifoldIdx + BODY_A_IDX_OFFSET].toBits()
+        return arr[manifoldIdx * manifoldIdx + BODY_A_IDX_OFFSET].toRawBits()
     }
 
     fun setBodyIdx(manifoldIdx: Int, value: Int) {

@@ -3,7 +3,6 @@ package com.ixume.udar.physics.contact
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import org.joml.Matrix3f
-import org.joml.Vector3f
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
@@ -133,20 +132,15 @@ class A2AManifoldBuffer(maxContactNum: Int) : A2AManifoldCollection {
         second: ActiveBody,
         contactID: Long,
 
-        pointAX: Float,
-        pointAY: Float,
-        pointAZ: Float,
+        pointAX: Float, pointAY: Float, pointAZ: Float,
+        pointBX: Float, pointBY: Float, pointBZ: Float,
 
-        pointBX: Float,
-        pointBY: Float,
-        pointBZ: Float,
-
-        normX: Float,
-        normY: Float,
-        normZ: Float,
+        normX: Float, normY: Float, normZ: Float,
 
         depth: Float,
         math: LocalMathUtil,
+        
+        normalLambda: Float, t1Lambda: Float, t2Lambda: Float,
     ) {
         numContacts.incrementAndGet()
         val idx = cursor.andIncrement * manifoldDataSize
@@ -215,9 +209,9 @@ class A2AManifoldBuffer(maxContactNum: Int) : A2AManifoldCollection {
 
                 arr[contactArrIdx + DEPTH_OFFSET] = depth
 
-                arr[contactArrIdx + NORMAL_LAMBDA_OFFSET] = 0f
-                arr[contactArrIdx + T1_LAMBDA_OFFSET] = 0f
-                arr[contactArrIdx + T2_LAMBDA_OFFSET] = 0f
+                arr[contactArrIdx + NORMAL_LAMBDA_OFFSET] = normalLambda
+                arr[contactArrIdx + T1_LAMBDA_OFFSET] = t1Lambda
+                arr[contactArrIdx + T2_LAMBDA_OFFSET] = t2Lambda
 
                 return
             }
@@ -289,9 +283,9 @@ class A2AManifoldBuffer(maxContactNum: Int) : A2AManifoldCollection {
 
             arr[contactArrIdx + DEPTH_OFFSET] = depth
 
-            arr[contactArrIdx + NORMAL_LAMBDA_OFFSET] = 0f
-            arr[contactArrIdx + T1_LAMBDA_OFFSET] = 0f
-            arr[contactArrIdx + T2_LAMBDA_OFFSET] = 0f
+            arr[contactArrIdx + NORMAL_LAMBDA_OFFSET] = normalLambda
+            arr[contactArrIdx + T1_LAMBDA_OFFSET] = t1Lambda
+            arr[contactArrIdx + T2_LAMBDA_OFFSET] = t2Lambda
         }
     }
 
@@ -305,7 +299,7 @@ class A2AManifoldBuffer(maxContactNum: Int) : A2AManifoldCollection {
     }
 
     fun numContacts(manifoldIdx: Int): Int {
-        return arr[manifoldIdx * manifoldDataSize + CONTACT_NUM_OFFSET].toBits()
+        return arr[manifoldIdx * manifoldDataSize + CONTACT_NUM_OFFSET].toRawBits()
     }
 
     fun contactID(manifoldIdx: Int): Long {
@@ -322,7 +316,7 @@ class A2AManifoldBuffer(maxContactNum: Int) : A2AManifoldCollection {
     }
 
     fun bodyAIdx(manifoldIdx: Int): Int {
-        return arr[manifoldIdx * manifoldDataSize + BODY_A_IDX_OFFSET].toBits()
+        return arr[manifoldIdx * manifoldDataSize + BODY_A_IDX_OFFSET].toRawBits()
     }
 
     fun setBodyAIdx(manifoldIdx: Int, value: Int) {
@@ -361,7 +355,7 @@ class A2AManifoldBuffer(maxContactNum: Int) : A2AManifoldCollection {
     }
 
     fun bodyBIdx(manifoldIdx: Int): Int {
-        return arr[manifoldIdx * manifoldDataSize + BODY_B_IDX_OFFSET].toBits()
+        return arr[manifoldIdx * manifoldDataSize + BODY_B_IDX_OFFSET].toRawBits()
     }
 
     fun setBodyBIdx(manifoldIdx: Int, value: Int) {

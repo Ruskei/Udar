@@ -1,5 +1,6 @@
 package com.ixume.udar.collisiondetection.local
 
+import com.google.common.math.LongMath.pow
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.Edge
@@ -249,6 +250,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
 
             var myMin = Double.MAX_VALUE
             var myEdge: Edge? = null
+            var myEdgeIdx = -1
 
             var m = 0
             while (m < myEdges.size) {
@@ -260,6 +262,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                 if (abs(a - b) < EDGE_EPSILON && min(a, b) < myMin) {
                     myMin = min(a, b)
                     myEdge = edge
+                    myEdgeIdx = m
                 }
 
                 m++
@@ -269,6 +272,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
 
             var otherMax = -Double.MAX_VALUE
             var otherEdge: Edge? = null
+            var otherEdgeIdx = -1
 
             var n = 0
             while (n < otherEdges.size) {
@@ -280,6 +284,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                 if (abs(a - b) < EDGE_EPSILON && max(a, b) > otherMax) {
                     otherMax = max(a, b)
                     otherEdge = edge
+                    otherEdgeIdx = n
                 }
 
                 n++
@@ -295,6 +300,8 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                 outA = _cA,
                 outB = _cB,
             )
+
+            val manifoldID = constructA2AManifoldID(activeBody, other, myEdgeIdx, otherEdgeIdx)
 
             out.addSingleManifold(
                 first = activeBody,
@@ -313,8 +320,12 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                 normZ = _norm.z.toFloat(),
 
                 depth = minCrossOverlap.toFloat(),
-                contactID = 0L,
+                contactID = manifoldID,
                 math = math,
+                
+                normalLambda = 0f,
+                t1Lambda = 0f,
+                t2Lambda = 0f,
             )
 
             return true
@@ -346,6 +357,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
 
             var refMax = -Double.MAX_VALUE
             var refFace: Face? = null
+            var refIdx = -1
 
             var q = 0
             while (q < myFaces.size) {
@@ -355,6 +367,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                 if (p > refMax) {
                     refMax = p
                     refFace = face
+                    refIdx = q
                 }
 
                 q++
@@ -362,6 +375,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
 
             var incidentMin = Double.MAX_VALUE
             var incidentFace: Face? = null
+            var incidentIdx = -1
 
             var l = 0
             while (l < otherFaces.size) {
@@ -371,6 +385,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                 if (p < incidentMin) {
                     incidentMin = p
                     incidentFace = face
+                    incidentIdx = l
                 }
 
                 l++
@@ -476,21 +491,37 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
 
                         depth = -d.toFloat(),
                         math = math,
+                        
+                        normalLambda = 0f,
+                        t1Lambda = 0f,
+                        t2Lambda = 0f,
                     )
                 }
 
                 p++
             }
+            
+            val manifoldID = constructA2AManifoldID(activeBody, other, refIdx, incidentIdx)
 
             out.addManifold(
                 first = activeBody,
                 second = other,
-                contactID = 0L,
+                contactID = manifoldID,
                 buf = _faceManifold,
             )
 
             return collided
         }
+    }
+
+    private fun constructA2AManifoldID(
+        first: ActiveBody,
+        second: ActiveBody,
+        firstIdx: Int,
+        secondIdx: Int,
+    ): Long { // this "hashing" is probably garbage i'm ngl
+        return pow(first.uuid.leastSignificantBits xor first.uuid.leastSignificantBits, firstIdx) xor 
+                pow(second.uuid.leastSignificantBits xor second.uuid.leastSignificantBits, secondIdx)
     }
 
     private val _lineDir = Vector3d()

@@ -111,6 +111,10 @@ class A2SManifoldBuffer(maxContactNum: Int) : A2SManifoldCollection {
 
         depth: Float,
         math: LocalMathUtil,
+
+        normalLambda: Float,
+        t1Lambda: Float,
+        t2Lambda: Float,
     ) {
         numContacts.incrementAndGet()
         val idx = cursor.andIncrement * manifoldDataSize
@@ -160,9 +164,9 @@ class A2SManifoldBuffer(maxContactNum: Int) : A2SManifoldCollection {
 
                 arr[contactArrIdx + DEPTH_OFFSET] = depth
 
-                arr[contactArrIdx + NORMAL_LAMBDA_OFFSET] = 0f
-                arr[contactArrIdx + T1_LAMBDA_OFFSET] = 0f
-                arr[contactArrIdx + T2_LAMBDA_OFFSET] = 0f
+                arr[contactArrIdx + NORMAL_LAMBDA_OFFSET] = normalLambda
+                arr[contactArrIdx + T1_LAMBDA_OFFSET] = t1Lambda
+                arr[contactArrIdx + T2_LAMBDA_OFFSET] = t2Lambda
                 
                 return
             }
@@ -231,24 +235,18 @@ class A2SManifoldBuffer(maxContactNum: Int) : A2SManifoldCollection {
     }
     
     fun numContacts(manifoldIdx: Int): Int {
-        return arr[manifoldIdx * manifoldDataSize + CONTACT_NUM_OFFSET].toBits()
+        return arr[manifoldIdx * manifoldDataSize + CONTACT_NUM_OFFSET].toRawBits()
     }
 
-    fun contactID(manifoldIdx: Int): Long {
+    fun manifoldID(manifoldIdx: Int): Long {
         val baseIdx = manifoldIdx * manifoldDataSize
         val low = arr[baseIdx + MANIFOLD_ID_OFFSET].toRawBits().toLong()
         val high = arr[baseIdx + MANIFOLD_ID_OFFSET + 1].toRawBits().toLong()
         return (high shl 32) or (low and 0xFFFFFFFFL)
     }
 
-    fun setContactID(manifoldIdx: Int, contactID: Long) {
-        val baseIdx = manifoldIdx * manifoldDataSize
-        arr[baseIdx + MANIFOLD_ID_OFFSET] = Float.fromBits(contactID.toInt())
-        arr[baseIdx + MANIFOLD_ID_OFFSET + 1] = Float.fromBits((contactID ushr 32).toInt())
-    }
-    
     fun bodyIdx(manifoldIdx: Int): Int {
-        return arr[manifoldIdx * manifoldDataSize + BODY_A_IDX_OFFSET].toBits()
+        return arr[manifoldIdx * manifoldDataSize + BODY_A_IDX_OFFSET].toRawBits()
     }
 
     fun setBodyIdx(manifoldIdx: Int, value: Int) {

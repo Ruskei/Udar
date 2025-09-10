@@ -1,7 +1,6 @@
 package com.ixume.udar.physics.contact
 
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
-import org.joml.Vector3f
 
 class A2AContactDataBuffer(private val numContacts: Int) {
     val arr = FloatArray(CONTACT_DATA_SIZE * numContacts)
@@ -23,6 +22,8 @@ class A2AContactDataBuffer(private val numContacts: Int) {
 
         depth: Float,
         math: LocalMathUtil,
+
+        normalLambda: Float, t1Lambda: Float, t2Lambda: Float,
     ) {
         val norm = math._n.set(normX, normY, normZ)
         val t1 = math._t1v.set(1f).orthogonalizeUnit(norm)
@@ -50,6 +51,10 @@ class A2AContactDataBuffer(private val numContacts: Int) {
             t2Z = t2.z,
 
             depth = depth,
+            
+            normalLambda = normalLambda,
+            t1Lambda = t1Lambda,
+            t2Lambda = t2Lambda,
         )
     }
 
@@ -58,12 +63,12 @@ class A2AContactDataBuffer(private val numContacts: Int) {
         pointBX: Float, pointBY: Float, pointBZ: Float,
 
         normX: Float, normY: Float, normZ: Float,
-
         t1X: Float, t1Y: Float, t1Z: Float,
-
         t2X: Float, t2Y: Float, t2Z: Float,
 
         depth: Float,
+        
+        normalLambda: Float, t1Lambda: Float, t2Lambda: Float,
     ) {
         require(cursor < numContacts)
 
@@ -91,9 +96,9 @@ class A2AContactDataBuffer(private val numContacts: Int) {
 
         arr[contactArrIdx + DEPTH_OFFSET] = depth
 
-        arr[contactArrIdx + NORMAL_LAMBDA_OFFSET] = 0f
-        arr[contactArrIdx + T1_LAMBDA_OFFSET] = 0f
-        arr[contactArrIdx + T2_LAMBDA_OFFSET] = 0f
+        arr[contactArrIdx + NORMAL_LAMBDA_OFFSET] = normalLambda
+        arr[contactArrIdx + T1_LAMBDA_OFFSET] = t1Lambda
+        arr[contactArrIdx + T2_LAMBDA_OFFSET] = t2Lambda
 
         cursor++
     }

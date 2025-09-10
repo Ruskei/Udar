@@ -11,9 +11,14 @@ import com.ixume.udar.physics.EntityUpdater
 import com.ixume.udar.physics.StatusUpdater
 import com.ixume.udar.physics.constraint.ConstraintSolverManager
 import com.ixume.udar.physics.contact.A2AManifoldBuffer
+import com.ixume.udar.physics.contact.A2APrevManifoldData
 import com.ixume.udar.physics.contact.A2SManifoldBuffer
+import com.ixume.udar.physics.contact.A2SPrevContactDataBuffer
+import com.ixume.udar.physics.contact.A2SPrevManifoldData
 import com.ixume.udar.testing.PhysicsWorldTestDebugData
 import com.ixume.udar.testing.debugConnect
+import it.unimi.dsi.fastutil.longs.Long2FloatAVLTreeMap
+import it.unimi.dsi.fastutil.longs.Long2IntAVLTreeMap
 import kotlinx.coroutines.*
 import org.bukkit.*
 import org.joml.Vector3d
@@ -37,8 +42,21 @@ class PhysicsWorld(
     }
 
     var numPossibleContacts = 0
+    
     val manifoldBuffer = A2AManifoldBuffer(8)
+
+    val prevContactMap = Long2IntAVLTreeMap()
+    val prevContactData = A2APrevManifoldData()
+    
     val envManifoldBuffer = A2SManifoldBuffer(8)
+
+    val prevEnvContactMap = Long2IntAVLTreeMap()
+    val prevEnvContactData = A2SPrevManifoldData()
+    
+    init {
+        prevEnvContactMap.defaultReturnValue(-1)
+        prevContactMap.defaultReturnValue(-1)
+    }
 
     val meshes: MutableList<Mesh> = mutableListOf()
 

@@ -1,5 +1,6 @@
 package com.ixume.udar.collisiondetection.local
 
+import com.google.common.math.LongMath.pow
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentContactGenerator2
@@ -8,8 +9,8 @@ import com.ixume.udar.collisiondetection.mesh.mesh2.EdgeMountAllowedNormals
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFace
 import com.ixume.udar.collisiondetection.mesh.quadtree.FlattenedEdgeQuadtree
-import com.ixume.udar.physics.contact.A2SManifoldCollection
 import com.ixume.udar.physics.contact.A2SContactDataBuffer
+import com.ixume.udar.physics.contact.A2SManifoldCollection
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
 import it.unimi.dsi.fastutil.ints.IntArrayList
 import org.joml.Vector3d
@@ -37,7 +38,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 
         val mfs = contactGen.meshFaces.get()
         val mes = contactGen.meshEdges.get()
-
+        
         var j = 0
         while (j < mfs.size) {
             val mf = mfs[j]
@@ -52,7 +53,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         var i = 0
         while (i < mes.size) {
             val me = mes[i]
-            
+
             collideEdges(
                 activeBody = activeBody,
                 tree = me,
@@ -78,7 +79,6 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         other: Body,
         out: A2SManifoldCollection,
     ) {
-//        println("COLLIDING $axis FACES!")
         val bb = activeBody.tightBB
         //faces are guaranteed to be inside BB
         when (axis) {
@@ -105,21 +105,30 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         }
 
         val vertices = activeBody.vertices
-        
-        
+
         var count = 0
 
         var i = 0
         while (i < faces.size) {
             _contacts2.clear()
             _validContacts2.clear()
+
             val face = faces[i]
+            
+            val manifoldID = constructFaceID(
+                body = activeBody,
+                faceAxis = axis,
+                faceLevel = face.level
+            )
+            
+            val rawManifoldIdx = activeBody.physicsWorld.prevEnvContactMap.get(manifoldID)
+
             val any = math.collidePlane(
-                first = activeBody,
                 axis = axis,
                 level = face.level,
                 vertices = vertices,
                 out = _contacts2,
+                rawManifoldIdx = rawManifoldIdx,
             )
 
             if (!any) {
@@ -210,24 +219,29 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                 }
 
                 _contacts2.loadInto(count, _validContacts2)
-//                _contacts.transferToBuffer(
-//                    contactIdx = j,
-//                    buffer = out,
-//                    activeBody = activeBody,
-//                )
-                
+
                 count++
                 j++
             }
 
             out.addManifold(
                 activeBody = activeBody,
-                contactID = 0L,
+                contactID = manifoldID,
                 buf = _validContacts2,
             )
 
             i++
         }
+    }
+
+    private fun constructFaceID(body: ActiveBody, faceAxis: LocalMesher.AxisD, faceLevel: Double): Long {
+        return pow(
+            body.uuid.leastSignificantBits xor faceLevel.toRawBits(),
+            faceAxis.ordinal + 1
+        ) xor pow(
+            body.uuid.leastSignificantBits xor faceLevel.toRawBits(),
+            faceAxis.ordinal + 1
+        )
     }
 
     private val _bodyAxiss = Array(3) { Vector3d() }

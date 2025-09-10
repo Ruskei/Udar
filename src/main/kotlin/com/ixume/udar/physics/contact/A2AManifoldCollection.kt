@@ -22,5 +22,7 @@ interface A2AManifoldCollection {
 
         depth: Float,
         math: LocalMathUtil,
+
+        normalLambda: Float, t1Lambda: Float, t2Lambda: Float,
     )
 }
