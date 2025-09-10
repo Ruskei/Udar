@@ -1,6 +1,7 @@
 package com.ixume.udar.physics.contact
 
 import com.ixume.udar.body.active.ActiveBody
+import com.ixume.udar.collisiondetection.local.LocalMathUtil
 
 interface A2SManifoldCollection {
     fun addManifold(
@@ -22,5 +23,6 @@ interface A2SManifoldCollection {
         normZ: Float,
 
         depth: Float,
+        math: LocalMathUtil,
     )
 }

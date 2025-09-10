@@ -1,7 +1,7 @@
 package com.ixume.udar.physics.contact
 
 import com.ixume.udar.body.active.ActiveBody
-import org.joml.Vector3f
+import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import kotlin.math.max
 
 class A2AManifoldArray(maxContactNum: Int) : A2AManifoldCollection {
@@ -86,14 +86,15 @@ class A2AManifoldArray(maxContactNum: Int) : A2AManifoldCollection {
         normZ: Float,
 
         depth: Float,
+        math: LocalMathUtil,
     ) {
         val idx = cursor * manifoldDataSize
         cursor++
         grow(idx + manifoldDataSize)
 
-        val norm = Vector3f(normX, normY, normZ)
-        val t1 = Vector3f(1f).orthogonalizeUnit(norm)
-        val t2 = Vector3f(t1).cross(norm).normalize()
+        val norm = math._n.set(normX, normY, normZ)
+        val t1 = math._t1v.set(1f).orthogonalizeUnit(norm)
+        val t2 = math._t2v.set(t1).cross(norm).normalize()
 
         arr[idx + MANIFOLD_ID_OFFSET] = Float.fromBits(contactID.toInt())
         arr[idx + MANIFOLD_ID_OFFSET + 1] = Float.fromBits((contactID ushr 32).toInt())

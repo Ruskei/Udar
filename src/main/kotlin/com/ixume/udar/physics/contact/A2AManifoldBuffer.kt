@@ -1,6 +1,7 @@
 package com.ixume.udar.physics.contact
 
 import com.ixume.udar.body.active.ActiveBody
+import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import org.joml.Matrix3f
 import org.joml.Vector3f
 import java.util.concurrent.atomic.AtomicInteger
@@ -145,14 +146,15 @@ class A2AManifoldBuffer(maxContactNum: Int) : A2AManifoldCollection {
         normZ: Float,
 
         depth: Float,
+        math: LocalMathUtil,
     ) {
         numContacts.incrementAndGet()
         val idx = cursor.andIncrement * manifoldDataSize
         lock.read {
             if (idx + manifoldDataSize < arr.size) {
-                val norm = Vector3f(normX, normY, normZ)
-                val t1 = Vector3f(1f).orthogonalizeUnit(norm)
-                val t2 = Vector3f(t1).cross(norm).normalize()
+                val norm = math._n.set(normX, normY, normZ)
+                val t1 = math._t1v.set(1f).orthogonalizeUnit(norm)
+                val t2 = math._t2v.set(t1).cross(norm).normalize()
 
                 arr[idx + MANIFOLD_ID_OFFSET] = Float.fromBits(contactID.toInt())
                 arr[idx + MANIFOLD_ID_OFFSET + 1] = Float.fromBits((contactID ushr 32).toInt())
@@ -224,9 +226,9 @@ class A2AManifoldBuffer(maxContactNum: Int) : A2AManifoldCollection {
         lock.write {
             grow(idx + manifoldDataSize)
 
-            val norm = Vector3f(normX, normY, normZ)
-            val t1 = Vector3f(1f).orthogonalizeUnit(norm)
-            val t2 = Vector3f(t1).cross(norm).normalize()
+            val norm = math._n.set(normX, normY, normZ)
+            val t1 = math._t1v.set(1f).orthogonalizeUnit(norm)
+            val t2 = math._t2v.set(t1).cross(norm).normalize()
 
             arr[idx + MANIFOLD_ID_OFFSET] = Float.fromBits(contactID.toInt())
             arr[idx + MANIFOLD_ID_OFFSET + 1] = Float.fromBits((contactID ushr 32).toInt())

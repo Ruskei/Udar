@@ -5,9 +5,10 @@ import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.Edge
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.dynamicaabb.array.IntQueue
-import com.ixume.udar.physics.contact.A2SManifoldCollection
 import com.ixume.udar.physics.contact.A2SContactDataBuffer
+import com.ixume.udar.physics.contact.A2SManifoldCollection
 import org.joml.Vector3d
+import org.joml.Vector3f
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -23,7 +24,7 @@ class LocalMathUtil(
     val envEdgeOverlapQueue = IntQueue()
 
     private val _mm = DoubleArray(2)
-    
+
     private val _outCA = Vector3d()
     private val _outCB = Vector3d()
 
@@ -71,6 +72,7 @@ class LocalMathUtil(
                         normY = axis.vec.y.toFloat(),
                         normZ = axis.vec.z.toFloat(),
                         depth = (level - p).toFloat(),
+                        math = this,
                     )
                 }
 
@@ -94,6 +96,7 @@ class LocalMathUtil(
                         normY = negatedAxis.y.toFloat(),
                         normZ = negatedAxis.z.toFloat(),
                         depth = (p - level).toFloat(),
+                        math = this,
                     )
                 }
 
@@ -323,7 +326,7 @@ class LocalMathUtil(
             }
 
             check(closestEdgeDistance != Double.MAX_VALUE)
-            
+
             out.addSingleManifold(
                 activeBody = activeBody,
 
@@ -336,7 +339,8 @@ class LocalMathUtil(
                 normZ = norm.z.toFloat(),
 
                 depth = minCrossOverlap.toFloat(),
-                contactID = 0L
+                contactID = 0L,
+                math = this,
             )
 
             return
@@ -385,6 +389,7 @@ class LocalMathUtil(
 
                         depth = minBodyOverlap.toFloat(),
                         contactID = 0L,
+                        math = this,
                     )
 
                     return
@@ -404,6 +409,7 @@ class LocalMathUtil(
 
                         depth = minBodyOverlap.toFloat(),
                         contactID = 0L,
+                        math = this,
                     )
                 }
 
@@ -426,6 +432,7 @@ class LocalMathUtil(
 
                         depth = minBodyOverlap.toFloat(),
                         contactID = 0L,
+                        math = this,
                     )
 
                     return
@@ -445,6 +452,7 @@ class LocalMathUtil(
 
                         depth = minBodyOverlap.toFloat(),
                         contactID = 0L,
+                        math = this,
                     )
 
                     return
@@ -486,7 +494,7 @@ class LocalMathUtil(
     private val _onLLB = Vector3d()
     private val _an = Vector3d()
     private val _bn = Vector3d()
-    
+
     private val _outP0 = Vector3d()
     private val _outP1 = Vector3d()
     private val _outP2 = Vector3d()
@@ -509,12 +517,18 @@ class LocalMathUtil(
         _an.set(a1).sub(a0).normalize()
         _bn.set(b1).sub(b0).normalize()
 
-        val axRange = (min(a0.x, a1.x) - epsilon)..(max(a0.x, a1.x) + epsilon)
-        val ayRange = (min(a0.y, a1.y) - epsilon)..(max(a0.y, a1.y) + epsilon)
-        val azRange = (min(a0.z, a1.z) - epsilon)..(max(a0.z, a1.z) + epsilon)
-        val bxRange = (min(b0.x, b1.x) - epsilon)..(max(b0.x, b1.x) + epsilon)
-        val byRange = (min(b0.y, b1.y) - epsilon)..(max(b0.y, b1.y) + epsilon)
-        val bzRange = (min(b0.z, b1.z) - epsilon)..(max(b0.z, b1.z) + epsilon)
+        val axMin = min(a0.x, a1.x) - epsilon
+        val axMax = max(a0.x, a1.x) + epsilon
+        val ayMin = min(a0.y, a1.y) - epsilon
+        val ayMax = max(a0.y, a1.y) + epsilon
+        val azMin = min(a0.z, a1.z) - epsilon
+        val azMax = max(a0.z, a1.z) + epsilon
+        val bxMin = min(b0.x, b1.x) - epsilon
+        val bxMax = max(b0.x, b1.x) + epsilon
+        val byMin = min(b0.y, b1.y) - epsilon
+        val byMax = max(b0.y, b1.y) + epsilon
+        val bzMin = min(b0.z, b1.z) - epsilon
+        val bzMax = max(b0.z, b1.z) + epsilon
 
         //closest points is either on the lines, on a vertex and a line, or between 2 vertices
         //if line-line is valid, then that's the answer
@@ -523,52 +537,52 @@ class LocalMathUtil(
         //otherwise check vertex-vertex
         //check line-line
         val llD = closestPointsBetweenLines(a0, _an, b0, _bn, _onLLA, _onLLB)
-        
+
         if (llD == Double.MAX_VALUE) {
             val p1 = outA.set(a0).mul(0.5).add(_an.set(a1).mul(0.5))
             val p2 = outB.set(b0).mul(0.5).add(_bn.set(b1).mul(0.5))
             return p1.distance(p2)
         }
 
-        if (_onLLA.inside(axRange, ayRange, azRange) && _onLLB.inside(bxRange, byRange, bzRange)) {
+        if (_onLLA.inside(axMin, axMax, ayMin, ayMax, azMin, azMax) && _onLLB.inside(bxMin, bxMax, byMin, byMax, bzMin, bzMax)) {
             outA.set(_onLLA)
             outB.set(_onLLB)
             return llD
         }
-        
+
         var closestDistance = Double.MAX_VALUE
 
         //test vertex-line:
         //a0-b, a1-b, b0-a, b1-a
         //return closest valid, because if it's valid then it must be closer than it is to a vertex, otherwise try vertex-vertex
         val d0 = closestPointOnLine(b0, _bn, a0, _outP0)
-        if (d0 < closestDistance && _outP0.inside(bxRange, byRange, bzRange)) {
+        if (d0 < closestDistance && _outP0.inside(bxMin, bxMax, byMin, byMax, bzMin, bzMax)) {
             closestDistance = d0
             outA.set(_outP0)
             outB.set(a0)
         }
 
         val d1 = closestPointOnLine(b0, _bn, a1, _outP1)
-        if (d1 < closestDistance && _outP1.inside(bxRange, byRange, bzRange)) {
+        if (d1 < closestDistance && _outP1.inside(bxMin, bxMax, byMin, byMax, bzMin, bzMax)) {
             closestDistance = d1
             outA.set(_outP1)
             outB.set(a1)
         }
 
         val d2 = closestPointOnLine(a0, _an, b0, _outP2)
-        if (d2 < closestDistance && _outP2.inside(axRange, ayRange, azRange)) {
+        if (d2 < closestDistance && _outP2.inside(axMin, axMax, ayMin, ayMax, azMin, azMax)) {
             closestDistance = d2
             outA.set(_outP2)
             outB.set(b0)
         }
 
         val d3 = closestPointOnLine(a0, _an, b1, _outP3)
-        if (d3 < closestDistance && _outP3.inside(axRange, ayRange, azRange)) {
+        if (d3 < closestDistance && _outP3.inside(axMin, axMax, ayMin, ayMax, azMin, azMax)) {
             closestDistance = d3
             outA.set(_outP3)
             outB.set(b1)
         }
-        
+
         val d00 = a0.distance(b0)
         if (d00 < closestDistance) {
             closestDistance = d00
@@ -595,9 +609,9 @@ class LocalMathUtil(
             outA.set(a1)
             outB.set(b1)
         }
-        
+
         check(closestDistance != Double.MAX_VALUE)
-        
+
         return closestDistance
     }
 
@@ -663,10 +677,17 @@ class LocalMathUtil(
     }
 
     fun Vector3d.inside(
-        xRange: ClosedRange<Double>,
-        yRange: ClosedRange<Double>,
-        zRange: ClosedRange<Double>,
+        xMin: Double,
+        xMax: Double,
+        yMin: Double,
+        yMax: Double,
+        zMin: Double,
+        zMax: Double,
     ): Boolean {
-        return x in xRange && y in yRange && z in zRange
+        return x >= xMin && x <= xMax && y >= yMin && y <= yMax && z >= zMin && z <= zMax
     }
+
+    val _n = Vector3f()
+    val _t1v = Vector3f()
+    val _t2v = Vector3f()
 }

@@ -313,7 +313,8 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                 normZ = _norm.z.toFloat(),
 
                 depth = minCrossOverlap.toFloat(),
-                contactID = 0L
+                contactID = 0L,
+                math = math,
             )
 
             return true
@@ -474,6 +475,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                         normZ = _norm.z.toFloat(),
 
                         depth = -d.toFloat(),
+                        math = math,
                     )
                 }
 

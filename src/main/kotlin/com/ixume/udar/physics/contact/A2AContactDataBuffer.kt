@@ -1,5 +1,6 @@
 package com.ixume.udar.physics.contact
 
+import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import org.joml.Vector3f
 
 class A2AContactDataBuffer(private val numContacts: Int) {
@@ -21,10 +22,11 @@ class A2AContactDataBuffer(private val numContacts: Int) {
         normX: Float, normY: Float, normZ: Float,
 
         depth: Float,
+        math: LocalMathUtil,
     ) {
-        val norm = Vector3f(normX, normY, normZ)
-        val t1 = Vector3f(1f).orthogonalizeUnit(norm)
-        val t2 = Vector3f(t1).cross(norm).normalize()
+        val norm = math._n.set(normX, normY, normZ)
+        val t1 = math._t1v.set(1f).orthogonalizeUnit(norm)
+        val t2 = math._t2v.set(t1).cross(norm).normalize()
 
         _loadInto(
             pointAX = pointAX,
