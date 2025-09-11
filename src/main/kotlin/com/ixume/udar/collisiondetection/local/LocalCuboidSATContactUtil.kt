@@ -301,7 +301,16 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                 outB = _cB,
             )
 
-            val manifoldID = constructA2AManifoldID(activeBody, other, myEdgeIdx, otherEdgeIdx)
+            val manifoldID = constructA2AEdgeManifoldID(activeBody, other, myEdgeIdx, otherEdgeIdx)
+            val rawManifoldIdx = activeBody.physicsWorld.prevContactMap.get(manifoldID)
+
+            check(activeBody.physicsWorld.prevContactData.numContacts(rawManifoldIdx, 1) == 1) {
+                """
+                actual: ${activeBody.physicsWorld.prevContactData.numContacts(rawManifoldIdx, 1)}
+                manifoldID: $manifoldID
+                rawManifoldIdx: $rawManifoldIdx
+            """.trimIndent()
+            }
 
             out.addSingleManifold(
                 first = activeBody,
@@ -322,10 +331,10 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                 depth = minCrossOverlap.toFloat(),
                 contactID = manifoldID,
                 math = math,
-                
-                normalLambda = 0f,
-                t1Lambda = 0f,
-                t2Lambda = 0f,
+
+                normalLambda = activeBody.physicsWorld.prevContactData.normalLambda(rawManifoldIdx, 0),
+                t1Lambda = activeBody.physicsWorld.prevContactData.t1Lambda(rawManifoldIdx, 0),
+                t2Lambda = activeBody.physicsWorld.prevContactData.t2Lambda(rawManifoldIdx, 0),
             )
 
             return true
@@ -463,6 +472,9 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
 
             var collided = false
 
+            val manifoldID = constructA2AManifoldID(activeBody, other, refIdx, incidentIdx)
+            val rawManifoldIdx = activeBody.physicsWorld.prevContactMap.get(manifoldID)
+
             var p = 0
             while (p < _output.size / 3) {
                 _tp.set(
@@ -474,6 +486,13 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                 val d = -_tpProjected.set(_tp).sub(refFace.point()).dot(refFace.normal)
 
                 if (d < 0.0) {
+                    val closestIdx = activeBody.physicsWorld.prevContactData.closestB(
+                        rawManifoldIdx = rawManifoldIdx,
+                        x = _tp.x.toFloat(),
+                        y = _tp.y.toFloat(),
+                        z = _tp.z.toFloat(),
+                    )
+
                     _tp2.set(_tp).sub(d * refFace.normal.x, d * refFace.normal.y, d * refFace.normal.z)
                     collided = true
                     _faceManifold.loadInto(
@@ -491,17 +510,15 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
 
                         depth = -d.toFloat(),
                         math = math,
-                        
-                        normalLambda = 0f,
-                        t1Lambda = 0f,
-                        t2Lambda = 0f,
+
+                        normalLambda = activeBody.physicsWorld.prevContactData.normalLambda(rawManifoldIdx, closestIdx),
+                        t1Lambda = activeBody.physicsWorld.prevContactData.t1Lambda(rawManifoldIdx, closestIdx),
+                        t2Lambda = activeBody.physicsWorld.prevContactData.t2Lambda(rawManifoldIdx, closestIdx),
                     )
                 }
 
                 p++
             }
-            
-            val manifoldID = constructA2AManifoldID(activeBody, other, refIdx, incidentIdx)
 
             out.addManifold(
                 first = activeBody,
@@ -514,13 +531,23 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
         }
     }
 
+    private fun constructA2AEdgeManifoldID(
+        first: ActiveBody,
+        second: ActiveBody,
+        firstIdx: Int,
+        secondIdx: Int,
+    ): Long { // this "hashing" is probably garbage i'm ngl
+        return (pow(first.uuid.leastSignificantBits xor first.uuid.leastSignificantBits, firstIdx) xor
+                pow(second.uuid.leastSignificantBits xor second.uuid.leastSignificantBits, secondIdx)).inv()
+    }
+
     private fun constructA2AManifoldID(
         first: ActiveBody,
         second: ActiveBody,
         firstIdx: Int,
         secondIdx: Int,
     ): Long { // this "hashing" is probably garbage i'm ngl
-        return pow(first.uuid.leastSignificantBits xor first.uuid.leastSignificantBits, firstIdx) xor 
+        return pow(first.uuid.leastSignificantBits xor first.uuid.leastSignificantBits, firstIdx) xor
                 pow(second.uuid.leastSignificantBits xor second.uuid.leastSignificantBits, secondIdx)
     }
 

@@ -4,6 +4,7 @@ import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.Udar
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.physics.contact.A2AManifoldBuffer
+import com.ixume.udar.physics.contact.A2APrevContactDataBuffer
 import com.ixume.udar.physics.contact.A2SManifoldBuffer
 import com.ixume.udar.physics.contact.A2SPrevContactDataBuffer
 import org.joml.Matrix3d
@@ -90,6 +91,8 @@ class LocalConstraintSolver(
         constructFlatEnvConstraintData(ContactComponent.T2)
 
         buildFlatBodyData()
+        
+        println("SETUP!")
     }
 
     fun updateIDMap() {
@@ -148,13 +151,18 @@ class LocalConstraintSolver(
             var m = 0
             while (m < num) {
                 when (component) {
-                    ContactComponent.NORMAL -> _norm.set(manifolds.normX(i, m), manifolds.normY(i, m), manifolds.normZ(i, m))
+                    ContactComponent.NORMAL -> _norm.set(
+                        manifolds.normX(i, m),
+                        manifolds.normY(i, m),
+                        manifolds.normZ(i, m)
+                    )
+
                     ContactComponent.T1 -> _norm.set(manifolds.t1X(i, m), manifolds.t1Y(i, m), manifolds.t1Z(i, m))
                     ContactComponent.T2 -> _norm.set(manifolds.t2X(i, m), manifolds.t2Y(i, m), manifolds.t2Z(i, m))
                 }
 
                 n.putVector3f(_norm)
-                
+
                 n.putVector3f(
                     _c_j1
                         .set(manifolds.bodyAX(i), manifolds.bodyAY(i), manifolds.bodyAZ(i))
@@ -225,7 +233,7 @@ class LocalConstraintSolver(
 
                 n.put(Float.fromBits(manifolds.bodyAIdx(i))) // my id
                 n.put(Float.fromBits(manifolds.bodyBIdx(i))) // other id
-                
+
                 m++
             }
 
@@ -286,23 +294,13 @@ class LocalConstraintSolver(
                     )
                 }
 
-//                check(relevantData[count * A2S_N_CONTACT_DATA_FLOATS + A2S_N_NORMAL_OFFSET] == _norm.x)
-//                check(relevantData[count * A2S_N_CONTACT_DATA_FLOATS + A2S_N_NORMAL_OFFSET + 1] == _norm.y)
-//                check(relevantData[count * A2S_N_CONTACT_DATA_FLOATS + A2S_N_NORMAL_OFFSET + 2] == _norm.z)
-
                 n.putVector3f(_norm) // norm
 
-//                n.putVector3f(
                 val j1 = _c_j1
                     .set(envManifolds.bodyX(ns), envManifolds.bodyY(ns), envManifolds.bodyZ(ns))
                     .sub(envManifolds.pointAX(ns, m), envManifolds.pointAY(ns, m), envManifolds.pointAZ(ns, m))
                     .cross(_norm)
-//                ) //j1
                 n.putVector3f(j1)
-
-//                check(relevantData[count * A2S_N_CONTACT_DATA_FLOATS + A2S_N_J1_OFFSET] == j1.x)
-//                check(relevantData[count * A2S_N_CONTACT_DATA_FLOATS + A2S_N_J1_OFFSET + 1] == j1.y)
-//                check(relevantData[count * A2S_N_CONTACT_DATA_FLOATS + A2S_N_J1_OFFSET + 2] == j1.z)
 
                 if (component == ContactComponent.NORMAL) {
                     n.put(bias / timeStep * max(0f, abs(envManifolds.depth(ns, m)) - slop)) // bias
@@ -313,7 +311,6 @@ class LocalConstraintSolver(
                 val bodyAInverseMass = envManifolds.bodyIM(ns)
                 val bodyAInverseInertia = envManifolds.bodyII(ns, _c_tempMatrix3f1)
 
-//                n.put(
                 val den = _c_j0.set(
                     _norm.x * _norm.x,
                     _norm.y * _norm.y,
@@ -324,9 +321,6 @@ class LocalConstraintSolver(
                     bodyAInverseMass,
                 ) + _c_j1Temp.set(_c_j1)._mul(bodyAInverseInertia).dot(_c_j1)
                 n.put(den)
-
-//                check(relevantData[count * A2S_N_CONTACT_DATA_FLOATS + A2S_N_DEN_OFFSET] == den)
-//                ) // den
 
                 n.put(
                     when (component) {
@@ -375,21 +369,63 @@ class LocalConstraintSolver(
 
     private val _quatd = Quaterniond()
 
-    fun solveNormal() {
+    private var maxLambda = -Float.MAX_VALUE
+    
+    fun warmStart() {
         if (!any) return
 
-        var i = 0
         val n = manifolds.numContacts.get() * A2A_N_CONTACT_DATA_FLOATS
+        val e = envManifolds.numContacts.get() * A2S_N_CONTACT_DATA_FLOATS
 
+        var i = 0
         while (i < n) {
-            solveA2AContact(contactNormalData, i, ContactComponent.NORMAL)
+            warmA2AContact(contactNormalData, i, ContactComponent.NORMAL)
 
             i += A2A_N_CONTACT_DATA_FLOATS
         }
 
         var j = 0
+        while (j < e) {
+            warmA2SContact(envContactNormalData, j, ContactComponent.NORMAL)
+
+            j += A2S_N_CONTACT_DATA_FLOATS
+        }
+
+        var k = 0
+        while (k < n) {
+            warmA2AContact(contactT1Data, k, ContactComponent.T1)
+            warmA2AContact(contactT2Data, k, ContactComponent.T2)
+
+            k += A2A_N_CONTACT_DATA_FLOATS
+        }
+
+        var l = 0
+        while (l < e) {
+            warmA2SContact(envContactT1Data, l, ContactComponent.T1)
+            warmA2SContact(envContactT2Data, l, ContactComponent.T2)
+
+            l += A2S_N_CONTACT_DATA_FLOATS
+        }
+    }
+    
+    fun solveNormal() {
+        if (!any) return
+
+        maxLambda = -Float.MAX_VALUE
+        val n = manifolds.numContacts.get() * A2A_N_CONTACT_DATA_FLOATS
+
+        var i = 0
+        while (i < n) {
+            solveA2AContact(contactNormalData, i, ContactComponent.NORMAL)
+
+            i += A2A_N_CONTACT_DATA_FLOATS
+        }
+        
+        println("| mL: $maxLambda")
+
         val e = envManifolds.numContacts.get() * A2S_N_CONTACT_DATA_FLOATS
 
+        var j = 0
         while (j < e) {
             solveA2SContact(envContactNormalData, j, ContactComponent.NORMAL)
 
@@ -513,6 +549,7 @@ class LocalConstraintSolver(
             ) / den
 
         val l = data[contactIdx + A2A_N_LAMBDA_OFFSET]
+
         if (component == ContactComponent.NORMAL) {
             data[contactIdx + A2A_N_LAMBDA_OFFSET] = max(0f, l + lambda)
         } else {
@@ -521,6 +558,41 @@ class LocalConstraintSolver(
         }
 
         lambda = data[contactIdx + A2A_N_LAMBDA_OFFSET] - l
+
+        if (maxLambda == -Float.MAX_VALUE || abs(lambda) > abs(maxLambda)) {
+            maxLambda = lambda
+        }
+
+        flatBodyData[myIdx] -= (data[contactIdx + A2A_N_DELTA_OFFSET] * lambda)
+        flatBodyData[myIdx + 1] -= (data[contactIdx + A2A_N_DELTA_OFFSET + 1] * lambda)
+        flatBodyData[myIdx + 2] -= (data[contactIdx + A2A_N_DELTA_OFFSET + 2] * lambda)
+
+        flatBodyData[myIdx + 3] -= (data[contactIdx + A2A_N_DELTA_OFFSET + 3] * lambda)
+        flatBodyData[myIdx + 4] -= (data[contactIdx + A2A_N_DELTA_OFFSET + 4] * lambda)
+        flatBodyData[myIdx + 5] -= (data[contactIdx + A2A_N_DELTA_OFFSET + 5] * lambda)
+
+        flatBodyData[otherIdx] -= (data[contactIdx + A2A_N_DELTA_OFFSET + 6] * lambda)
+        flatBodyData[otherIdx + 1] -= (data[contactIdx + A2A_N_DELTA_OFFSET + 7] * lambda)
+        flatBodyData[otherIdx + 2] -= (data[contactIdx + A2A_N_DELTA_OFFSET + 8] * lambda)
+
+        flatBodyData[otherIdx + 3] -= (data[contactIdx + A2A_N_DELTA_OFFSET + 9] * lambda)
+        flatBodyData[otherIdx + 4] -= (data[contactIdx + A2A_N_DELTA_OFFSET + 10] * lambda)
+        flatBodyData[otherIdx + 5] -= (data[contactIdx + A2A_N_DELTA_OFFSET + 11] * lambda)
+    }
+
+    private fun warmA2AContact(data: FloatArray, contactIdx: Int, component: ContactComponent) {
+        val lambda = data[contactIdx + A2A_N_LAMBDA_OFFSET]
+        if (lambda == 0f) return
+
+        if (component != ContactComponent.NORMAL) {
+            val n = contactNormalData[contactIdx + A2A_N_LAMBDA_OFFSET]
+            if (n < FRICTION_LAMBDA_EPSILON) {
+                return
+            }
+        }
+
+        val myIdx = data[contactIdx + A2A_N_MY_IDX_OFFSET].toRawBits() * BODY_DATA_FLOATS
+        val otherIdx = data[contactIdx + A2A_N_OTHER_IDX_OFFSET].toRawBits() * BODY_DATA_FLOATS
 
         flatBodyData[myIdx] -= (data[contactIdx + A2A_N_DELTA_OFFSET] * lambda)
         flatBodyData[myIdx + 1] -= (data[contactIdx + A2A_N_DELTA_OFFSET + 1] * lambda)
@@ -602,6 +674,10 @@ class LocalConstraintSolver(
 
         lambda = data[contactIdx + A2S_N_LAMBDA_OFFSET] - l
 
+        if (maxLambda == -Float.MAX_VALUE || abs(lambda) > abs(maxLambda)) {
+            maxLambda = lambda
+        }
+
         if (abs(lambda) < FRICTION_LAMBDA_EPSILON && component != ContactComponent.NORMAL) {
             return
         }
@@ -614,13 +690,38 @@ class LocalConstraintSolver(
         flatBodyData[myIdx + 4] -= (data[contactIdx + A2S_N_DELTA_OFFSET + 4] * lambda)
         flatBodyData[myIdx + 5] -= (data[contactIdx + A2S_N_DELTA_OFFSET + 5] * lambda)
     }
-    
+
+    private fun warmA2SContact(data: FloatArray, contactIdx: Int, component: ContactComponent) {
+        val lambda = data[contactIdx + A2S_N_LAMBDA_OFFSET]
+        if (lambda == 0f) {
+            return
+        }
+
+        val myIdx = data[contactIdx + A2S_N_MY_IDX_OFFSET].toRawBits() * BODY_DATA_FLOATS
+
+        if (abs(lambda) < FRICTION_LAMBDA_EPSILON && component != ContactComponent.NORMAL) {
+            return
+        }
+
+        flatBodyData[myIdx] -= (data[contactIdx + A2S_N_DELTA_OFFSET] * lambda)
+        flatBodyData[myIdx + 1] -= (data[contactIdx + A2S_N_DELTA_OFFSET + 1] * lambda)
+        flatBodyData[myIdx + 2] -= (data[contactIdx + A2S_N_DELTA_OFFSET + 2] * lambda)
+
+        flatBodyData[myIdx + 3] -= (data[contactIdx + A2S_N_DELTA_OFFSET + 3] * lambda)
+        flatBodyData[myIdx + 4] -= (data[contactIdx + A2S_N_DELTA_OFFSET + 4] * lambda)
+        flatBodyData[myIdx + 5] -= (data[contactIdx + A2S_N_DELTA_OFFSET + 5] * lambda)
+    }
+
+    private val _a2aContactDataBuffer = A2APrevContactDataBuffer()
     private val _a2sContactDataBuffer = A2SPrevContactDataBuffer()
 
     fun write() {
+        physicsWorld.prevContactMap.clear()
+        physicsWorld.prevContactData.clear()
+
         physicsWorld.prevEnvContactMap.clear()
         physicsWorld.prevEnvContactData.clear()
-        
+
         if (!any) return
 
         var i = 0
@@ -635,29 +736,51 @@ class LocalConstraintSolver(
 
             i += BODY_DATA_FLOATS
         }
-        
+
         var count = 0
+        val numManifolds = manifolds.size()
 
         var j = 0
-        while (j < manifolds.size()) {
+        while (j < numManifolds) {
+            _a2aContactDataBuffer.clear()
             val numContacts = manifolds.numContacts(j)
+            val manifoldID = manifolds.manifoldID(j)
+
+            if (physicsWorld.prevContactMap.containsKey(manifoldID)) {
+                j++
+                continue
+            }
+
             var l = 0
             while (l < numContacts) {
-                manifolds.setNormalLambda(j, l, contactNormalData[j * A2A_N_CONTACT_DATA_FLOATS + A2A_N_LAMBDA_OFFSET])
-                manifolds.setT1Lambda(j, l, contactT1Data[j * A2A_N_CONTACT_DATA_FLOATS + A2A_N_LAMBDA_OFFSET])
-                manifolds.setT2Lambda(j, l, contactT2Data[j * A2A_N_CONTACT_DATA_FLOATS + A2A_N_LAMBDA_OFFSET])
-                
+                val nl = contactNormalData[count * A2A_N_CONTACT_DATA_FLOATS + A2A_N_LAMBDA_OFFSET]
+                _a2aContactDataBuffer.add(
+                    ax = manifolds.pointAX(j, l),
+                    ay = manifolds.pointAY(j, l),
+                    az = manifolds.pointAZ(j, l),
+
+                    bx = manifolds.pointBX(j, l),
+                    by = manifolds.pointBY(j, l),
+                    bz = manifolds.pointBZ(j, l),
+
+                    normalLambda = nl * Udar.CONFIG.collision.lambdaCarryover,
+                    t1Lambda = contactT1Data[count * A2A_N_CONTACT_DATA_FLOATS + A2A_N_LAMBDA_OFFSET] * Udar.CONFIG.collision.lambdaCarryover,
+                    t2Lambda = contactT2Data[count * A2A_N_CONTACT_DATA_FLOATS + A2A_N_LAMBDA_OFFSET] * Udar.CONFIG.collision.lambdaCarryover,
+                )
+
                 count++
                 l++
             }
 
+            val idx = physicsWorld.prevContactData.add(numContacts, _a2aContactDataBuffer)
+            physicsWorld.prevContactMap.put(manifoldID, idx)
+
             j++
         }
-        
-        var envCount = 0
 
+        var envCount = 0
         val numEnvManifolds = envManifolds.size()
-        
+
         var k = 0
         while (k < numEnvManifolds) {
             _a2sContactDataBuffer.clear()
@@ -667,23 +790,24 @@ class LocalConstraintSolver(
                 k++
                 continue
             }
-            
+
             var l = 0
             while (l < numContacts) {
+                val nl = envContactNormalData[envCount * A2S_N_CONTACT_DATA_FLOATS + A2S_N_LAMBDA_OFFSET]
                 _a2sContactDataBuffer.add(
                     x = envManifolds.pointAX(k, l),
                     y = envManifolds.pointAY(k, l),
                     z = envManifolds.pointAZ(k, l),
 
-                    normalLambda = envContactNormalData[envCount * A2S_N_CONTACT_DATA_FLOATS + A2S_N_LAMBDA_OFFSET],
-                    t1Lambda = envContactT1Data[envCount * A2S_N_CONTACT_DATA_FLOATS + A2S_N_LAMBDA_OFFSET],
-                    t2Lambda = envContactT2Data[envCount * A2S_N_CONTACT_DATA_FLOATS + A2S_N_LAMBDA_OFFSET],
+                    normalLambda = nl * Udar.CONFIG.collision.lambdaCarryover,
+                    t1Lambda = envContactT1Data[envCount * A2S_N_CONTACT_DATA_FLOATS + A2S_N_LAMBDA_OFFSET] * Udar.CONFIG.collision.lambdaCarryover,
+                    t2Lambda = envContactT2Data[envCount * A2S_N_CONTACT_DATA_FLOATS + A2S_N_LAMBDA_OFFSET] * Udar.CONFIG.collision.lambdaCarryover,
                 )
-                
+
                 envCount++
                 l++
             }
-            
+
             val idx = physicsWorld.prevEnvContactData.add(numContacts, _a2sContactDataBuffer)
             physicsWorld.prevEnvContactMap.put(manifoldID, idx)
 

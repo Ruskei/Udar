@@ -302,7 +302,7 @@ class A2AManifoldBuffer(maxContactNum: Int) : A2AManifoldCollection {
         return arr[manifoldIdx * manifoldDataSize + CONTACT_NUM_OFFSET].toRawBits()
     }
 
-    fun contactID(manifoldIdx: Int): Long {
+    fun manifoldID(manifoldIdx: Int): Long {
         val baseIdx = manifoldIdx * manifoldDataSize
         val low = arr[baseIdx + MANIFOLD_ID_OFFSET].toRawBits().toLong()
         val high = arr[baseIdx + MANIFOLD_ID_OFFSET + 1].toRawBits().toLong()

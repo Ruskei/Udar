@@ -51,7 +51,7 @@ class A2AContactDataBuffer(private val numContacts: Int) {
             t2Z = t2.z,
 
             depth = depth,
-            
+
             normalLambda = normalLambda,
             t1Lambda = t1Lambda,
             t2Lambda = t2Lambda,
@@ -67,7 +67,7 @@ class A2AContactDataBuffer(private val numContacts: Int) {
         t2X: Float, t2Y: Float, t2Z: Float,
 
         depth: Float,
-        
+
         normalLambda: Float, t1Lambda: Float, t2Lambda: Float,
     ) {
         require(cursor < numContacts)

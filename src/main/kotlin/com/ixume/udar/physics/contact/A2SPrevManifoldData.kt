@@ -34,7 +34,8 @@ class A2SPrevManifoldData {
         return idx
     }
     
-    fun numContacts(rawManifoldIdx: Int): Int {
+    fun numContacts(rawManifoldIdx: Int, default: Int): Int {
+        if (rawManifoldIdx == -1) return default
         return ls.getFloat(rawManifoldIdx + NUM_CONTACTS_OFFSET).toRawBits()
     }
 
@@ -73,7 +74,7 @@ class A2SPrevManifoldData {
     fun closest(rawManifoldIdx: Int, x: Float, y: Float, z: Float): Int {
         if (rawManifoldIdx == -1) return -1
         
-        val num = numContacts(rawManifoldIdx)
+        val num = numContacts(rawManifoldIdx, -1)
         check(num > 0)
         
         var minDistance = Float.MAX_VALUE

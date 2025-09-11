@@ -214,5 +214,5 @@ class MeshPosition(
     }
 }
 
-private const val MESH_SIZE = 8
+private const val MESH_SIZE = 32
 private const val BB_SAFETY = 1.0

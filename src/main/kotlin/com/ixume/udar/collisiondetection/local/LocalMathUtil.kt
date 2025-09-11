@@ -361,14 +361,9 @@ class LocalMathUtil(
             )
             
             val rawManifoldIdx = activeBody.physicsWorld.prevEnvContactMap.get(manifoldID)
-
-            val closest = activeBody.physicsWorld.prevEnvContactData.closest(
-                rawManifoldIdx,
-                closestA.x.toFloat(),
-                closestA.y.toFloat(),
-                closestA.z.toFloat()
-            )
-
+            
+            check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx, 1) == 1)
+            
             out.addSingleManifold(
                 activeBody = activeBody,
 
@@ -384,9 +379,9 @@ class LocalMathUtil(
                 contactID = manifoldID,
                 math = this,
 
-                normalLambda = activeBody.physicsWorld.prevEnvContactData.normalLambda(rawManifoldIdx, closest),
-                t1Lambda = activeBody.physicsWorld.prevEnvContactData.t1Lambda(rawManifoldIdx, closest),
-                t2Lambda = activeBody.physicsWorld.prevEnvContactData.t2Lambda(rawManifoldIdx, closest),
+                normalLambda = activeBody.physicsWorld.prevEnvContactData.normalLambda(rawManifoldIdx, 0),
+                t1Lambda = activeBody.physicsWorld.prevEnvContactData.t1Lambda(rawManifoldIdx, 0),
+                t2Lambda = activeBody.physicsWorld.prevEnvContactData.t2Lambda(rawManifoldIdx, 0),
             )
 
             return
@@ -429,13 +424,8 @@ class LocalMathUtil(
                     val pointAX = (edgeEnd.x - minBodyAxis.x * minBodyOverlap).toFloat()
                     val pointAY = (edgeEnd.y - minBodyAxis.y * minBodyOverlap).toFloat()
                     val pointAZ = (edgeEnd.z - minBodyAxis.z * minBodyOverlap).toFloat()
-                    
-                    val closest = activeBody.physicsWorld.prevEnvContactData.closest(
-                        rawManifoldIdx,
-                        pointAX,
-                        pointAY,
-                        pointAZ,
-                    )
+
+                    check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx, 1) == 1)
 
                     out.addSingleManifold(
                         activeBody = activeBody,
@@ -452,9 +442,9 @@ class LocalMathUtil(
                         contactID = manifoldID,
                         math = this,
 
-                        normalLambda = activeBody.physicsWorld.prevEnvContactData.normalLambda(rawManifoldIdx, closest),
-                        t1Lambda = activeBody.physicsWorld.prevEnvContactData.t1Lambda(rawManifoldIdx, closest),
-                        t2Lambda = activeBody.physicsWorld.prevEnvContactData.t2Lambda(rawManifoldIdx, closest),
+                        normalLambda = activeBody.physicsWorld.prevEnvContactData.normalLambda(rawManifoldIdx, 0),
+                        t1Lambda = activeBody.physicsWorld.prevEnvContactData.t1Lambda(rawManifoldIdx, 0),
+                        t2Lambda = activeBody.physicsWorld.prevEnvContactData.t2Lambda(rawManifoldIdx, 0),
                     )
 
                     return
@@ -466,13 +456,8 @@ class LocalMathUtil(
                     val pointAX = (edgeStart.x + minBodyAxis.x * minBodyOverlap).toFloat()
                     val pointAY = (edgeStart.y + minBodyAxis.y * minBodyOverlap).toFloat()
                     val pointAZ = (edgeStart.z + minBodyAxis.z * minBodyOverlap).toFloat()
-                    
-                    val closest = activeBody.physicsWorld.prevEnvContactData.closest(
-                        rawManifoldIdx,
-                        pointAX,
-                        pointAY,
-                        pointAZ,
-                    )
+
+                    check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx, 1) == 1)
                     
                     out.addSingleManifold(
                         activeBody = activeBody,
@@ -489,9 +474,9 @@ class LocalMathUtil(
                         contactID = manifoldID,
                         math = this,
 
-                        normalLambda = activeBody.physicsWorld.prevEnvContactData.normalLambda(rawManifoldIdx, closest),
-                        t1Lambda = activeBody.physicsWorld.prevEnvContactData.t1Lambda(rawManifoldIdx, closest),
-                        t2Lambda = activeBody.physicsWorld.prevEnvContactData.t2Lambda(rawManifoldIdx, closest),
+                        normalLambda = activeBody.physicsWorld.prevEnvContactData.normalLambda(rawManifoldIdx, 0),
+                        t1Lambda = activeBody.physicsWorld.prevEnvContactData.t1Lambda(rawManifoldIdx, 0),
+                        t2Lambda = activeBody.physicsWorld.prevEnvContactData.t2Lambda(rawManifoldIdx, 0),
                     )
                 }
 
@@ -506,13 +491,8 @@ class LocalMathUtil(
                     val pointAX = (edgeStart.x - minBodyAxis.x * minBodyOverlap).toFloat()
                     val pointAY = (edgeStart.y - minBodyAxis.y * minBodyOverlap).toFloat()
                     val pointAZ = (edgeStart.z - minBodyAxis.z * minBodyOverlap).toFloat()
-                    
-                    val closest = activeBody.physicsWorld.prevEnvContactData.closest(
-                        rawManifoldIdx,
-                        pointAX,
-                        pointAY,
-                        pointAZ,
-                    )
+
+                    check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx, 1) == 1)
 
                     out.addSingleManifold(
                         activeBody = activeBody,
@@ -529,9 +509,9 @@ class LocalMathUtil(
                         contactID = manifoldID,
                         math = this,
 
-                        normalLambda = activeBody.physicsWorld.prevEnvContactData.normalLambda(rawManifoldIdx, closest),
-                        t1Lambda = activeBody.physicsWorld.prevEnvContactData.t1Lambda(rawManifoldIdx, closest),
-                        t2Lambda = activeBody.physicsWorld.prevEnvContactData.t2Lambda(rawManifoldIdx, closest),
+                        normalLambda = activeBody.physicsWorld.prevEnvContactData.normalLambda(rawManifoldIdx, 0),
+                        t1Lambda = activeBody.physicsWorld.prevEnvContactData.t1Lambda(rawManifoldIdx, 0),
+                        t2Lambda = activeBody.physicsWorld.prevEnvContactData.t2Lambda(rawManifoldIdx, 0),
                     )
 
                     return
@@ -543,14 +523,9 @@ class LocalMathUtil(
                     val pointAX = (edgeEnd.x + minBodyAxis.x * minBodyOverlap).toFloat()
                     val pointAY = (edgeEnd.y + minBodyAxis.y * minBodyOverlap).toFloat()
                     val pointAZ = (edgeEnd.z + minBodyAxis.z * minBodyOverlap).toFloat()
-
-                    val closest = activeBody.physicsWorld.prevEnvContactData.closest(
-                        rawManifoldIdx,
-                        pointAX,
-                        pointAY,
-                        pointAZ,
-                    )
-
+                    
+                    check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx, 1) == 1)
+                    
                     out.addSingleManifold(
                         activeBody = activeBody,
 
@@ -566,9 +541,9 @@ class LocalMathUtil(
                         contactID = manifoldID,
                         math = this,
 
-                        normalLambda = activeBody.physicsWorld.prevEnvContactData.normalLambda(rawManifoldIdx, closest),
-                        t1Lambda = activeBody.physicsWorld.prevEnvContactData.t1Lambda(rawManifoldIdx, closest),
-                        t2Lambda = activeBody.physicsWorld.prevEnvContactData.t2Lambda(rawManifoldIdx, closest),
+                        normalLambda = activeBody.physicsWorld.prevEnvContactData.normalLambda(rawManifoldIdx, 0),
+                        t1Lambda = activeBody.physicsWorld.prevEnvContactData.t1Lambda(rawManifoldIdx, 0),
+                        t2Lambda = activeBody.physicsWorld.prevEnvContactData.t2Lambda(rawManifoldIdx, 0),
                     )
 
                     return
