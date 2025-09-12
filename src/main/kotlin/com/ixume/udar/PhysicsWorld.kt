@@ -8,6 +8,7 @@ import com.ixume.udar.collisiondetection.pool.MathPool
 import com.ixume.udar.dynamicaabb.AABBTree
 import com.ixume.udar.physics.BodyIDMap
 import com.ixume.udar.physics.EntityUpdater
+import com.ixume.udar.physics.NarrowPhaseCallable
 import com.ixume.udar.physics.StatusUpdater
 import com.ixume.udar.physics.constraint.ConstraintSolverManager
 import com.ixume.udar.physics.contact.A2AManifoldBuffer
@@ -17,9 +18,10 @@ import com.ixume.udar.physics.contact.A2SPrevManifoldData
 import com.ixume.udar.testing.PhysicsWorldTestDebugData
 import com.ixume.udar.testing.debugConnect
 import it.unimi.dsi.fastutil.longs.Long2IntAVLTreeMap
-import kotlinx.coroutines.*
 import org.bukkit.*
 import org.joml.Vector3d
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.roundToInt
@@ -40,17 +42,17 @@ class PhysicsWorld(
     }
 
     var numPossibleContacts = 0
-    
+
     val manifoldBuffer = A2AManifoldBuffer(8)
 
     val prevContactMap = Long2IntAVLTreeMap()
     val prevContactData = A2APrevManifoldData()
-    
+
     val envManifoldBuffer = A2SManifoldBuffer(8)
 
     val prevEnvContactMap = Long2IntAVLTreeMap()
     val prevEnvContactData = A2SPrevManifoldData()
-    
+
     init {
         prevEnvContactMap.defaultReturnValue(-1)
         prevContactMap.defaultReturnValue(-1)
@@ -78,9 +80,10 @@ class PhysicsWorld(
 
     private val busy = AtomicBoolean(false)
 
-    private val NARROWPHASE_PROCESSORS = 3//Runtime.getRuntime().availableProcessors()
-    private val mathPool = MathPool(this, NARROWPHASE_PROCESSORS)
-    private val scope = CoroutineScope(Dispatchers.Default)
+    private val NARROWPHASE_PROCESSORS = 4//Runtime.getRuntime().availableProcessors()
+    val mathPool = MathPool(this, NARROWPHASE_PROCESSORS)
+    private val executor = Executors.newFixedThreadPool(NARROWPHASE_PROCESSORS)
+    private val narrowPhaseCallables = Array(NARROWPHASE_PROCESSORS) { NarrowPhaseCallable(this) }
     private val constraintSolverManager = ConstraintSolverManager(this)
 
     private val dataInterval = 400
@@ -151,24 +154,26 @@ class PhysicsWorld(
 
                 val endBroadTime = System.nanoTime()
 
-                var job: Job? = null
-
                 val startNarrowTime = System.nanoTime()
 
                 if (activePairs != null) {
                     check(activePairs.size == NARROWPHASE_PROCESSORS)
 
-                    job = scope.launch {
-                        (0..<NARROWPHASE_PROCESSORS).forEach { i ->
-                            val ps = activePairs[i]
+                    val latch = CountDownLatch(NARROWPHASE_PROCESSORS)
 
-                            launch { narrowPhase(ps) }
+                    for (proc in 0..<NARROWPHASE_PROCESSORS) {
+                        val callable = narrowPhaseCallables[proc]
+
+                        callable.ps = activePairs[proc]
+
+                        executor.execute {
+                            callable.run()
+
+                            latch.countDown()
                         }
                     }
-                }
 
-                runBlocking {
-                    job?.join()
+                    latch.await()
                 }
 
                 val endNarrowTime = System.nanoTime()
@@ -295,10 +300,10 @@ class PhysicsWorld(
                             ),
                             options = Particle.DustOptions(Color.BLUE, 0.25f),
                         )
-                        
+
                         k++
                     }
-                    
+
                     i++
                 }
 
@@ -385,35 +390,6 @@ class PhysicsWorld(
         return groups
     }
 
-    private fun narrowPhase(ps: Map<ActiveBody, List<ActiveBody>>) {
-        val math = mathPool.get()
-
-        try {
-            for ((first, ls) in ps) {
-                for (second in ls) {
-                    val collided: Boolean
-
-                    val t = measureNanoTime {
-                        collided = first.collides(second, math, manifoldBuffer)
-                    }
-
-                    if (!collided) continue
-
-                    debugData.pairCollisions++
-
-                    first.awake.set(true)
-                    second.awake.set(true)
-
-                    if (Udar.CONFIG.debug.collisionTimes > 0) {
-                        println("B-B COLLISION TOOK: ${t.toDouble() / 1_000_000.0} ms")
-                    }
-                }
-            }
-        } finally {
-            mathPool.put(math)
-        }
-    }
-
     fun clear() {
         removeBodies(activeBodies.bodies())
     }
@@ -428,7 +404,7 @@ class PhysicsWorld(
 
         simTask.cancel()
         entityTask.cancel()
-        scope.cancel()
+        executor.shutdown()
 
         worldMeshesManager.kill()
     }
