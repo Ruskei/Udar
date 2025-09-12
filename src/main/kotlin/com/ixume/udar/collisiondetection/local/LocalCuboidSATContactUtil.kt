@@ -93,7 +93,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                 return false
             }
 
-            if ((myMin < otherMin && myMax > otherMax) || (otherMin < myMin && otherMax > myMin)) {
+            if ((myMin < otherMin && myMax > otherMax) || (otherMin < myMin && otherMax > myMax)) {
                 i++
                 continue
             }
@@ -149,7 +149,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                 return false
             }
 
-            if ((myMin < otherMin && myMax > otherMax) || (otherMin < myMin && otherMax > myMin)) {
+            if ((myMin < otherMin && myMax > otherMax) || (otherMin < myMin && otherMax > myMax)) {
                 j++
                 continue
             }
@@ -229,7 +229,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
 
             k++
         }
-
+        
         if (minCrossOverlap < minMyBodyOverlap && minCrossOverlap < minOtherBodyOverlap) {
             // edge-edge!
             if (minCrossAxis == null) return false

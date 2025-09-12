@@ -5,8 +5,11 @@ import com.ixume.udar.collisiondetection.local.LocalMathUtil
 class A2AContactDataBuffer(private val numContacts: Int) {
     val arr = FloatArray(CONTACT_DATA_SIZE * numContacts)
     var cursor = 0
+    
+    private var maxDepth = -Float.MAX_VALUE
 
     fun clear() {
+        maxDepth = -Float.MAX_VALUE
         cursor = 0
     }
 
@@ -96,6 +99,8 @@ class A2AContactDataBuffer(private val numContacts: Int) {
 
         arr[contactArrIdx + DEPTH_OFFSET] = depth
 
+//        if (normalLambda == 0f) println("LOADED COLD LAMBDA")
+        
         arr[contactArrIdx + NORMAL_LAMBDA_OFFSET] = normalLambda
         arr[contactArrIdx + T1_LAMBDA_OFFSET] = t1Lambda
         arr[contactArrIdx + T2_LAMBDA_OFFSET] = t2Lambda

@@ -13,11 +13,9 @@ import com.ixume.udar.physics.constraint.ConstraintSolverManager
 import com.ixume.udar.physics.contact.A2AManifoldBuffer
 import com.ixume.udar.physics.contact.A2APrevManifoldData
 import com.ixume.udar.physics.contact.A2SManifoldBuffer
-import com.ixume.udar.physics.contact.A2SPrevContactDataBuffer
 import com.ixume.udar.physics.contact.A2SPrevManifoldData
 import com.ixume.udar.testing.PhysicsWorldTestDebugData
 import com.ixume.udar.testing.debugConnect
-import it.unimi.dsi.fastutil.longs.Long2FloatAVLTreeMap
 import it.unimi.dsi.fastutil.longs.Long2IntAVLTreeMap
 import kotlinx.coroutines.*
 import org.bukkit.*

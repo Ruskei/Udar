@@ -481,7 +481,9 @@ class A2AManifoldBuffer(maxContactNum: Int) : A2AManifoldCollection {
     // Lambda accessors
     fun normalLambda(manifoldIdx: Int, contactIdx: Int): Float {
         val baseIdx = manifoldIdx * manifoldDataSize + CONTACTS_OFFSET + contactIdx * CONTACT_DATA_SIZE
-        return arr[baseIdx + NORMAL_LAMBDA_OFFSET]
+        val l = arr[baseIdx + NORMAL_LAMBDA_OFFSET]
+//        if (l == 0f) println("accessing cold lambda")
+        return  l
     }
 
     fun setNormalLambda(manifoldIdx: Int, contactIdx: Int, value: Float) {

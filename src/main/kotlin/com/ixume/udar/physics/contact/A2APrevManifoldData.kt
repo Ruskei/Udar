@@ -68,9 +68,13 @@ class A2APrevManifoldData {
     }
 
     fun normalLambda(rawManifoldIdx: Int, contactIdx: Int): Float {
-        if (rawManifoldIdx == -1) return 0f
+        if (rawManifoldIdx == -1) {
+            return 0f
+        }
+        
         val idx = rawManifoldIdx + CONTACT_DATA_OFFSET + contactIdx * CONTACT_DATA_SIZE + NORMAL_LAMBDA_OFFSET
         val l = ls.getFloat(idx)
+//        println("warmed contact with $l") GETTING CALLED CORRECTLY!
         return l
     }
 

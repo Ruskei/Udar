@@ -22,10 +22,10 @@ import kotlin.math.min
 class LocalConstraintSolver(
     val physicsWorld: PhysicsWorld,
 ) {
-    private val timeStep = Udar.CONFIG.timeStep.toFloat()
-    private val friction = Udar.CONFIG.collision.friction.toFloat()
-    private val bias = Udar.CONFIG.collision.bias.toFloat()
-    private val slop = Udar.CONFIG.collision.passiveSlop.toFloat()
+    private var timeStep = Udar.CONFIG.timeStep.toFloat()
+    private var friction = Udar.CONFIG.collision.friction.toFloat()
+    private var bias = Udar.CONFIG.collision.bias.toFloat()
+    private var slop = Udar.CONFIG.collision.passiveSlop.toFloat()
 
     private val _vec3 = Vector3f()
     private val _quat = Quaternionf()
@@ -73,6 +73,11 @@ class LocalConstraintSolver(
             return
         }
 
+        timeStep = Udar.CONFIG.timeStep.toFloat()
+        friction = Udar.CONFIG.collision.friction.toFloat()
+        bias = Udar.CONFIG.collision.bias.toFloat()
+        slop = Udar.CONFIG.collision.passiveSlop.toFloat()
+
         manifolds = physicsWorld.manifoldBuffer
         envManifolds = physicsWorld.envManifoldBuffer
 
@@ -91,8 +96,9 @@ class LocalConstraintSolver(
         constructFlatEnvConstraintData(ContactComponent.T2)
 
         buildFlatBodyData()
-        
-        println("SETUP!")
+
+//        runningMaxLambda = FloatArray(Udar.CONFIG.collision.normalIterations)
+        itr = 0
     }
 
     fun updateIDMap() {
@@ -369,8 +375,9 @@ class LocalConstraintSolver(
 
     private val _quatd = Quaterniond()
 
-    private var maxLambda = -Float.MAX_VALUE
-    
+//    private var maxLambda = -Float.MAX_VALUE
+//    private var runningMaxLambda = FloatArray(0)
+
     fun warmStart() {
         if (!any) return
 
@@ -407,11 +414,16 @@ class LocalConstraintSolver(
             l += A2S_N_CONTACT_DATA_FLOATS
         }
     }
-    
+
+    private var itr = 0
+    private var t = 0
     fun solveNormal() {
+        itr++
+        t++
+
         if (!any) return
 
-        maxLambda = -Float.MAX_VALUE
+//        maxLambda = -Float.MAX_VALUE
         val n = manifolds.numContacts.get() * A2A_N_CONTACT_DATA_FLOATS
 
         var i = 0
@@ -420,8 +432,18 @@ class LocalConstraintSolver(
 
             i += A2A_N_CONTACT_DATA_FLOATS
         }
-        
-        println("| mL: $maxLambda")
+
+//        runningMaxLambda[itr - 1] += abs(maxLambda)
+//
+//        if (t % (DATA_OUTPUT_INTERVAL * Udar.CONFIG.collision.normalIterations) == 0) {
+//            println("AVERAGE LAMBDAS")
+//            var p = 0
+//            while (p < runningMaxLambda.size) {
+//                println("$p: ${runningMaxLambda[p]}")
+//                runningMaxLambda[p] = 0f
+//                p++
+//            }
+//        }
 
         val e = envManifolds.numContacts.get() * A2S_N_CONTACT_DATA_FLOATS
 
@@ -436,16 +458,6 @@ class LocalConstraintSolver(
     fun solveFriction() {
         if (!any) return
 
-        var i = 0
-        val n = manifolds.numContacts.get() * A2A_N_CONTACT_DATA_FLOATS
-
-        while (i < n) {
-            solveA2AContact(contactT1Data, i, ContactComponent.T1)
-            solveA2AContact(contactT2Data, i, ContactComponent.T2)
-
-            i += A2A_N_CONTACT_DATA_FLOATS
-        }
-
         var j = 0
         val e = envManifolds.numContacts.get() * A2S_N_CONTACT_DATA_FLOATS
 
@@ -454,6 +466,16 @@ class LocalConstraintSolver(
             solveA2SContact(envContactT2Data, j, ContactComponent.T2)
 
             j += A2S_N_CONTACT_DATA_FLOATS
+        }
+
+        var i = 0
+        val n = manifolds.numContacts.get() * A2A_N_CONTACT_DATA_FLOATS
+
+        while (i < n) {
+            solveA2AContact(contactT1Data, i, ContactComponent.T1)
+            solveA2AContact(contactT2Data, i, ContactComponent.T2)
+
+            i += A2A_N_CONTACT_DATA_FLOATS
         }
     }
 
@@ -559,10 +581,10 @@ class LocalConstraintSolver(
 
         lambda = data[contactIdx + A2A_N_LAMBDA_OFFSET] - l
 
-        if (maxLambda == -Float.MAX_VALUE || abs(lambda) > abs(maxLambda)) {
-            maxLambda = lambda
-        }
-
+//        if (maxLambda == -Float.MAX_VALUE || abs(lambda) > abs(maxLambda)) {
+//            maxLambda = lambda
+//        }
+//
         flatBodyData[myIdx] -= (data[contactIdx + A2A_N_DELTA_OFFSET] * lambda)
         flatBodyData[myIdx + 1] -= (data[contactIdx + A2A_N_DELTA_OFFSET + 1] * lambda)
         flatBodyData[myIdx + 2] -= (data[contactIdx + A2A_N_DELTA_OFFSET + 2] * lambda)
@@ -582,7 +604,9 @@ class LocalConstraintSolver(
 
     private fun warmA2AContact(data: FloatArray, contactIdx: Int, component: ContactComponent) {
         val lambda = data[contactIdx + A2A_N_LAMBDA_OFFSET]
-        if (lambda == 0f) return
+        if (component == ContactComponent.NORMAL && lambda != 0f) {
+//            println("warmed contact with $lambda!") CORRECT!
+        }
 
         if (component != ContactComponent.NORMAL) {
             val n = contactNormalData[contactIdx + A2A_N_LAMBDA_OFFSET]
@@ -674,10 +698,10 @@ class LocalConstraintSolver(
 
         lambda = data[contactIdx + A2S_N_LAMBDA_OFFSET] - l
 
-        if (maxLambda == -Float.MAX_VALUE || abs(lambda) > abs(maxLambda)) {
-            maxLambda = lambda
-        }
-
+//        if (maxLambda == -Float.MAX_VALUE || abs(lambda) > abs(maxLambda)) {
+//            maxLambda = lambda
+//        }
+//
         if (abs(lambda) < FRICTION_LAMBDA_EPSILON && component != ContactComponent.NORMAL) {
             return
         }
@@ -737,6 +761,10 @@ class LocalConstraintSolver(
             i += BODY_DATA_FLOATS
         }
 
+        heatUp()
+    }
+
+    private fun heatUp() {
         var count = 0
         val numManifolds = manifolds.size()
 
@@ -867,3 +895,6 @@ private inline fun Vector3f._mul(mat: Matrix3f): Vector3f {
 
     return this
 }
+
+
+private const val DATA_OUTPUT_INTERVAL = 250
