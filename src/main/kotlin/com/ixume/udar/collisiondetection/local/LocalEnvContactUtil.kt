@@ -18,8 +18,8 @@ import org.joml.Vector3d
 class LocalEnvContactUtil(val math: LocalMathUtil) {
     private val _mf = mutableListOf<MeshFace>()
 
-    private val _contacts2 = A2SContactDataBuffer(8)
-    private val _validContacts2 = A2SContactDataBuffer(8)
+    private val _contacts2 = A2SContactDataBuffer(4)
+    private val _validContacts2 = A2SContactDataBuffer(4)
 
     // TODO: manifold for edge contacts
     fun collides(

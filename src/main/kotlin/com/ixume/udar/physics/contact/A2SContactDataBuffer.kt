@@ -133,7 +133,7 @@ class A2SContactDataBuffer(private val numContacts: Int) {
         
         cursor++
     }
-
+    
     fun setNormalLambda(contactIdx: Int, value: Float) {
         arr[contactIdx * CONTACT_DATA_SIZE + NORMAL_LAMBDA_OFFSET] = value
     }

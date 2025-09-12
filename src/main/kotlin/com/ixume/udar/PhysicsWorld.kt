@@ -43,12 +43,12 @@ class PhysicsWorld(
 
     var numPossibleContacts = 0
 
-    val manifoldBuffer = A2AManifoldBuffer(8)
+    val manifoldBuffer = A2AManifoldBuffer(4)
 
     val prevContactMap = Long2IntAVLTreeMap()
     val prevContactData = A2APrevManifoldData()
 
-    val envManifoldBuffer = A2SManifoldBuffer(8)
+    val envManifoldBuffer = A2SManifoldBuffer(4)
 
     val prevEnvContactMap = Long2IntAVLTreeMap()
     val prevEnvContactData = A2SPrevManifoldData()

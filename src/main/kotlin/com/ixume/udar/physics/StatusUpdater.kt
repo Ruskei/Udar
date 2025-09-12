@@ -23,9 +23,9 @@ class StatusUpdater(
                     continue
                 }
 
-//                val sleep = (obj.linearDelta.length() < linear * timeStep && obj.angularDelta < angular * timeStep)
-//
-//                obj.awake.set(!sleep)
+                val sleep = (obj.linearDelta.length() < linear * timeStep && obj.angularDelta < angular * timeStep)
+
+                obj.awake.set(!sleep)
             }
         }
     }

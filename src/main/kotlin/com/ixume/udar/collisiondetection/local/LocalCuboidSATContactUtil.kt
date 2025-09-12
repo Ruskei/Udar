@@ -519,6 +519,8 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
 
                 p++
             }
+            
+            _faceManifold.reduceTo4()
 
             out.addManifold(
                 first = activeBody,

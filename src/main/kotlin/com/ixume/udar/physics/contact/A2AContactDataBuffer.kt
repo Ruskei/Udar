@@ -1,20 +1,24 @@
 package com.ixume.udar.physics.contact
 
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
+import org.joml.Vector3f
+import java.lang.Math.fma
+import kotlin.math.abs
 
 class A2AContactDataBuffer(private val numContacts: Int) {
     val arr = FloatArray(CONTACT_DATA_SIZE * numContacts)
     var cursor = 0
-    
-    private var maxDepth = -Float.MAX_VALUE
 
     fun clear() {
-        maxDepth = -Float.MAX_VALUE
         cursor = 0
     }
 
     fun size(): Int {
         return cursor
+    }
+
+    fun dataSize(): Int {
+        return cursor * CONTACT_DATA_SIZE
     }
 
     fun loadInto(
@@ -100,12 +104,127 @@ class A2AContactDataBuffer(private val numContacts: Int) {
         arr[contactArrIdx + DEPTH_OFFSET] = depth
 
 //        if (normalLambda == 0f) println("LOADED COLD LAMBDA")
-        
+
         arr[contactArrIdx + NORMAL_LAMBDA_OFFSET] = normalLambda
         arr[contactArrIdx + T1_LAMBDA_OFFSET] = t1Lambda
         arr[contactArrIdx + T2_LAMBDA_OFFSET] = t2Lambda
 
         cursor++
+    }
+
+    private val _vec = Vector3f()
+    private val _temp = FloatArray(4 * CONTACT_DATA_SIZE)
+
+    fun reduceTo4() {
+        if (cursor <= 4) return
+
+        var aIdx = -1
+        var maxDepth = -Float.MAX_VALUE
+        for (i in 0..<cursor) {
+            val d = depth(i)
+            if (d > maxDepth) {
+                maxDepth = d
+                aIdx = i
+            }
+        }
+
+        check(aIdx != -1)
+
+        val aNx = nx(aIdx)
+        val aNy = ny(aIdx)
+        val aNz = nz(aIdx)
+
+        val aDot = abs(fma(aNx, midx(aIdx), fma(aNy, midy(aIdx), aNz * midz(aIdx))))
+
+        var bIdx = -1
+        var maxDot = -Float.MAX_VALUE
+        for (i in 0..<cursor) {
+            val dot = abs(fma(aNx, midx(i), fma(aNy, midy(i), aNz * midz(i))) - aDot)
+            if (dot > maxDot) {
+                bIdx = i
+                maxDot = dot
+            }
+        }
+
+        check(bIdx != -1)
+
+        var cIdx = -1
+        var maxArea = -Float.MAX_VALUE
+        for (i in 0..<cursor) {
+            val area = _vec.set(
+                midx(aIdx) - midx(i),
+                midy(aIdx) - midy(i),
+                midz(aIdx) - midz(i),
+            ).cross(
+                midx(bIdx) - midx(i),
+                midy(bIdx) - midy(i),
+                midz(bIdx) - midz(i),
+            ).length() * 0.5f
+
+            if (area > maxArea) {
+                cIdx = i
+                maxArea = area
+            }
+        }
+
+        check(cIdx != -1)
+
+        var dIdx = -1
+        var maxVolume = -Float.MAX_VALUE
+        for (i in 0..<cursor) {
+            val volume = abs(
+                midx(aIdx) * (midy(bIdx) * midz(cIdx) - midz(bIdx) * midy(cIdx)) -
+                midy(aIdx) * (midx(bIdx) * midz(cIdx) - midz(bIdx) * midx(cIdx)) +
+                midz(aIdx) * (midx(bIdx) * midy(cIdx) - midy(bIdx) * midx(cIdx))
+            ) / 6f
+
+            if (volume > maxVolume) {
+                maxVolume = volume
+                dIdx = i
+            }
+        }
+
+        check(dIdx != -1)
+
+        _temp
+
+        System.arraycopy(arr, aIdx * CONTACT_DATA_SIZE, _temp, 0, CONTACT_DATA_SIZE)
+        System.arraycopy(arr, bIdx * CONTACT_DATA_SIZE, _temp, CONTACT_DATA_SIZE, CONTACT_DATA_SIZE)
+        System.arraycopy(arr, cIdx * CONTACT_DATA_SIZE, _temp, CONTACT_DATA_SIZE * 2, CONTACT_DATA_SIZE)
+        System.arraycopy(arr, dIdx * CONTACT_DATA_SIZE, _temp, CONTACT_DATA_SIZE * 3, CONTACT_DATA_SIZE)
+
+        clear()
+
+        System.arraycopy(_temp, 0, arr, 0, CONTACT_DATA_SIZE * 4)
+        cursor = 4
+    }
+
+    private fun depth(contactIdx: Int): Float {
+        return arr[contactIdx * CONTACT_DATA_SIZE + DEPTH_OFFSET]
+    }
+
+    private fun nx(contactIdx: Int): Float {
+        return arr[contactIdx * CONTACT_DATA_SIZE + NORM_X_OFFSET]
+    }
+
+    private fun ny(contactIdx: Int): Float {
+        return arr[contactIdx * CONTACT_DATA_SIZE + NORM_Y_OFFSET]
+    }
+
+    private fun nz(contactIdx: Int): Float {
+        return arr[contactIdx * CONTACT_DATA_SIZE + NORM_Z_OFFSET]
+    }
+
+    private fun midx(contactIdx: Int): Float {
+        return arr[contactIdx * CONTACT_DATA_SIZE + POINT_A_X_OFFSET] * 0.5f + arr[contactIdx * CONTACT_DATA_SIZE + POINT_B_X_OFFSET] * 0.5f
+    }
+
+    private fun midy(contactIdx: Int): Float {
+        return arr[contactIdx * CONTACT_DATA_SIZE + POINT_A_Y_OFFSET] * 0.5f + arr[contactIdx * CONTACT_DATA_SIZE + POINT_B_Y_OFFSET] * 0.5f
+    }
+
+    private fun midz(contactIdx: Int): Float {
+        return arr[contactIdx * CONTACT_DATA_SIZE + POINT_A_Z_OFFSET] * 0.5f + arr[contactIdx * CONTACT_DATA_SIZE + POINT_B_Z_OFFSET] * 0.5f
     }
 }
 

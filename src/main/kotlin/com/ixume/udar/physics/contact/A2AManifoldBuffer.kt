@@ -3,11 +3,14 @@ package com.ixume.udar.physics.contact
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import org.joml.Matrix3f
+import java.lang.invoke.VarHandle
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 import kotlin.math.max
+
+//TODO: Switch to local manifold buffers to merge at end of collision detection step
 
 class A2AManifoldBuffer(maxContactNum: Int) : A2AManifoldCollection {
     internal var arr = FloatArray(0)
@@ -71,8 +74,8 @@ class A2AManifoldBuffer(maxContactNum: Int) : A2AManifoldCollection {
                 arr[idx + BODY_B_INVERSE_INERTIA_ZY_OFFSET] = second.inverseInertia.m21.toFloat()
                 arr[idx + BODY_B_INVERSE_INERTIA_ZZ_OFFSET] = second.inverseInertia.m22.toFloat()
 
-                check(buf.arr.size <= maxContactArrSize)
-                System.arraycopy(buf.arr, 0, arr, idx + CONTACTS_OFFSET, buf.arr.size)
+                check(buf.dataSize() <= maxContactArrSize)
+                System.arraycopy(buf.arr, 0, arr, idx + CONTACTS_OFFSET, buf.dataSize())
 
                 return
             }
@@ -118,12 +121,12 @@ class A2AManifoldBuffer(maxContactNum: Int) : A2AManifoldCollection {
             arr[idx + BODY_B_INVERSE_INERTIA_ZY_OFFSET] = second.inverseInertia.m21.toFloat()
             arr[idx + BODY_B_INVERSE_INERTIA_ZZ_OFFSET] = second.inverseInertia.m22.toFloat()
 
-            check(buf.arr.size <= maxContactArrSize)
-            check(idx + CONTACTS_OFFSET + buf.arr.size <= arr.size) {"""
+            check(buf.dataSize() <= maxContactArrSize)
+            check(idx + CONTACTS_OFFSET + buf.dataSize() <= arr.size) {"""
                 idx: $idx, manifoldDataSize: $manifoldDataSize
                 buf.arr.size: ${buf.arr.size}
             """.trimIndent()}
-            System.arraycopy(buf.arr, 0, arr, idx + CONTACTS_OFFSET, buf.arr.size)
+            System.arraycopy(buf.arr, 0, arr, idx + CONTACTS_OFFSET, buf.dataSize())
         }
     }
 
