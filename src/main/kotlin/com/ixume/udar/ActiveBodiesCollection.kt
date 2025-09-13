@@ -1,6 +1,7 @@
 package com.ixume.udar
 
 import com.ixume.udar.body.active.ActiveBody
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap
 import java.util.*
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
@@ -9,6 +10,7 @@ import kotlin.concurrent.write
 class ActiveBodiesCollection {
     private val bodiesList = mutableListOf<ActiveBody>()
     private val lookupMap = mutableMapOf<UUID, ActiveBody>()
+    private val idLookup = Long2ObjectOpenHashMap<ActiveBody>()
 
     private val lock = ReentrantReadWriteLock()
 
@@ -16,13 +18,14 @@ class ActiveBodiesCollection {
 
     fun size(): Int = lock.read { bodiesList.size }
 
-    fun add(body: ActiveBody) = lock.write {
+    fun add(body: ActiveBody): Unit = lock.write {
         if (lookupMap.containsKey(body.uuid)) return
 
         body.idx = bodiesList.size
 
         bodiesList.add(body)
         lookupMap[body.uuid] = body
+        idLookup.put(body.id, body)
     }
 
     fun remove(uuid: UUID): ActiveBody? = lock.write {
@@ -38,6 +41,7 @@ class ActiveBodiesCollection {
 
         bodiesList.removeAt(bodiesList.size - 1)
         lookupMap.remove(uuid)
+        idLookup.remove(bodyToRemove.id)
 
         bodyToRemove.idx = -1
 
@@ -51,6 +55,10 @@ class ActiveBodiesCollection {
 
     operator fun get(uuid: UUID): ActiveBody? = lock.read {
         return lookupMap[uuid]
+    }
+
+    operator fun get(uuid: Long): ActiveBody? = lock.read {
+        return idLookup[uuid]
     }
 
     operator fun contains(body: ActiveBody): Boolean = lock.read {

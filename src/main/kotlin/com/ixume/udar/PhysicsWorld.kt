@@ -38,7 +38,7 @@ class PhysicsWorld(
     private val bodiesToRemove = AtomicList<ActiveBody>()
 
     val activeBodies = ActiveBodiesCollection()
-    
+
     private val runningID = AtomicLong(0)
     fun createID(): Long {
         return runningID.andIncrement
@@ -358,7 +358,7 @@ class PhysicsWorld(
     }
 
     fun updateBB(body: ActiveBody, tight: AABB) {
-        body.fatBB = bodyAABBTree.update(body.fatBB, tight, body.uuid)
+        body.fatBB = bodyAABBTree.update(body.fatBB, tight, body.id)
     }
 
     private fun processToAdd() {
@@ -366,7 +366,6 @@ class PhysicsWorld(
         for (body in ss) {
             activeBodies.add(body)
             body.update()
-            bodyAABBTree.uuid(body.fatBB)
         }
     }
 
@@ -377,26 +376,26 @@ class PhysicsWorld(
         }
     }
 
-    private val _broadCollisions = Int2ObjectOpenHashMap<IntArrayList>()
+    private val _broadCollisions = Int2ObjectOpenHashMap<IntArrayList>().apply { defaultReturnValue(null) }
     private val _groupedBroadCollisions =
         Array<Int2ObjectOpenHashMap<IntArrayList>>(NARROWPHASE_PROCESSORS) { Int2ObjectOpenHashMap() }
 
     private fun broadPhase(bodies: List<ActiveBody>): Array<Int2ObjectOpenHashMap<IntArrayList>>? {
         numPossibleContacts = 0
         if (bodies.size <= 1) return null
-
-        _broadCollisions.clear()
+        
+        _broadCollisions.forEach { it.value.clear() }
         _groupedBroadCollisions.forEach { it.clear() }
 
         bodyAABBTree.constructCollisions(_broadCollisions)
         val iterator = Int2ObjectMaps.fastIterator(_broadCollisions)
-        
+
         while (iterator.hasNext()) {
             val en = iterator.next()
             numPossibleContacts += en.value.size
             _groupedBroadCollisions.minBy { it.size }.put(en.intKey, en.value)
         }
-        
+
         return _groupedBroadCollisions
     }
 

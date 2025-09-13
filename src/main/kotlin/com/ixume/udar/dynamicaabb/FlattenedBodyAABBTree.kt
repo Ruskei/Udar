@@ -15,7 +15,6 @@ import org.bukkit.Color
 import org.bukkit.Particle
 import org.bukkit.World
 import org.joml.Vector3d
-import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.max
 import kotlin.math.min
@@ -126,7 +125,13 @@ class FlattenedBodyAABBTree(
                     val bb = b.body()
 
                     if (ab.overlaps(bb)) {
-                        out.getOrPut(ab.idx) { IntArrayList() }.add(bb.idx)
+                        var arr = out.get(ab.idx)
+                        if (arr == null) {
+                            arr = IntArrayList() 
+                            out.put(ab.idx, arr)
+                        }
+
+                        arr.add(bb.idx)
                     }
                 }
 
@@ -174,7 +179,7 @@ class FlattenedBodyAABBTree(
         maxX: Double,
         maxY: Double,
         maxZ: Double,
-        uuid: UUID?,
+        id: Long,
     ): Int {
         if (!blocked.compareAndSet(false, true)) throw IllegalStateException("Tried to insert while blocked!")
 
@@ -199,7 +204,7 @@ class FlattenedBodyAABBTree(
                 maxX = maxX,
                 maxY = maxY,
                 maxZ = maxZ,
-                uuid = uuid,
+                id = id,
             )
 
             check(rootIdx.isLeaf())
@@ -220,7 +225,7 @@ class FlattenedBodyAABBTree(
             maxX = maxX,
             maxY = maxY,
             maxZ = maxZ,
-            uuid = uuid,
+            id = id,
         )
 
         val oldParent = best.parent()
@@ -236,7 +241,7 @@ class FlattenedBodyAABBTree(
             maxX = max(maxX, best.maxX()),
             maxY = max(maxY, best.maxY()),
             maxZ = max(maxZ, best.maxZ()),
-            uuid = null,
+            id = -1L,
         )
 
         if (oldParent == -1) {
@@ -325,7 +330,7 @@ class FlattenedBodyAABBTree(
         blocked.set(false)
     }
 
-    fun update(idx: Int, tight: AABB, uuid: UUID): Int {
+    fun update(idx: Int, tight: AABB, id: Long): Int {
         if (idx != -1) {
             remove(idx)
         }
@@ -337,7 +342,7 @@ class FlattenedBodyAABBTree(
             maxX = tight.maxX + FAT_MARGIN,
             maxY = tight.maxY + FAT_MARGIN,
             maxZ = tight.maxZ + FAT_MARGIN,
-            uuid = uuid,
+            id = id,
         )
     }
 
@@ -674,8 +679,8 @@ class FlattenedBodyAABBTree(
 
     private fun Int.body(): ActiveBody {
         check(isLeaf())
-        val uuid = UUID()
-        return world.activeBodies[uuid]!!
+        val id = _id()
+        return world.activeBodies[id]!!
     }
 
     private fun ActiveBody.overlaps(other: ActiveBody): Boolean {
@@ -686,21 +691,19 @@ class FlattenedBodyAABBTree(
         arr[this * DATA_SIZE + PARENT_IDX_OFFSET] = arr[this * DATA_SIZE + PARENT_IDX_OFFSET].withLower(parent)
     }
 
-    private fun Int.UUID(): UUID {
+    private fun Int._id(): Long {
         val baseIdx = this * DATA_SIZE
-        val low = arr[baseIdx + UUID_OFFSET].toRawBits()
-        val high = arr[baseIdx + UUID_OFFSET + 1].toRawBits()
-        return UUID(high, low)
+        return arr[baseIdx + ID_OFFSET].toRawBits()
     }
 
-    private fun Int.UUID(uuid: UUID?) {
-        if (uuid == null) return
-        arr[this * DATA_SIZE + UUID_OFFSET] = Double.fromBits(uuid.leastSignificantBits)
-        arr[this * DATA_SIZE + UUID_OFFSET + 1] = Double.fromBits(uuid.mostSignificantBits)
+    private fun Int.id(id: Long) {
+        if (id == -1L) return
+
+        arr[this * DATA_SIZE + ID_OFFSET] = Double.fromBits(id)
     }
 
-    fun uuid(idx: Int): UUID {
-        return idx.UUID()
+    fun id(idx: Int): Long {
+        return idx._id()
     }
 
     /**
@@ -734,7 +737,7 @@ class FlattenedBodyAABBTree(
         maxX: Double,
         maxY: Double,
         maxZ: Double,
-        uuid: UUID?,
+        id: Long,
     ): Int {
         val currFreeIdx = freeIdx
         if (currFreeIdx == -1) {
@@ -752,7 +755,7 @@ class FlattenedBodyAABBTree(
             f.maxX(maxX)
             f.maxY(maxY)
             f.maxZ(maxZ)
-            f.UUID(uuid)
+            f.id(id)
 
             return f
         }
@@ -773,7 +776,7 @@ class FlattenedBodyAABBTree(
         currFreeIdx.maxX(maxX)
         currFreeIdx.maxY(maxY)
         currFreeIdx.maxZ(maxZ)
-        currFreeIdx.UUID(uuid)
+        currFreeIdx.id(id)
 
         return currFreeIdx
     }
@@ -1100,7 +1103,7 @@ class FlattenedBodyAABBTree(
 private val DUST_OPTIONS = Particle.DustOptions(Color.RED, 0.25f)
 private val DUST_OPTIONS_LEAF = Particle.DustOptions(Color.FUCHSIA, 0.3f)
 
-internal const val DATA_SIZE = 11
+internal const val DATA_SIZE = 10
 private const val PARENT_IDX_OFFSET = 0 // low 32 bits; -1 if no parent
 private const val IS_LEAF_OFFSET = 0 // high 32 bits
 private const val CHILD_1_IDX_OFFSET = 1 // low 32 bits
@@ -1112,7 +1115,7 @@ private const val MAX_X_OFFSET = 5
 private const val MAX_Y_OFFSET = 6
 private const val MAX_Z_OFFSET = 7
 private const val EXPLORED_COST_OFFSET = 8
-private const val UUID_OFFSET = 9
+private const val ID_OFFSET = 9
 
 private const val NEXT_FREE_IDX_OFFSET = 0 // low 32 bits
 private const val NODE_STATUS_OFFSET =
