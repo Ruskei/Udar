@@ -10,6 +10,7 @@ import java.util.*
 class EnvironmentBody(
     override val physicsWorld: PhysicsWorld,
 ) : Body {
+    override val id: Long = physicsWorld.createID()
     override val world: World = physicsWorld.world
     override val uuid: UUID = UUID.randomUUID()
     override val pos: Vector3d = Vector3d()

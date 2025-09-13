@@ -1,21 +1,27 @@
-package com.ixume.udar.dynamicaabb.array
+package com.ixume.udar.dynamicaabb
 
+import com.ixume.udar.PhysicsWorld
+import com.ixume.udar.body.active.ActiveBody
+import com.ixume.udar.dynamicaabb.AABB.Companion.FAT_MARGIN
+import com.ixume.udar.dynamicaabb.array.IntQueue
+import com.ixume.udar.dynamicaabb.array.withHigher
+import com.ixume.udar.dynamicaabb.array.withLower
 import com.ixume.udar.testing.debugConnect
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
+import it.unimi.dsi.fastutil.ints.IntArrayList
 import it.unimi.dsi.fastutil.ints.IntComparator
 import it.unimi.dsi.fastutil.ints.IntHeapPriorityQueue
 import org.bukkit.Color
 import org.bukkit.Particle
 import org.bukkit.World
 import org.joml.Vector3d
+import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sign
 
 /**
- * Represent a dynamic AABB tree as a flattened AABB DoubleArray; a node k has its data at array[k * DATA_SIZE],
- *
  * data {
  *     parentIdx: Int       0
  *     isLeaf: Boolean      0
@@ -28,16 +34,12 @@ import kotlin.math.sign
  *     maxY: Double         6
  *     maxZ: Double         7
  *     exploredCost: Double 8
+ *     bodyUuid: UUID       10
  * }
- *
- * Array is initialized as a flattened linked list of unused nodes. When a node is added, the first available free
- * node is found (with freeHead variable) and modified to hold the data of the added node. When a node is removed,
- * its updated to point to the current freeHead, and freeHead is updated.
- *
- * Implementation is filled with extension methods. These just apply to the indices, so you would use them on the index
- * of the node that you're referencing.
  */
-class FlattenedAABBTree(
+
+class FlattenedBodyAABBTree(
+    val world: PhysicsWorld,
     capacity: Int,
 ) : IntComparator {
     private val blocked = AtomicBoolean(false)
@@ -52,10 +54,6 @@ class FlattenedAABBTree(
 
     override fun compare(k1: Int, k2: Int): Int {
         return sign(k1.exploredCost() - k2.exploredCost()).toInt()
-    }
-
-    fun iterator(): FlattenedAABBTreeIterator {
-        return FlattenedAABBTreeIterator(this)
     }
 
     val containmentQueue = IntQueue()
@@ -81,10 +79,92 @@ class FlattenedAABBTree(
         return false
     }
 
+    fun contains(
+        bb: Int,
+        minX: Double, minY: Double, minZ: Double,
+        maxX: Double, maxY: Double, maxZ: Double,
+    ): Boolean {
+        if (bb == -1) return false
+        return bb.minX() <= minX && bb.maxX() >= maxX &&
+               bb.minY() <= minY && bb.maxY() >= maxY &&
+               bb.minZ() <= minZ && bb.maxZ() >= maxZ
+    }
+
     private fun Int.contains(x: Double, y: Double, z: Double): Boolean {
         return x >= minX() && x <= maxX() &&
                y >= minY() && y <= maxY() &&
                z >= minZ() && z <= maxZ()
+    }
+
+    fun constructCollisions(out: Int2ObjectOpenHashMap<IntArrayList>) {
+        if (!blocked.compareAndSet(
+                false,
+                true
+            )
+        ) throw IllegalStateException("Tried to construct collisions while blocked!")
+
+        if (rootIdx == -1) {
+            blocked.set(false)
+            return
+        }
+
+        if (rootIdx.isLeaf()) {
+            blocked.set(false)
+            return
+        }
+
+        pairs(rootIdx.child1(), rootIdx.child2(), out)
+
+        blocked.set(false)
+    }
+
+    private fun pairs(a: Int, b: Int, out: Int2ObjectOpenHashMap<IntArrayList>) {
+        if (a.isLeaf()) {
+            if (b.isLeaf()) {
+                if (a._overlaps(b)) {
+                    val ab = a.body()
+                    val bb = b.body()
+
+                    if (ab.overlaps(bb)) {
+                        out.getOrPut(ab.idx) { IntArrayList() }.add(bb.idx)
+                    }
+                }
+
+                return
+            } else {
+                if (a.parent() == b.parent()) {
+                    pairs(b.child1(), b.child2(), out)
+                }
+
+                if (a._overlaps(b)) {
+                    pairs(a, b.child1(), out)
+                    pairs(a, b.child2(), out)
+                }
+            }
+        } else {
+            if (b.isLeaf()) {
+                if (a.parent() == b.parent()) {
+                    pairs(a.child1(), a.child2(), out)
+                }
+
+                if (a._overlaps(b)) {
+                    pairs(b, a.child1(), out)
+                    pairs(b, a.child2(), out)
+                }
+            } else {
+                if (a.parent() == b.parent()) {
+                    pairs(a.child1(), a.child2(), out)
+                    pairs(b.child1(), b.child2(), out)
+                }
+
+                if (a._overlaps(b)) {
+                    pairs(a.child1(), b.child1(), out)
+                    pairs(a.child1(), b.child2(), out)
+                    pairs(a.child2(), b.child1(), out)
+                    pairs(a.child2(), b.child2(), out)
+                }
+            }
+        }
     }
 
     fun insert(
@@ -94,7 +174,8 @@ class FlattenedAABBTree(
         maxX: Double,
         maxY: Double,
         maxZ: Double,
-    ) {
+        uuid: UUID?,
+    ): Int {
         if (!blocked.compareAndSet(false, true)) throw IllegalStateException("Tried to insert while blocked!")
 
         val best = bestSibling(
@@ -118,61 +199,15 @@ class FlattenedAABBTree(
                 maxX = maxX,
                 maxY = maxY,
                 maxZ = maxZ,
+                uuid = uuid,
             )
+
+            check(rootIdx.isLeaf())
 
             blocked.set(false)
-            return
+            return rootIdx
         }
 
-        // check if the best sibling and proposed aabb could be represented as 1 aabb
-        if (best.isLeaf()) {
-            val bv = best.volume()
-            val uc = unifiedCost(
-                aMinX = best.minX(),
-                aMinY = best.minY(),
-                aMinZ = best.minZ(),
-                aMaxX = best.maxX(),
-                aMaxY = best.maxY(),
-                aMaxZ = best.maxZ(),
-
-                bMinX = minX,
-                bMinY = minY,
-                bMinZ = minZ,
-                bMaxX = maxX,
-                bMaxY = maxY,
-                bMaxZ = maxZ,
-            )
-
-            if (abs(bv + ((maxX - minX) * (maxY - minY) * (maxZ - minZ)) - uc) < 1e-14) {
-                best.setUnion(
-                    aMinX = best.minX(),
-                    aMinY = best.minY(),
-                    aMinZ = best.minZ(),
-                    aMaxX = best.maxX(),
-                    aMaxY = best.maxY(),
-                    aMaxZ = best.maxZ(),
-
-                    bMinX = minX,
-                    bMinY = minY,
-                    bMinZ = minZ,
-                    bMaxX = maxX,
-                    bMaxY = maxY,
-                    bMaxZ = maxZ,
-                )
-
-                best.parent().refitRecursively(
-                    minX,
-                    minY,
-                    minZ,
-                    maxX,
-                    maxY,
-                    maxZ,
-                )
-
-                blocked.set(false)
-                return
-            }
-        }
 
         val leaf = newNode(
             parent = -1,
@@ -185,6 +220,7 @@ class FlattenedAABBTree(
             maxX = maxX,
             maxY = maxY,
             maxZ = maxZ,
+            uuid = uuid,
         )
 
         val oldParent = best.parent()
@@ -200,6 +236,7 @@ class FlattenedAABBTree(
             maxX = max(maxX, best.maxX()),
             maxY = max(maxY, best.maxY()),
             maxZ = max(maxZ, best.maxZ()),
+            uuid = null,
         )
 
         if (oldParent == -1) {
@@ -221,40 +258,94 @@ class FlattenedAABBTree(
         best.parent(newParent)
         leaf.parent(newParent)
 
-        newParent.refitRecursively(
-            minX,
-            minY,
-            minZ,
-            maxX,
-            maxY,
-            maxZ,
-        )
+        newParent.refitRecursively()
+
+        check(leaf.isLeaf())
+
+        blocked.set(false)
+
+        return leaf
+    }
+
+    fun remove(idx: Int) {
+        check(idx.isLeaf())
+
+        if (!blocked.compareAndSet(
+                false,
+                true
+            )
+        ) throw IllegalStateException()
+
+        val cp = idx.parent()
+
+        if (cp == -1) {
+            clear() // removing only a leaf, but if we're here we might as well clean up freelist
+
+            blocked.set(false)
+            return
+        }
+
+        check(!cp.isLeaf())
+
+        val cpc1 = cp.child1()
+        val cpc2 = cp.child2()
+
+        check(cpc1 != -1)
+        check(cpc2 != -1)
+
+        val other = if (cpc1 == idx) cpc2 else cpc1
+
+        val cpp = cp.parent()
+        if (cpp == -1) { // move root's node into node position, so remove `idx` and `root`
+            cp.removeNode()
+            idx.removeNode()
+
+            rootIdx = other
+            other.parent(-1)
+
+            blocked.set(false)
+            return
+        }
+
+        check(!cpp.isLeaf())
+
+        // general case, so here we replace the relevant cpp child with `other` and clean up cp and idx
+
+        if (cpp.child1() == cp) {
+            cpp.child1(other)
+        } else {
+            cpp.child2(other)
+        }
+
+        other.parent(cpp)
+
+        cp.removeNode()
+        idx.removeNode()
 
         blocked.set(false)
     }
 
-    private fun Int.refitRecursively(
-        minX: Double,
-        minY: Double,
-        minZ: Double,
-        maxX: Double,
-        maxY: Double,
-        maxZ: Double,
-    ) {
+    fun update(idx: Int, tight: AABB, uuid: UUID): Int {
+        if (idx != -1) {
+            remove(idx)
+        }
+
+        return insert(
+            minX = tight.minX - FAT_MARGIN,
+            minY = tight.minY - FAT_MARGIN,
+            minZ = tight.minZ - FAT_MARGIN,
+            maxX = tight.maxX + FAT_MARGIN,
+            maxY = tight.maxY + FAT_MARGIN,
+            maxZ = tight.maxZ + FAT_MARGIN,
+            uuid = uuid,
+        )
+    }
+
+    private fun Int.refitRecursively() {
         var p = this
 
         while (p != -1) {
-            if (!p.tryMerge()) {
-                p.refit(
-                    minX,
-                    minY,
-                    minZ,
-                    maxX,
-                    maxY,
-                    maxZ,
-                )
-            }
-
+            p.refitToChildren()
             if (!p.isLeaf()) p.rotate()
 
             p = p.parent()
@@ -448,6 +539,8 @@ class FlattenedAABBTree(
 
     private fun Int.cost(): Double {
         return if (isLeaf()) volume() else {
+            check(child1() != -1) { "$this is not a leaf but has no children, ri: $rootIdx" }
+            check(child2() != -1) { "$this is not a leaf but has no children, ri: $rootIdx" }
             val c1 = child1()
             val c2 = child2()
             unifiedCost(
@@ -488,21 +581,13 @@ class FlattenedAABBTree(
         arr[this * DATA_SIZE + CHILD_2_IDX_OFFSET] = arr[this * DATA_SIZE + CHILD_2_IDX_OFFSET].withHigher(c2)
     }
 
-    private fun Int.isFree(): Boolean {
-        return (arr[this * DATA_SIZE + NODE_STATUS_OFFSET].toRawBits() ushr 32).toInt() == NODE_UNUSED_STATUS
-    }
-
-    fun isNodeFree(i: Int): Boolean {
-        return (arr[i * DATA_SIZE + NODE_STATUS_OFFSET].toRawBits() ushr 32).toInt() == NODE_UNUSED_STATUS
-    }
-
-    fun isNodeLeaf(i: Int): Boolean {
-        return (arr[i * DATA_SIZE + IS_LEAF_OFFSET].toRawBits() ushr 32).toInt() == 1
-    }
-
     private fun Int.free() {
         arr[this * DATA_SIZE + NODE_STATUS_OFFSET] =
             arr[this * DATA_SIZE + NODE_STATUS_OFFSET].withHigher(NODE_UNUSED_STATUS)
+    }
+
+    private fun Int.isFree(): Boolean {
+        return (arr[this * DATA_SIZE + NODE_STATUS_OFFSET].toRawBits() ushr 32).toInt() == NODE_UNUSED_STATUS
     }
 
     private fun Int.isLeaf(): Boolean {
@@ -577,8 +662,45 @@ class FlattenedAABBTree(
         return arr[this * DATA_SIZE + PARENT_IDX_OFFSET].toRawBits().toInt()
     }
 
+    private fun Int._overlaps(other: Int): Boolean {
+        return minX() < other.maxX() && maxX() > other.minX() &&
+               minY() < other.maxY() && maxY() > other.minY() &&
+               minZ() < other.maxZ() && maxZ() > other.minZ()
+    }
+
+    fun overlaps(a: Int, b: Int): Boolean {
+        return a._overlaps(b)
+    }
+
+    private fun Int.body(): ActiveBody {
+        check(isLeaf())
+        val uuid = UUID()
+        return world.activeBodies[uuid]!!
+    }
+
+    private fun ActiveBody.overlaps(other: ActiveBody): Boolean {
+        return tightBB.overlaps(other.tightBB)
+    }
+
     private fun Int.parent(parent: Int) {
         arr[this * DATA_SIZE + PARENT_IDX_OFFSET] = arr[this * DATA_SIZE + PARENT_IDX_OFFSET].withLower(parent)
+    }
+
+    private fun Int.UUID(): UUID {
+        val baseIdx = this * DATA_SIZE
+        val low = arr[baseIdx + UUID_OFFSET].toRawBits()
+        val high = arr[baseIdx + UUID_OFFSET + 1].toRawBits()
+        return UUID(high, low)
+    }
+
+    private fun Int.UUID(uuid: UUID?) {
+        if (uuid == null) return
+        arr[this * DATA_SIZE + UUID_OFFSET] = Double.fromBits(uuid.leastSignificantBits)
+        arr[this * DATA_SIZE + UUID_OFFSET + 1] = Double.fromBits(uuid.mostSignificantBits)
+    }
+
+    fun uuid(idx: Int): UUID {
+        return idx.UUID()
     }
 
     /**
@@ -612,6 +734,7 @@ class FlattenedAABBTree(
         maxX: Double,
         maxY: Double,
         maxZ: Double,
+        uuid: UUID?,
     ): Int {
         val currFreeIdx = freeIdx
         if (currFreeIdx == -1) {
@@ -629,6 +752,7 @@ class FlattenedAABBTree(
             f.maxX(maxX)
             f.maxY(maxY)
             f.maxZ(maxZ)
+            f.UUID(uuid)
 
             return f
         }
@@ -649,6 +773,7 @@ class FlattenedAABBTree(
         currFreeIdx.maxX(maxX)
         currFreeIdx.maxY(maxY)
         currFreeIdx.maxZ(maxZ)
+        currFreeIdx.UUID(uuid)
 
         return currFreeIdx
     }
@@ -665,68 +790,14 @@ class FlattenedAABBTree(
         arr[this * DATA_SIZE + NEXT_FREE_IDX_OFFSET] = Double.fromBits(next.toLong())
     }
 
-    private fun Int.tryMerge(): Boolean {
-        if (isLeaf()) {
-            return false
-        }
-        val c1 = child1()
-        if (!c1.isLeaf()) {
-            return false
-        }
-        val c2 = child2()
-        if (!c2.isLeaf()) {
-            return false
-        }
-
-        val c =
-            unifiedCost(
-                aMinX = c1.minX(),
-                aMinY = c1.minY(),
-                aMinZ = c1.minZ(),
-                aMaxX = c1.maxX(),
-                aMaxY = c1.maxY(),
-                aMaxZ = c1.maxZ(),
-
-                bMinX = c2.minX(),
-                bMinY = c2.minY(),
-                bMinZ = c2.minZ(),
-                bMaxX = c2.maxX(),
-                bMaxY = c2.maxY(),
-                bMaxZ = c2.maxZ(),
-            )
-
-        val c1v = c1.volume()
-        val c2v = c2.volume()
-
-        if (abs(c1v + c2v - c) < 1e-14) {
-            setUnion(
-                aMinX = c1.minX(),
-                aMinY = c1.minY(),
-                aMinZ = c1.minZ(),
-                aMaxX = c1.maxX(),
-                aMaxY = c1.maxY(),
-                aMaxZ = c1.maxZ(),
-
-                bMinX = c2.minX(),
-                bMinY = c2.minY(),
-                bMinZ = c2.minZ(),
-                bMaxX = c2.maxX(),
-                bMaxY = c2.maxY(),
-                bMaxZ = c2.maxZ(),
-            )
-
-            leaf(true)
-
-            child1(-1)
-            child2(-1)
-
-            c1.removeNode()
-            c2.removeNode()
-
-            return true
-        }
-
-        return false
+    private fun Int.refitToChildren() {
+        check(!isLeaf())
+        minX(min(child1().minX(), child2().minX()))
+        minY(min(child1().minY(), child2().minY()))
+        minZ(min(child1().minZ(), child2().minZ()))
+        maxX(max(child1().maxX(), child2().maxX()))
+        maxY(max(child1().maxY(), child2().maxY()))
+        maxZ(max(child1().maxZ(), child2().maxZ()))
     }
 
     private fun Int.refit(
@@ -929,6 +1000,24 @@ class FlattenedAABBTree(
         freeIdx = this
     }
 
+//    private fun Int.printState() {
+//        if (this == -1) {
+//            return
+//        }
+//        
+//        if (this == rootIdx) {
+//            print("(ROOT) ")
+//        }
+//        
+//        if (isLeaf()) {
+//            println("(LEAF) ${parent()} -> {$this}")
+//        } else {
+//            println("(INTERNAL) ${parent()} -> {$this} -> (${child1()}, ${child2()})")
+//            child1().printState()
+//            child2().printState()
+//        }
+//    }
+
     fun visualize(world: World) {
         var i = 0
         val numNodes = arr.size / DATA_SIZE
@@ -1011,7 +1100,7 @@ class FlattenedAABBTree(
 private val DUST_OPTIONS = Particle.DustOptions(Color.RED, 0.25f)
 private val DUST_OPTIONS_LEAF = Particle.DustOptions(Color.FUCHSIA, 0.3f)
 
-internal const val DATA_SIZE = 9
+internal const val DATA_SIZE = 11
 private const val PARENT_IDX_OFFSET = 0 // low 32 bits; -1 if no parent
 private const val IS_LEAF_OFFSET = 0 // high 32 bits
 private const val CHILD_1_IDX_OFFSET = 1 // low 32 bits
@@ -1023,6 +1112,7 @@ private const val MAX_X_OFFSET = 5
 private const val MAX_Y_OFFSET = 6
 private const val MAX_Z_OFFSET = 7
 private const val EXPLORED_COST_OFFSET = 8
+private const val UUID_OFFSET = 9
 
 private const val NEXT_FREE_IDX_OFFSET = 0 // low 32 bits
 private const val NODE_STATUS_OFFSET =
@@ -1057,11 +1147,3 @@ private fun unifiedCost(
 
 private const val LOWER_MASK = 0xFFFFFFFFL
 private const val UPPER_MASK = LOWER_MASK.inv()
-
-fun Double.withLower(i: Int): Double {
-    return Double.fromBits((this.toRawBits() and UPPER_MASK) or (i.toLong() and LOWER_MASK))
-}
-
-fun Double.withHigher(i: Int): Double {
-    return Double.fromBits((this.toRawBits() and LOWER_MASK) or (i.toLong() shl 32))
-}

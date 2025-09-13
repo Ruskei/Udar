@@ -585,7 +585,9 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
         _otherBodyAxiss[2].set(0.0, 0.0, 1.0).rotate(other.q).normalize()
 
         _crossAxiss[0].set(_myBodyAxiss[0]).cross(_otherBodyAxiss[0]).normalize()
-        if (!_crossAxiss[0].isFinite) return false
+        if (!_crossAxiss[0].isFinite) {
+            return false
+        }
         _crossAxiss[1].set(_myBodyAxiss[0]).cross(_otherBodyAxiss[1]).normalize()
         if (!_crossAxiss[1].isFinite) return false
         _crossAxiss[2].set(_myBodyAxiss[0]).cross(_otherBodyAxiss[2]).normalize()

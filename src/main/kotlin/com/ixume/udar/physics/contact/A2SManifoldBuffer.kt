@@ -3,7 +3,6 @@ package com.ixume.udar.physics.contact
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import org.joml.Matrix3f
-import org.joml.Vector3f
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
@@ -41,7 +40,7 @@ class A2SManifoldBuffer(maxContactNum: Int) : A2SManifoldCollection {
                 arr[idx + CONTACT_NUM_OFFSET] = Float.fromBits(buf.cursor)
                 numContacts.addAndGet(buf.cursor)
 
-                arr[idx + BODY_A_IDX_OFFSET] = Float.fromBits(activeBody.id)
+                arr[idx + BODY_A_IDX_OFFSET] = Float.fromBits(activeBody.idx)
                 arr[idx + BODY_A_POS_X_OFFSET] = activeBody.pos.x.toFloat()
                 arr[idx + BODY_A_POS_Y_OFFSET] = activeBody.pos.y.toFloat()
                 arr[idx + BODY_A_POS_Z_OFFSET] = activeBody.pos.z.toFloat()
@@ -73,7 +72,7 @@ class A2SManifoldBuffer(maxContactNum: Int) : A2SManifoldCollection {
             arr[idx + CONTACT_NUM_OFFSET] = Float.fromBits(buf.cursor)
             numContacts.addAndGet(buf.cursor)
 
-            arr[idx + BODY_A_IDX_OFFSET] = Float.fromBits(activeBody.id)
+            arr[idx + BODY_A_IDX_OFFSET] = Float.fromBits(activeBody.idx)
             arr[idx + BODY_A_POS_X_OFFSET] = activeBody.pos.x.toFloat()
             arr[idx + BODY_A_POS_Y_OFFSET] = activeBody.pos.y.toFloat()
             arr[idx + BODY_A_POS_Z_OFFSET] = activeBody.pos.z.toFloat()

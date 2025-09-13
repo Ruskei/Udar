@@ -30,7 +30,7 @@ class LocalConstraintSolver(
     private val _vec3 = Vector3f()
     private val _quat = Quaternionf()
 
-    private var idMap: Array<ActiveBody>
+//    private var idMap: Array<ActiveBody>
     private var bodyCount: Int
 
     private var flatBodyData: FloatArray = FloatArray(1)
@@ -40,13 +40,13 @@ class LocalConstraintSolver(
     init {
         val snapshot = physicsWorld.bodiesSnapshot()
         bodyCount = snapshot.size
-        idMap = physicsWorld.bodiesSnapshot().let {
-            Array(it.size) { i ->
-                val b = it[i]
-                b.id = i
-                b
-            }
-        }
+//        idMap = physicsWorld.bodiesSnapshot().let {
+//            Array(it.size) { i ->
+//                val b = it[i]
+//                b.idx = i
+//                b
+//            }
+//        }
     }
 
     private lateinit var manifolds: A2AManifoldBuffer
@@ -62,8 +62,7 @@ class LocalConstraintSolver(
     private var envContactT2Data: FloatArray = FloatArray(1)
 
     fun prepare() {
-        updateIDMap()
-        bodyCount = idMap.size
+        bodyCount = physicsWorld.activeBodies.size()
     }
 
     fun setup() {
@@ -99,15 +98,6 @@ class LocalConstraintSolver(
 
 //        runningMaxLambda = FloatArray(Udar.CONFIG.collision.normalIterations)
         itr = 0
-    }
-
-    fun updateIDMap() {
-        val ls = physicsWorld.bodiesSnapshot()
-        idMap = Array(ls.size) {
-            val b = ls[it]
-            b.id = it
-            b
-        }
     }
 
     private val _c_vec3 = Vector3f()
@@ -355,7 +345,7 @@ class LocalConstraintSolver(
     }
 
     private fun buildFlatBodyData() {
-        val n = idMap.size
+        val n = physicsWorld.activeBodies.size()
         if (flatBodyData.size < n * BODY_DATA_FLOATS) { // resizing is fine, since all the valid bodies should set their data anyway
             flatBodyData = FloatArray(max(flatBodyData.size * 2, n * BODY_DATA_FLOATS))
         }
@@ -364,7 +354,7 @@ class LocalConstraintSolver(
 
         var i = 0
         while (i < bodyCount) {
-            val b = idMap[i]
+            val b = physicsWorld.activeBodies[i]!!
 
             buf.putVector3f(_vec3.set(b.velocity))
             buf.putVector3f(_vec3.set(b.omega).rotate(_quat.set(b.q)))
@@ -751,7 +741,7 @@ class LocalConstraintSolver(
         var i = 0
         val n = bodyCount * BODY_DATA_FLOATS
         while (i < n) {
-            val body = idMap[i / BODY_DATA_FLOATS]
+            val body = physicsWorld.activeBodies[i / BODY_DATA_FLOATS]!!
 
             body.velocity.from(i + V_OFFSET, flatBodyData)
             check(body.velocity.isFinite)

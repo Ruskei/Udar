@@ -31,7 +31,7 @@ class CompositeCompositeContactGenerator(
                 pw.debugData.totalPairs++
                 pw.debugData.totalCompositePairs++
 
-                if (!myPart.fatBB.overlaps(otherPart.fatBB)) continue
+                if (!pw.bodyAABBTree.overlaps(myPart.fatBB, otherPart.fatBB)) continue
 
                 val d = myPart.pos.distance(otherPart.pos)
                 if (d > myPart.radius + otherPart.radius) {

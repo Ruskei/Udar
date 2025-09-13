@@ -9,6 +9,7 @@ import java.util.*
 
 interface Body {
     val uuid: UUID
+    val id: Long
     val world: World
     val physicsWorld: PhysicsWorld
 

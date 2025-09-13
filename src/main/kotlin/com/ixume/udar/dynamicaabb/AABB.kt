@@ -36,9 +36,9 @@ open class AABB(
     }
 
     fun overlaps(minX: Double, minY: Double, minZ: Double, maxX: Double, maxY: Double, maxZ: Double): Boolean {
-        return this.minX < maxX && this.maxX > minX
-               && this.minY < maxY && this.maxY > minY
-               && this.minZ < maxZ && this.maxZ > minZ
+        return this.minX < maxX && this.maxX > minX &&
+               this.minY < maxY && this.maxY > minY &&
+               this.minZ < maxZ && this.maxZ > minZ
     }
 
     fun contains(other: AABB): Boolean {
@@ -149,7 +149,7 @@ open class AABB(
     }
 
     companion object {
-        private const val FAT_MARGIN = 0.1
+        const val FAT_MARGIN = 0.1
         private val colors = listOf(
             Color.WHITE,
             Color.SILVER,

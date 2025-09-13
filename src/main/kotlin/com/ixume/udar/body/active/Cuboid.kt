@@ -3,7 +3,6 @@ package com.ixume.udar.body.active
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.Udar
 import com.ixume.udar.body.EnvironmentBody
-import com.ixume.udar.collisiondetection.broadphase.BoundAABB
 import com.ixume.udar.collisiondetection.capability.GJKCapable
 import com.ixume.udar.collisiondetection.capability.SDFCapable
 import com.ixume.udar.collisiondetection.contactgeneration.CuboidSATContactGenerator
@@ -39,9 +38,9 @@ class Cuboid(
     override var hasGravity: Boolean,
 ) : ActiveBody, GJKCapable, SDFCapable {
     override val uuid = UUID.randomUUID()!!
-    override var id: Int = -1
     override var idx: Int = -1
     override val physicsWorld: PhysicsWorld = world.physicsWorld!!
+    override val id: Long = physicsWorld.createID()
 
     override var isChild: Boolean = false
     override var age: Int = 0
@@ -132,18 +131,25 @@ class Cuboid(
             tightBB.maxZ = max(tightBB.maxZ, vertex.z)
         }
 
+        if (!isChild) {
+            val fits = physicsWorld.bodyAABBTree.contains(
+                fatBB,
+                tightBB.minX,
+                tightBB.minY,
+                tightBB.minZ,
+                tightBB.maxX,
+                tightBB.maxY,
+                tightBB.maxZ,
+            )
 
-        if (!fatBB.contains(tightBB)) {
-            fatBB.updateDims(tightBB)
-
-            if (!isChild) {
-                physicsWorld.updateBB(this)
+            if (!fits) {
+                physicsWorld.updateBB(this, tightBB)
             }
         }
     }
 
     override val tightBB: AABB = AABB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-    override val fatBB: BoundAABB = BoundAABB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    override var fatBB = -1
 
     private var debugDisplay: TextDisplay? = null
 

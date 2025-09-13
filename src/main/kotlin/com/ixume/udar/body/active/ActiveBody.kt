@@ -3,7 +3,6 @@ package com.ixume.udar.body.active
 import com.ixume.udar.body.A2ACollidable
 import com.ixume.udar.body.A2SCollidable
 import com.ixume.udar.body.Body
-import com.ixume.udar.collisiondetection.broadphase.BoundAABB
 import com.ixume.udar.collisiondetection.capability.Projectable
 import com.ixume.udar.dynamicaabb.AABB
 import org.joml.Quaterniond
@@ -14,7 +13,6 @@ import kotlin.math.max
 import kotlin.math.min
 
 interface ActiveBody : A2ACollidable, A2SCollidable, Body, Projectable {
-    var id: Int
     var idx: Int
 
     var age: Int
@@ -24,7 +22,7 @@ interface ActiveBody : A2ACollidable, A2SCollidable, Body, Projectable {
     val faces: Array<Face>
     val edges: Array<Edge>
     val radius: Double
-    val fatBB: BoundAABB
+    var fatBB: Int
     val tightBB: AABB
 
     var awake: AtomicBoolean

@@ -34,7 +34,7 @@ class A2AManifoldArray(maxContactNum: Int) : A2AManifoldCollection {
 
         arr[idx + CONTACT_NUM_OFFSET] = Float.fromBits(buf.cursor)
 
-        arr[idx + BODY_A_IDX_OFFSET] = Float.fromBits(first.id)
+        arr[idx + BODY_A_IDX_OFFSET] = Float.fromBits(first.idx)
         arr[idx + BODY_A_POS_X_OFFSET] = first.pos.x.toFloat()
         arr[idx + BODY_A_POS_Y_OFFSET] = first.pos.y.toFloat()
         arr[idx + BODY_A_POS_Z_OFFSET] = first.pos.z.toFloat()
@@ -49,7 +49,7 @@ class A2AManifoldArray(maxContactNum: Int) : A2AManifoldCollection {
         arr[idx + BODY_A_INVERSE_INERTIA_ZY_OFFSET] = first.inverseInertia.m21.toFloat()
         arr[idx + BODY_A_INVERSE_INERTIA_ZZ_OFFSET] = first.inverseInertia.m22.toFloat()
 
-        arr[idx + BODY_B_IDX_OFFSET] = Float.fromBits(second.id)
+        arr[idx + BODY_B_IDX_OFFSET] = Float.fromBits(second.idx)
         arr[idx + BODY_B_POS_X_OFFSET] = second.pos.x.toFloat()
         arr[idx + BODY_B_POS_Y_OFFSET] = second.pos.y.toFloat()
         arr[idx + BODY_B_POS_Z_OFFSET] = second.pos.z.toFloat()
@@ -96,7 +96,7 @@ class A2AManifoldArray(maxContactNum: Int) : A2AManifoldCollection {
 
         arr[idx + CONTACT_NUM_OFFSET] = Float.fromBits(1)
 
-        arr[idx + BODY_A_IDX_OFFSET] = Float.fromBits(first.id)
+        arr[idx + BODY_A_IDX_OFFSET] = Float.fromBits(first.idx)
         arr[idx + BODY_A_POS_X_OFFSET] = first.pos.x.toFloat()
         arr[idx + BODY_A_POS_Y_OFFSET] = first.pos.y.toFloat()
         arr[idx + BODY_A_POS_Z_OFFSET] = first.pos.z.toFloat()
@@ -111,7 +111,7 @@ class A2AManifoldArray(maxContactNum: Int) : A2AManifoldCollection {
         arr[idx + BODY_A_INVERSE_INERTIA_ZY_OFFSET] = first.inverseInertia.m21.toFloat()
         arr[idx + BODY_A_INVERSE_INERTIA_ZZ_OFFSET] = first.inverseInertia.m22.toFloat()
 
-        arr[idx + BODY_B_IDX_OFFSET] = Float.fromBits(second.id)
+        arr[idx + BODY_B_IDX_OFFSET] = Float.fromBits(second.idx)
         arr[idx + BODY_B_POS_X_OFFSET] = second.pos.x.toFloat()
         arr[idx + BODY_B_POS_Y_OFFSET] = second.pos.y.toFloat()
         arr[idx + BODY_B_POS_Z_OFFSET] = second.pos.z.toFloat()

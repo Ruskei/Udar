@@ -3,7 +3,6 @@ package com.ixume.udar.body.active
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.Udar
 import com.ixume.udar.body.EnvironmentBody
-import com.ixume.udar.collisiondetection.broadphase.BoundAABB
 import com.ixume.udar.collisiondetection.contactgeneration.CompositeCompositeContactGenerator
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.dynamicaabb.AABB
@@ -38,9 +37,9 @@ class CompositeImpl(
     }
 
     override val uuid: UUID = UUID.randomUUID()
-    override var id: Int = -1
     override var idx: Int = -1
     override val physicsWorld: PhysicsWorld = world.physicsWorld!!
+    override val id: Long = physicsWorld.createID()
 
     override var isChild: Boolean = false
     override var age: Int = 0
@@ -211,16 +210,26 @@ class CompositeImpl(
             tightBB.maxZ = max(tightBB.maxZ, bb.maxZ)
         }
 
-        if (!fatBB.contains(tightBB)) {
-            fatBB.updateDims(tightBB)
+        val fits = physicsWorld.bodyAABBTree.contains(
+            fatBB,
+            tightBB.minX,
+            tightBB.maxX,
+            tightBB.minY,
+            tightBB.maxY,
+            tightBB.minZ,
+            tightBB.maxZ,
+        )
+        // TODO : UPDATE THIS TO MATCH CUBOID IMPL
+
+        if (!fits) {
             if (!isChild) {
-                physicsWorld.updateBB(this)
+                physicsWorld.updateBB(this, tightBB)
             }
         }
     }
 
     override val tightBB: AABB = AABB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-    override val fatBB: BoundAABB = BoundAABB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    override var fatBB = -1
 
     override val prevQ: Quaterniond = Quaterniond(q)
     private val prevP = Vector3d(pos)

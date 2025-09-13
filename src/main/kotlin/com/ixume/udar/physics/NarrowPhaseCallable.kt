@@ -2,18 +2,27 @@ package com.ixume.udar.physics
 
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.Udar
-import com.ixume.udar.body.active.ActiveBody
+import it.unimi.dsi.fastutil.ints.Int2ObjectMaps
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
+import it.unimi.dsi.fastutil.ints.IntArrayList
 import kotlin.system.measureNanoTime
 
 class NarrowPhaseCallable(val world: PhysicsWorld) : Runnable {
-    lateinit var ps: MutableMap<ActiveBody, List<ActiveBody>>
+    lateinit var ps: Int2ObjectOpenHashMap<IntArrayList>
 
     override fun run() {
         val math = world.mathPool.get()
 
         try {
-            for ((first, ls) in ps) {
-                for (second in ls) {
+            val iterator = Int2ObjectMaps.fastIterator(ps)
+            while (iterator.hasNext()) {
+                val en = iterator.next()
+                val first = world.activeBodies[en.intKey]!!
+                val ls = en.value
+
+                for (i in 0..<ls.size) {
+                    val second = world.activeBodies[ls.getInt(i)]!!
+
                     val collided: Boolean
 
                     val t = measureNanoTime {

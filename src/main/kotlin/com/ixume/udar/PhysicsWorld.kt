@@ -5,8 +5,8 @@ import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.collisiondetection.contactgeneration.worldmesh.WorldMeshesManager
 import com.ixume.udar.collisiondetection.mesh.Mesh
 import com.ixume.udar.collisiondetection.pool.MathPool
-import com.ixume.udar.dynamicaabb.AABBTree
-import com.ixume.udar.physics.BodyIDMap
+import com.ixume.udar.dynamicaabb.AABB
+import com.ixume.udar.dynamicaabb.FlattenedBodyAABBTree
 import com.ixume.udar.physics.EntityUpdater
 import com.ixume.udar.physics.NarrowPhaseCallable
 import com.ixume.udar.physics.StatusUpdater
@@ -17,6 +17,9 @@ import com.ixume.udar.physics.contact.A2SManifoldBuffer
 import com.ixume.udar.physics.contact.A2SPrevManifoldData
 import com.ixume.udar.testing.PhysicsWorldTestDebugData
 import com.ixume.udar.testing.debugConnect
+import it.unimi.dsi.fastutil.ints.Int2ObjectMaps
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
+import it.unimi.dsi.fastutil.ints.IntArrayList
 import it.unimi.dsi.fastutil.longs.Long2IntAVLTreeMap
 import org.bukkit.*
 import org.joml.Vector3d
@@ -24,6 +27,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.roundToInt
 import kotlin.system.measureNanoTime
 
@@ -34,8 +38,11 @@ class PhysicsWorld(
     private val bodiesToRemove = AtomicList<ActiveBody>()
 
     val activeBodies = ActiveBodiesCollection()
-
-    private val bodyIDMap = BodyIDMap(this)
+    
+    private val runningID = AtomicLong(0)
+    fun createID(): Long {
+        return runningID.andIncrement
+    }
 
     fun bodiesSnapshot(): List<ActiveBody> {
         return activeBodies.bodies()
@@ -95,7 +102,7 @@ class PhysicsWorld(
     private var rollingParallelContactAverage = 0.0
     private var rollingStepAverage = 0.0
 
-    private val aabbTree = AABBTree()
+    val bodyAABBTree = FlattenedBodyAABBTree(this, 0)
 
     fun registerBody(body: ActiveBody) {
         bodiesToAdd += body
@@ -119,7 +126,7 @@ class PhysicsWorld(
     }
 
     private fun tick() {
-//        aabbTree.visualize(world)
+//        bodyAABBTree.visualize(world)
         time++
         repeat((0.05 / Udar.CONFIG.timeStep).roundToInt()) {
             var doTick = true
@@ -135,8 +142,6 @@ class PhysicsWorld(
                 processToAdd()
                 processToRemove()
 
-                bodyIDMap.update()
-
                 physicsTime++
 
                 debugData.reset()
@@ -150,7 +155,7 @@ class PhysicsWorld(
                 constraintSolverManager.prepare()
 
                 val startBroadTime = System.nanoTime()
-                val activePairs = broadPhase(bodiesSnapshot, NARROWPHASE_PROCESSORS)
+                val activePairs = broadPhase(bodiesSnapshot)
 
                 val endBroadTime = System.nanoTime()
 
@@ -352,17 +357,16 @@ class PhysicsWorld(
         }
     }
 
-    fun updateBB(body: ActiveBody) {
-        body.fatBB.updateTree(aabbTree)
+    fun updateBB(body: ActiveBody, tight: AABB) {
+        body.fatBB = bodyAABBTree.update(body.fatBB, tight, body.uuid)
     }
 
     private fun processToAdd() {
         val ss = bodiesToAdd.getAndClear()
         for (body in ss) {
-            body.fatBB.body = body
-            body.update()
-
             activeBodies.add(body)
+            body.update()
+            bodyAABBTree.uuid(body.fatBB)
         }
     }
 
@@ -373,21 +377,27 @@ class PhysicsWorld(
         }
     }
 
-    private fun broadPhase(bodies: List<ActiveBody>, groups: Int): Array<MutableMap<ActiveBody, List<ActiveBody>>>? {
-        require(groups > 0)
+    private val _broadCollisions = Int2ObjectOpenHashMap<IntArrayList>()
+    private val _groupedBroadCollisions =
+        Array<Int2ObjectOpenHashMap<IntArrayList>>(NARROWPHASE_PROCESSORS) { Int2ObjectOpenHashMap() }
+
+    private fun broadPhase(bodies: List<ActiveBody>): Array<Int2ObjectOpenHashMap<IntArrayList>>? {
         numPossibleContacts = 0
         if (bodies.size <= 1) return null
 
-        val cs = aabbTree.collisions()
+        _broadCollisions.clear()
+        _groupedBroadCollisions.forEach { it.clear() }
 
-        val groups = Array(groups) { mutableMapOf<ActiveBody, List<ActiveBody>>() }
-
-        for ((a, bs) in cs) {
-            numPossibleContacts += bs.size
-            groups.minBy { it.size }[a] = bs
+        bodyAABBTree.constructCollisions(_broadCollisions)
+        val iterator = Int2ObjectMaps.fastIterator(_broadCollisions)
+        
+        while (iterator.hasNext()) {
+            val en = iterator.next()
+            numPossibleContacts += en.value.size
+            _groupedBroadCollisions.minBy { it.size }.put(en.intKey, en.value)
         }
-
-        return groups
+        
+        return _groupedBroadCollisions
     }
 
     fun clear() {
@@ -395,7 +405,7 @@ class PhysicsWorld(
     }
 
     private fun kill(obj: ActiveBody) {
-        aabbTree.remove(obj.fatBB.node!!)
+        bodyAABBTree.remove(obj.fatBB)
         activeBodies.remove(obj.uuid)
     }
 
