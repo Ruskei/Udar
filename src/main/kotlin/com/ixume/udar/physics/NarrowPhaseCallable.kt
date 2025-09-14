@@ -17,11 +17,11 @@ class NarrowPhaseCallable(val world: PhysicsWorld) : Runnable {
             val iterator = Int2ObjectMaps.fastIterator(ps)
             while (iterator.hasNext()) {
                 val en = iterator.next()
-                val first = world.activeBodies[en.intKey]!!
+                val first = world.activeBodies.fastGet(en.intKey)!!
                 val ls = en.value
 
                 for (i in 0..<ls.size) {
-                    val second = world.activeBodies[ls.getInt(i)]!!
+                    val second = world.activeBodies.fastGet(ls.getInt(i))!!
 
                     val collided: Boolean
 

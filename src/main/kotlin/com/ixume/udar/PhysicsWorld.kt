@@ -87,7 +87,7 @@ class PhysicsWorld(
 
     private val busy = AtomicBoolean(false)
 
-    private val NARROWPHASE_PROCESSORS = 4//Runtime.getRuntime().availableProcessors()
+    private val NARROWPHASE_PROCESSORS = 5//Runtime.getRuntime().availableProcessors()
     val mathPool = MathPool(this, NARROWPHASE_PROCESSORS)
     private val executor = Executors.newFixedThreadPool(NARROWPHASE_PROCESSORS)
     private val narrowPhaseCallables = Array(NARROWPHASE_PROCESSORS) { NarrowPhaseCallable(this) }

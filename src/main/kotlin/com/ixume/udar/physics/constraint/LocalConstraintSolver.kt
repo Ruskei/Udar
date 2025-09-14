@@ -354,7 +354,7 @@ class LocalConstraintSolver(
 
         var i = 0
         while (i < bodyCount) {
-            val b = physicsWorld.activeBodies[i]!!
+            val b = physicsWorld.activeBodies.fastGet(i)!!
 
             buf.putVector3f(_vec3.set(b.velocity))
             buf.putVector3f(_vec3.set(b.omega).rotate(_quat.set(b.q)))
@@ -741,7 +741,7 @@ class LocalConstraintSolver(
         var i = 0
         val n = bodyCount * BODY_DATA_FLOATS
         while (i < n) {
-            val body = physicsWorld.activeBodies[i / BODY_DATA_FLOATS]!!
+            val body = physicsWorld.activeBodies.fastGet(i / BODY_DATA_FLOATS)!!
 
             body.velocity.from(i + V_OFFSET, flatBodyData)
             check(body.velocity.isFinite)

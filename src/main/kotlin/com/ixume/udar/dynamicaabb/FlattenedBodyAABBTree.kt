@@ -680,7 +680,7 @@ class FlattenedBodyAABBTree(
     private fun Int.body(): ActiveBody {
         check(isLeaf())
         val id = _id()
-        return world.activeBodies[id]!!
+        return world.activeBodies.fastGet(id)!!
     }
 
     private fun ActiveBody.overlaps(other: ActiveBody): Boolean {
