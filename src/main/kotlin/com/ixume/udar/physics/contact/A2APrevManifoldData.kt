@@ -12,7 +12,7 @@ class A2APrevManifoldData {
 
     fun add(
         numContacts: Int,
-        buf: A2APrevContactDataBuffer
+        buf: A2APrevContactDataBuffer,
     ): Int {
         val idx = ls.size
 
@@ -71,10 +71,9 @@ class A2APrevManifoldData {
         if (rawManifoldIdx == -1) {
             return 0f
         }
-        
+
         val idx = rawManifoldIdx + CONTACT_DATA_OFFSET + contactIdx * CONTACT_DATA_SIZE + NORMAL_LAMBDA_OFFSET
         val l = ls.getFloat(idx)
-        println("warmed contact with $l")
         return l
     }
 

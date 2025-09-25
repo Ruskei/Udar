@@ -43,7 +43,6 @@ class CompositeCompositeContactGenerator(
                 val result = myPart.collides(otherPart, math, out)
 
                 if (result) {
-                    println("PART-PART COLLISION!")
                     collided = true
                     pw.debugData.compositeCollisions++
                 }

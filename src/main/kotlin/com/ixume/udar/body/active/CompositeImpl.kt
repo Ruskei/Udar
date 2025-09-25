@@ -354,7 +354,7 @@ class CompositeImpl(
 
             val s = buf2.size()
             for (i in 0..<s) {
-                buf2.setBodyAIdx(i, idx)
+                buf2.setBodyData(i, this, other)
                 out.load(buf2, i)
             }
 
@@ -395,7 +395,7 @@ class CompositeImpl(
 
         val s = buf2.size()
         for (i in 0..<s) {
-            buf2.setBodyIdx(i, idx)
+            buf2.setBodyData(i, this)
             out.load(buf2, i)
         }
 
