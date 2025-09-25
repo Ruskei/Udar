@@ -13,6 +13,9 @@ import kotlin.math.max
 import kotlin.math.min
 
 interface ActiveBody : A2ACollidable, A2SCollidable, Body, Projectable {
+    /**
+     * index in ActiveBodiesCollection#allBodies()
+     */
     var idx: Int
 
     var age: Int

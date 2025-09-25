@@ -10,7 +10,7 @@ import kotlin.concurrent.write
 import kotlin.math.max
 
 class A2SManifoldBuffer(maxContactNum: Int) : A2SManifoldCollection {
-    internal var arr = FloatArray(0)
+    override var arr = FloatArray(0)
     private val lock = ReentrantReadWriteLock()
     private val cursor = AtomicInteger(0)
     
@@ -55,8 +55,8 @@ class A2SManifoldBuffer(maxContactNum: Int) : A2SManifoldCollection {
                 arr[idx + BODY_A_INVERSE_INERTIA_ZY_OFFSET] = activeBody.inverseInertia.m21.toFloat()
                 arr[idx + BODY_A_INVERSE_INERTIA_ZZ_OFFSET] = activeBody.inverseInertia.m22.toFloat()
 
-                check(buf.arr.size <= maxContactArrSize)
-                System.arraycopy(buf.arr, 0, arr, idx + CONTACTS_OFFSET, buf.arr.size)
+                check(buf.dataSize() <= maxContactArrSize)
+                System.arraycopy(buf.arr, 0, arr, idx + CONTACTS_OFFSET, buf.dataSize())
                 
                 return
             }
@@ -87,12 +87,12 @@ class A2SManifoldBuffer(maxContactNum: Int) : A2SManifoldCollection {
             arr[idx + BODY_A_INVERSE_INERTIA_ZY_OFFSET] = activeBody.inverseInertia.m21.toFloat()
             arr[idx + BODY_A_INVERSE_INERTIA_ZZ_OFFSET] = activeBody.inverseInertia.m22.toFloat()
 
-            check(buf.arr.size <= maxContactArrSize)
+            check(buf.dataSize() <= maxContactArrSize)
             check(idx + CONTACTS_OFFSET + buf.arr.size <= arr.size) {"""
                 idx: $idx, manifoldDataSize: $manifoldDataSize
                 buf.arr.size: ${buf.arr.size}
             """.trimIndent()}
-            System.arraycopy(buf.arr, 0, arr, idx + CONTACTS_OFFSET, buf.arr.size)
+            System.arraycopy(buf.arr, 0, arr, idx + CONTACTS_OFFSET, buf.dataSize())
         }
     }
 
@@ -128,7 +128,7 @@ class A2SManifoldBuffer(maxContactNum: Int) : A2SManifoldCollection {
 
                 arr[idx + CONTACT_NUM_OFFSET] = Float.fromBits(1)
 
-                arr[idx + BODY_A_IDX_OFFSET]
+                arr[idx + BODY_A_IDX_OFFSET] = Float.fromBits(activeBody.idx)
                 arr[idx + BODY_A_POS_X_OFFSET] = activeBody.pos.x.toFloat()
                 arr[idx + BODY_A_POS_Y_OFFSET] = activeBody.pos.y.toFloat()
                 arr[idx + BODY_A_POS_Z_OFFSET] = activeBody.pos.z.toFloat()
@@ -183,7 +183,7 @@ class A2SManifoldBuffer(maxContactNum: Int) : A2SManifoldCollection {
 
             arr[idx + CONTACT_NUM_OFFSET] = Float.fromBits(1)
 
-            arr[idx + BODY_A_IDX_OFFSET]
+            arr[idx + BODY_A_IDX_OFFSET] = Float.fromBits(activeBody.idx)
             arr[idx + BODY_A_POS_X_OFFSET] = activeBody.pos.x.toFloat()
             arr[idx + BODY_A_POS_Y_OFFSET] = activeBody.pos.y.toFloat()
             arr[idx + BODY_A_POS_Z_OFFSET] = activeBody.pos.z.toFloat()
@@ -224,6 +224,23 @@ class A2SManifoldBuffer(maxContactNum: Int) : A2SManifoldCollection {
         }
     }
 
+    override fun load(other: A2SManifoldCollection, otherManifoldIdx: Int) {
+        numContacts.addAndGet(other.numContacts(otherManifoldIdx))
+        val idx = cursor.andIncrement * manifoldDataSize
+
+        lock.read {
+            if (idx + manifoldDataSize < arr.size) {
+                System.arraycopy(other.arr, otherManifoldIdx * manifoldDataSize, arr, idx, manifoldDataSize)
+                return
+            }
+        }
+
+        lock.write {
+            grow(idx + manifoldDataSize)
+            System.arraycopy(other.arr, otherManifoldIdx * manifoldDataSize, arr, idx, manifoldDataSize)
+        }
+    }
+
     fun clear() {
         cursor.set(0)
         numContacts.set(0)
@@ -233,7 +250,7 @@ class A2SManifoldBuffer(maxContactNum: Int) : A2SManifoldCollection {
         return cursor.get() == 0
     }
     
-    fun numContacts(manifoldIdx: Int): Int {
+    override fun numContacts(manifoldIdx: Int): Int {
         return arr[manifoldIdx * manifoldDataSize + CONTACT_NUM_OFFSET].toRawBits()
     }
 
@@ -248,10 +265,6 @@ class A2SManifoldBuffer(maxContactNum: Int) : A2SManifoldCollection {
         return arr[manifoldIdx * manifoldDataSize + BODY_A_IDX_OFFSET].toRawBits()
     }
 
-    fun setBodyIdx(manifoldIdx: Int, value: Int) {
-        arr[manifoldIdx * manifoldDataSize + BODY_A_IDX_OFFSET] = Float.fromBits(value)
-    }
-    
     fun bodyX(manifoldIdx: Int): Float {
         return arr[manifoldIdx * manifoldDataSize + BODY_A_POS_X_OFFSET]
     }

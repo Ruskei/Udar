@@ -20,18 +20,17 @@ class CompositeCompositeContactGenerator(
         val pw = other.world.physicsWorld!!
         var collided = false
 
-        val buf = math.compositeUtil.buf
-        buf.clear()
-
         for (myPart in composite.parts) {
             for (otherPart in other.parts) {
+                check(myPart.idx != -1)
+                check(otherPart.idx != -1)
                 val can = myPart.capableCollision(otherPart)
                 if (can < 0) continue
 
                 pw.debugData.totalPairs++
                 pw.debugData.totalCompositePairs++
 
-                if (!pw.bodyAABBTree.overlaps(myPart.fatBB, otherPart.fatBB)) continue
+                if (!myPart.tightBB.overlaps(otherPart.tightBB)) continue
 
                 val d = myPart.pos.distance(otherPart.pos)
                 if (d > myPart.radius + otherPart.radius) {
@@ -41,23 +40,15 @@ class CompositeCompositeContactGenerator(
 
                 pw.debugData.totalCompositeCollisionChecks++
 
-                val result = myPart.collides(otherPart, math, buf)
+                val result = myPart.collides(otherPart, math, out)
 
                 if (result) {
+                    println("PART-PART COLLISION!")
                     collided = true
                     pw.debugData.compositeCollisions++
                 }
             }
         }
-
-        // TODO: set id's
-//        var i = 0
-//        while (i != -1) {
-//            buf.aID(i, composite.uuid)
-//            buf.bodyAIdx(i, composite.id)
-//
-//            i = buf.nextIdx(i)
-//        }
 
         return collided
     }

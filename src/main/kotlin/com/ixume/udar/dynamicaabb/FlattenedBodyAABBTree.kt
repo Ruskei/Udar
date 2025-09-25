@@ -273,6 +273,7 @@ class FlattenedBodyAABBTree(
     }
 
     fun remove(idx: Int) {
+        if (idx == -1) return
         check(idx.isLeaf())
 
         if (!blocked.compareAndSet(

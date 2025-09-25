@@ -224,6 +224,5 @@ class AABBTree2D {
 
     fun clear() {
         root = null // and let GC do the rest :)
-        //TODO: use cleaner api maybe to help this along...
     }
 }

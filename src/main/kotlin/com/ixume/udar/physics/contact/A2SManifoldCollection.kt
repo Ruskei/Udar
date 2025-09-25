@@ -4,6 +4,8 @@ import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
 
 interface A2SManifoldCollection {
+    val arr: FloatArray
+    
     fun addManifold(
         activeBody: ActiveBody,
         contactID: Long,
@@ -23,4 +25,8 @@ interface A2SManifoldCollection {
         
         normalLambda: Float, t1Lambda: Float, t2Lambda: Float,
     )
+    
+    fun load(other: A2SManifoldCollection, otherManifoldIdx: Int)
+    
+    fun numContacts(manifoldIdx: Int): Int
 }

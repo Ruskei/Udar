@@ -2,6 +2,8 @@ package com.ixume.udar
 
 import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.body.active.ActiveBody
+import com.ixume.udar.body.active.BlockEntityCuboid
+import com.ixume.udar.body.active.Composite
 import com.ixume.udar.collisiondetection.contactgeneration.worldmesh.WorldMeshesManager
 import com.ixume.udar.collisiondetection.mesh.Mesh
 import com.ixume.udar.collisiondetection.pool.MathPool
@@ -45,7 +47,7 @@ class PhysicsWorld(
     }
 
     fun bodiesSnapshot(): List<ActiveBody> {
-        return activeBodies.bodies()
+        return activeBodies.activeBodies()
     }
 
     var numPossibleContacts = 0
@@ -83,7 +85,7 @@ class PhysicsWorld(
     val worldMeshesManager = WorldMeshesManager(this)
 
     private val simTask = Bukkit.getScheduler().runTaskTimerAsynchronously(Udar.INSTANCE, Runnable { tick() }, 1, 1)
-    private val entityTask = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { entityUpdater.tick() }, 1, 2)
+    private val entityTask = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { entityUpdater.tick() }, 1, 1)
 
     private val busy = AtomicBoolean(false)
 
@@ -126,7 +128,7 @@ class PhysicsWorld(
     }
 
     private fun tick() {
-//        bodyAABBTree.visualize(world)
+        bodyAABBTree.visualize(world)
         time++
         repeat((0.05 / Udar.CONFIG.timeStep).roundToInt()) {
             var doTick = true
@@ -149,7 +151,7 @@ class PhysicsWorld(
                 envManifoldBuffer.clear()
                 meshes.clear()
 
-                val bodiesSnapshot = activeBodies.bodies()
+                val bodiesSnapshot = activeBodies.activeBodies()
 
                 statusUpdater.updateBodies(bodiesSnapshot)
                 constraintSolverManager.prepare()
@@ -222,6 +224,8 @@ class PhysicsWorld(
 
                 val stepDuration = measureNanoTime {
                     for (body in bodiesSnapshot) {
+                        if (body.isChild) continue
+
                         if (body.awake.get()) {
                             body.step()
                         }
@@ -288,6 +292,18 @@ class PhysicsWorld(
                             Particle.DustOptions(Color.RED, 0.3f),
                         )
 
+                        world.spawnParticle(
+                            Particle.REDSTONE,
+                            Location(
+                                world,
+                                manifoldBuffer.pointAX(i, k).toDouble(),
+                                manifoldBuffer.pointAY(i, k).toDouble(),
+                                manifoldBuffer.pointAZ(i, k).toDouble()
+                            ),
+                            1,
+                            Particle.DustOptions(Color.BLUE, 0.3f),
+                        )
+
                         world.debugConnect(
                             start = Vector3d(
                                 manifoldBuffer.pointAX(i, k).toDouble(),
@@ -303,7 +319,7 @@ class PhysicsWorld(
                                 manifoldBuffer.normY(i, k).toDouble(),
                                 manifoldBuffer.normZ(i, k).toDouble()
                             ),
-                            options = Particle.DustOptions(Color.BLUE, 0.25f),
+                            options = Particle.DustOptions(Color.PURPLE, 0.25f),
                         )
 
                         k++
@@ -365,6 +381,12 @@ class PhysicsWorld(
         val ss = bodiesToAdd.getAndClear()
         for (body in ss) {
             activeBodies.add(body)
+            if (body is Composite) {
+                for (body in body.parts) {
+                    activeBodies.add(body)
+                }
+            }
+
             body.update()
         }
     }
@@ -383,7 +405,7 @@ class PhysicsWorld(
     private fun broadPhase(bodies: List<ActiveBody>): Array<Int2ObjectOpenHashMap<IntArrayList>>? {
         numPossibleContacts = 0
         if (bodies.size <= 1) return null
-        
+
         _broadCollisions.forEach { it.value.clear() }
         _groupedBroadCollisions.forEach { it.clear() }
 
@@ -400,12 +422,17 @@ class PhysicsWorld(
     }
 
     fun clear() {
-        removeBodies(activeBodies.bodies())
+        removeBodies(activeBodies.activeBodies())
     }
 
     private fun kill(obj: ActiveBody) {
         bodyAABBTree.remove(obj.fatBB)
         activeBodies.remove(obj.uuid)
+        if (obj is Composite) {
+            for (body in obj.parts) {
+                activeBodies.remove(body.uuid)
+            }
+        }
     }
 
     fun kill() {

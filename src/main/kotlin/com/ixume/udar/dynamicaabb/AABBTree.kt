@@ -265,7 +265,6 @@ class AABBTree {
 
     fun clear() {
         root = null // and let GC do the rest :)
-        //TODO: use cleaner api maybe to help this along...
     }
 
     fun contains(x: Double, y: Double, z: Double): Boolean {

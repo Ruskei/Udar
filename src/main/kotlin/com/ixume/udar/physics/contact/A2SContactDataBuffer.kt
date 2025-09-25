@@ -14,6 +14,10 @@ class A2SContactDataBuffer(private val numContacts: Int) {
         return cursor
     }
 
+    fun dataSize(): Int {
+        return cursor * CONTACT_DATA_SIZE
+    }
+
     fun loadInto(
         pointAX: Float,
         pointAY: Float,
@@ -58,6 +62,7 @@ class A2SContactDataBuffer(private val numContacts: Int) {
     }
 
     fun loadInto(otherIdx: Int, other: A2SContactDataBuffer) {
+        if (otherIdx > numContacts - 1) return
         other._loadInto(
             pointAX = arr[otherIdx * CONTACT_DATA_SIZE + POINT_A_X_OFFSET],
             pointAY = arr[otherIdx * CONTACT_DATA_SIZE + POINT_A_Y_OFFSET],

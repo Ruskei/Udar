@@ -6,6 +6,6 @@ class EntityUpdater(
     val physicsWorld: PhysicsWorld,
 ) {
     fun tick() {
-        physicsWorld.bodiesSnapshot().forEach { it.visualize() }
+        physicsWorld.bodiesSnapshot().forEach { if (!it.isChild) it.visualize() }
     }
 }

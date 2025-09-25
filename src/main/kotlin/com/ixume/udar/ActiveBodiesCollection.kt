@@ -8,22 +8,22 @@ import kotlin.concurrent.read
 import kotlin.concurrent.write
 
 class ActiveBodiesCollection {
-    private val bodiesList = mutableListOf<ActiveBody>()
+    private val allBodies = mutableListOf<ActiveBody>()
     private val lookupMap = mutableMapOf<UUID, ActiveBody>()
     private val idLookup = Long2ObjectOpenHashMap<ActiveBody>()
 
     private val lock = ReentrantReadWriteLock()
 
-    fun bodies(): List<ActiveBody> = lock.read { bodiesList.toList() }
+    fun activeBodies(): List<ActiveBody> = lock.read { allBodies.toList() }
 
-    fun size(): Int = lock.read { bodiesList.size }
+    fun size(): Int = lock.read { allBodies.size }
 
     fun add(body: ActiveBody): Unit = lock.write {
         if (lookupMap.containsKey(body.uuid)) return
 
-        body.idx = bodiesList.size
+        body.idx = allBodies.size
 
-        bodiesList.add(body)
+        allBodies.add(body)
         lookupMap[body.uuid] = body
         idLookup.put(body.id, body)
     }
@@ -32,14 +32,14 @@ class ActiveBodiesCollection {
         val bodyToRemove = lookupMap[uuid] ?: return null
 
         val indexToRemove = bodyToRemove.idx
-        val lastBody = bodiesList.last()
+        val lastBody = allBodies.last()
 
         if (bodyToRemove.uuid != lastBody.uuid) {
-            bodiesList[indexToRemove] = lastBody
+            allBodies[indexToRemove] = lastBody
             lastBody.idx = indexToRemove
         }
 
-        bodiesList.removeAt(bodiesList.size - 1)
+        allBodies.removeAt(allBodies.size - 1)
         lookupMap.remove(uuid)
         idLookup.remove(bodyToRemove.id)
 
@@ -49,11 +49,11 @@ class ActiveBodiesCollection {
     }
 
     operator fun get(idx: Int): ActiveBody? = lock.read {
-        return bodiesList.getOrNull(idx)
+        return allBodies.getOrNull(idx)
     }
     
     fun fastGet(idx: Int): ActiveBody? {
-        return bodiesList.getOrNull(idx)
+        return allBodies.getOrNull(idx)
     }
     
     operator fun get(uuid: UUID): ActiveBody? = lock.read {

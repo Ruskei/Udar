@@ -5,7 +5,7 @@ import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import kotlin.math.max
 
 class A2SManifoldArray(maxContactNum: Int) : A2SManifoldCollection {
-    internal var arr = FloatArray(0)
+    override var arr = FloatArray(0)
     private var cursor = 0
 
     private val manifoldDataSize = MANIFOLD_PREFIX_SIZE + maxContactNum * CONTACT_DATA_SIZE
@@ -48,8 +48,8 @@ class A2SManifoldArray(maxContactNum: Int) : A2SManifoldCollection {
         arr[idx + BODY_A_INVERSE_INERTIA_ZY_OFFSET] = activeBody.inverseInertia.m21.toFloat()
         arr[idx + BODY_A_INVERSE_INERTIA_ZZ_OFFSET] = activeBody.inverseInertia.m22.toFloat()
 
-        check(buf.arr.size <= maxContactArrSize)
-        System.arraycopy(buf.arr, 0, arr, idx + CONTACTS_OFFSET, buf.arr.size)
+        check(buf.dataSize() <= maxContactArrSize)
+        System.arraycopy(buf.arr, 0, arr, idx + CONTACTS_OFFSET, buf.dataSize())
     }
 
     override fun addSingleManifold(
@@ -124,6 +124,14 @@ class A2SManifoldArray(maxContactNum: Int) : A2SManifoldCollection {
         arr[contactArrIdx + T2_LAMBDA_OFFSET] = t2Lambda
     }
 
+    override fun load(other: A2SManifoldCollection, otherManifoldIdx: Int) {
+        val idx = cursor * manifoldDataSize
+        cursor++
+        grow(idx + manifoldDataSize)
+
+        System.arraycopy(other.arr, otherManifoldIdx * manifoldDataSize, arr, idx, manifoldDataSize)
+    }
+
     fun clear() {
         cursor = 0
     }
@@ -132,7 +140,7 @@ class A2SManifoldArray(maxContactNum: Int) : A2SManifoldCollection {
         return cursor == 0
     }
 
-    fun numContacts(manifoldIdx: Int): Int {
+    override fun numContacts(manifoldIdx: Int): Int {
         return arr[manifoldIdx * manifoldDataSize + CONTACT_NUM_OFFSET].toRawBits()
     }
 
@@ -150,11 +158,11 @@ class A2SManifoldArray(maxContactNum: Int) : A2SManifoldCollection {
     }
 
     fun bodyIdx(manifoldIdx: Int): Int {
-        return arr[manifoldIdx * manifoldIdx + BODY_A_IDX_OFFSET].toRawBits()
+        return arr[manifoldIdx * manifoldDataSize + BODY_A_IDX_OFFSET].toRawBits()
     }
 
     fun setBodyIdx(manifoldIdx: Int, value: Int) {
-        arr[manifoldIdx * manifoldIdx + BODY_A_IDX_OFFSET] = Float.fromBits(value)
+        arr[manifoldIdx * manifoldDataSize + BODY_A_IDX_OFFSET] = Float.fromBits(value)
     }
 
     // Contact point accessors

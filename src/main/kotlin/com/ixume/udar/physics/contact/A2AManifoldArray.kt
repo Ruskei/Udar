@@ -4,8 +4,8 @@ import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import kotlin.math.max
 
-class A2AManifoldArray(maxContactNum: Int) : A2AManifoldCollection {
-    internal var arr = FloatArray(0)
+class A2AManifoldArray(val maxContactNum: Int) : A2AManifoldCollection {
+    override var arr = FloatArray(0)
     private var cursor = 0
 
     private val manifoldDataSize = MANIFOLD_PREFIX_SIZE + maxContactNum * CONTACT_DATA_SIZE
@@ -64,8 +64,8 @@ class A2AManifoldArray(maxContactNum: Int) : A2AManifoldCollection {
         arr[idx + BODY_B_INVERSE_INERTIA_ZY_OFFSET] = second.inverseInertia.m21.toFloat()
         arr[idx + BODY_B_INVERSE_INERTIA_ZZ_OFFSET] = second.inverseInertia.m22.toFloat()
 
-        check(buf.arr.size <= maxContactArrSize)
-        System.arraycopy(buf.arr, 0, arr, idx + CONTACTS_OFFSET, buf.arr.size)
+        check(buf.dataSize() <= maxContactArrSize)
+        System.arraycopy(buf.arr, 0, arr, idx + CONTACTS_OFFSET, buf.dataSize())
     }
 
     override fun addSingleManifold(
@@ -155,6 +155,14 @@ class A2AManifoldArray(maxContactNum: Int) : A2AManifoldCollection {
         arr[contactArrIdx + T2_LAMBDA_OFFSET] = t2Lambda
     }
 
+    override fun load(other: A2AManifoldCollection, otherManifoldIdx: Int) {
+        val idx = cursor * manifoldDataSize
+        cursor++
+        grow(idx + manifoldDataSize)
+
+        System.arraycopy(other.arr, otherManifoldIdx * manifoldDataSize, arr, idx, manifoldDataSize)
+    }
+
     fun clear() {
         cursor = 0
     }
@@ -163,7 +171,7 @@ class A2AManifoldArray(maxContactNum: Int) : A2AManifoldCollection {
         return cursor == 0
     }
 
-    fun numContacts(manifoldIdx: Int): Int {
+    override fun numContacts(manifoldIdx: Int): Int {
         return arr[manifoldIdx * manifoldDataSize + CONTACT_NUM_OFFSET].toRawBits()
     }
 

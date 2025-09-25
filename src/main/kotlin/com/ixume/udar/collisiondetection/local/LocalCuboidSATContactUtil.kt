@@ -43,6 +43,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
     private val _faceManifold = A2AContactDataBuffer(8)
 
     fun collides(activeBody: ActiveBody, other: ActiveBody, out: A2AManifoldCollection): Boolean {
+        println("== CUBOID-CUBOID COLLISION TEST ==")
         if (!setupAxiss(activeBody, other)) return false
 
         val myVertices = activeBody.vertices
@@ -229,10 +230,13 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
 
             k++
         }
-        
+
         if (minCrossOverlap < minMyBodyOverlap && minCrossOverlap < minOtherBodyOverlap) {
             // edge-edge!
             if (minCrossAxis == null) return false
+
+            println("  - EDGE-EDGE")
+            println("  | minCrossOverlap: $minCrossOverlap")
 
             if (minCrossInDirOfAxis) {
                 _norm.set(minCrossAxis).normalize()
@@ -339,6 +343,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
 
             return true
         } else {
+//            println("  - FACE-FACE")
             /*
             face-face:
             - find reference and incident face and vertices
@@ -352,6 +357,9 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
 
             val inDirOfAxis =
                 if (minMyBodyOverlap < minOtherBodyOverlap) minMyBodyInDirOfAxis else minOtherBodyInDirOfAxis
+            
+            println("  - FACE-FACE")
+            println("  | minOverlap: ${if (minMyBodyOverlap < minOtherBodyOverlap) minMyBodyOverlap else minOtherBodyOverlap}")
 
             if (inDirOfAxis) {
                 _norm.set(axis).normalize()
@@ -519,7 +527,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
 
                 p++
             }
-            
+
             _faceManifold.reduceTo4()
 
             out.addManifold(

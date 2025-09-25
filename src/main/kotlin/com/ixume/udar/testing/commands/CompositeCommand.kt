@@ -122,7 +122,6 @@ object CompositeCommand : Command {
                 )
 
                 sender.world.physicsWorld?.registerBody(rb)
-                sender.world.physicsWorld?.removeBodies(bodies)
             }
         }
 

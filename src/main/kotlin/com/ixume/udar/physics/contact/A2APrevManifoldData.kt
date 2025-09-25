@@ -74,7 +74,7 @@ class A2APrevManifoldData {
         
         val idx = rawManifoldIdx + CONTACT_DATA_OFFSET + contactIdx * CONTACT_DATA_SIZE + NORMAL_LAMBDA_OFFSET
         val l = ls.getFloat(idx)
-//        println("warmed contact with $l") GETTING CALLED CORRECTLY!
+        println("warmed contact with $l")
         return l
     }
 

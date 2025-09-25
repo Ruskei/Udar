@@ -21,7 +21,6 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
     private val _contacts2 = A2SContactDataBuffer(4)
     private val _validContacts2 = A2SContactDataBuffer(4)
 
-    // TODO: manifold for edge contacts
     fun collides(
         contactGen: EnvironmentContactGenerator2,
         activeBody: ActiveBody,
@@ -44,7 +43,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
             val mf = mfs[j]
             _mf.clear()
             mf.facesIn(bb, _mf)
-            collideFaces(activeBody, _mf, mf.axis, math, other, activeBody.physicsWorld.envManifoldBuffer)
+            collideFaces(activeBody, _mf, mf.axis, math, other, out)
             j++
         }
 

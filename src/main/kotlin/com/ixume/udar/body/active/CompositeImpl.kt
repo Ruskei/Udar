@@ -210,19 +210,18 @@ class CompositeImpl(
             tightBB.maxZ = max(tightBB.maxZ, bb.maxZ)
         }
 
-        val fits = physicsWorld.bodyAABBTree.contains(
-            fatBB,
-            tightBB.minX,
-            tightBB.maxX,
-            tightBB.minY,
-            tightBB.maxY,
-            tightBB.minZ,
-            tightBB.maxZ,
-        )
-        // TODO : UPDATE THIS TO MATCH CUBOID IMPL
+        if (!isChild) {
+            val fits = physicsWorld.bodyAABBTree.contains(
+                fatBB,
+                tightBB.minX,
+                tightBB.minY,
+                tightBB.minZ,
+                tightBB.maxX,
+                tightBB.maxY,
+                tightBB.maxZ,
+            )
 
-        if (!fits) {
-            if (!isChild) {
+            if (!fits) {
                 physicsWorld.updateBB(this, tightBB)
             }
         }
@@ -347,7 +346,19 @@ class CompositeImpl(
 
     override fun collides(other: ActiveBody, math: LocalMathUtil, out: A2AManifoldCollection): Boolean {
         if (other is Composite) {
-            return compositeContactGenerator.collides(other, math, out)
+            val buf2 = math.compositeUtil.buf
+            buf2.clear()
+
+            val r = compositeContactGenerator.collides(other, math, buf2)
+            if (!r) return false
+
+            val s = buf2.size()
+            for (i in 0..<s) {
+                buf2.setBodyAIdx(i, idx)
+                out.load(buf2, i)
+            }
+
+            return true
         } else {
             var isCollided = false
             for (part in parts) {
@@ -381,16 +392,12 @@ class CompositeImpl(
 
             j++
         }
-        
-        // TODO : replace id's for manifolds
 
-//        var i = 0
-//        while (i != -1) {
-//            buf.aID(i, uuid)
-//            buf.bodyAIdx(i, id)
-//
-//            i = buf.nextIdx(i)
-//        }
+        val s = buf2.size()
+        for (i in 0..<s) {
+            buf2.setBodyIdx(i, idx)
+            out.load(buf2, i)
+        }
 
         return isCollided
     }

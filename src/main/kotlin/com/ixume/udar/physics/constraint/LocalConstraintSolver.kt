@@ -2,7 +2,6 @@ package com.ixume.udar.physics.constraint
 
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.Udar
-import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.physics.contact.A2AManifoldBuffer
 import com.ixume.udar.physics.contact.A2APrevContactDataBuffer
 import com.ixume.udar.physics.contact.A2SManifoldBuffer
@@ -14,6 +13,7 @@ import org.joml.Quaternionf
 import org.joml.Vector3d
 import org.joml.Vector3f
 import java.lang.Math
+import java.lang.Math.fma
 import java.nio.FloatBuffer
 import kotlin.math.abs
 import kotlin.math.max
@@ -30,7 +30,7 @@ class LocalConstraintSolver(
     private val _vec3 = Vector3f()
     private val _quat = Quaternionf()
 
-//    private var idMap: Array<ActiveBody>
+    //    private var idMap: Array<ActiveBody>
     private var bodyCount: Int
 
     private var flatBodyData: FloatArray = FloatArray(1)
@@ -38,8 +38,7 @@ class LocalConstraintSolver(
     private var any = false
 
     init {
-        val snapshot = physicsWorld.bodiesSnapshot()
-        bodyCount = snapshot.size
+        bodyCount = physicsWorld.activeBodies.size()
 //        idMap = physicsWorld.bodiesSnapshot().let {
 //            Array(it.size) { i ->
 //                val b = it[i]
@@ -146,32 +145,72 @@ class LocalConstraintSolver(
             val num = manifolds.numContacts(i)
             var m = 0
             while (m < num) {
+                val nx: Float
+                val ny: Float
+                val nz: Float
                 when (component) {
-                    ContactComponent.NORMAL -> _norm.set(
-                        manifolds.normX(i, m),
-                        manifolds.normY(i, m),
-                        manifolds.normZ(i, m)
-                    )
+                    ContactComponent.NORMAL -> {
+                        nx = manifolds.normX(i, m)
+                        ny = manifolds.normY(i, m)
+                        nz = manifolds.normZ(i, m)
 
-                    ContactComponent.T1 -> _norm.set(manifolds.t1X(i, m), manifolds.t1Y(i, m), manifolds.t1Z(i, m))
-                    ContactComponent.T2 -> _norm.set(manifolds.t2X(i, m), manifolds.t2Y(i, m), manifolds.t2Z(i, m))
+                        _norm.set(nx, ny, nz)
+                    }
+
+                    ContactComponent.T1 -> {
+                        nx = manifolds.t1X(i, m)
+                        ny = manifolds.t1Y(i, m)
+                        nz = manifolds.t1Z(i, m)
+                        _norm.set(nx, ny, nz)
+                    }
+
+                    ContactComponent.T2 -> {
+                        nx = manifolds.t2X(i, m)
+                        ny = manifolds.t2Y(i, m)
+                        nz = manifolds.t2Z(i, m)
+                        _norm.set(nx, ny, nz)
+                    }
                 }
 
                 n.putVector3f(_norm)
 
-                n.putVector3f(
-                    _c_j1
-                        .set(manifolds.bodyAX(i), manifolds.bodyAY(i), manifolds.bodyAZ(i))
-                        .sub(manifolds.pointAX(i, m), manifolds.pointAY(i, m), manifolds.pointAZ(i, m))
-                        .cross(_norm)
-                ) //j1
+                val rax = manifolds.bodyAX(i) - manifolds.pointAX(i, m)
+                val ray = manifolds.bodyAY(i) - manifolds.pointAY(i, m)
+                val raz = manifolds.bodyAZ(i) - manifolds.pointAZ(i, m)
 
-                n.putVector3f(
-                    _c_j3
-                        .set(manifolds.pointBX(i, m), manifolds.pointBY(i, m), manifolds.pointBZ(i, m))
-                        .sub(manifolds.bodyBX(i), manifolds.bodyBY(i), manifolds.bodyBZ(i))
-                        .cross(_norm)
-                ) //j3
+                val rbx = manifolds.pointBX(i, m) - manifolds.bodyBX(i)
+                val rby = manifolds.pointBY(i, m) - manifolds.bodyBY(i)
+                val rbz = manifolds.pointBZ(i, m) - manifolds.bodyBZ(i)
+
+                val j1x = fma(ray, nz, -raz * ny)
+                val j1y = fma(raz, nx, -rax * nz)
+                val j1z = fma(rax, ny, -ray * nx)
+
+                val j3x = fma(rby, nz, -rbz * ny)
+                val j3y = fma(rbz, nx, -rbx * nz)
+                val j3z = fma(rbx, ny, -rby * nx)
+                
+                n.put(j1x)
+                n.put(j1y)
+                n.put(j1z)
+
+//                n.putVector3f(
+//                    _c_j1
+//                        .set(manifolds.bodyAX(i), manifolds.bodyAY(i), manifolds.bodyAZ(i))
+//                        .sub(manifolds.pointAX(i, m), manifolds.pointAY(i, m), manifolds.pointAZ(i, m))
+//                        .cross(_norm)
+//                ) //j1
+                
+                n.put(j3x)
+                n.put(j3y)
+                n.put(j3z)
+
+//                n.putVector3f(
+//                    _c_j3
+//                        .set(manifolds.pointBX(i, m), manifolds.pointBY(i, m), manifolds.pointBZ(i, m))
+//                        .sub(manifolds.bodyBX(i), manifolds.bodyBY(i), manifolds.bodyBZ(i))
+//                        .cross(_norm)
+//                ) //j3
 
                 val depth = manifolds.depth(i, m)
 
@@ -197,7 +236,7 @@ class LocalConstraintSolver(
                         bodyAInverseMass,
                         bodyAInverseMass,
                     ) +
-                    _c_j1Temp.set(_c_j1)._mul(bodyAInverseInertia).dot(_c_j1) +
+                    _c_j1Temp.set(j1x, j1y, j1z)._mul(bodyAInverseInertia).dot(j1x, j1y, j1z) +
                     _c_j2.set(
                         _norm.x * _norm.x,
                         _norm.y * _norm.y,
@@ -207,7 +246,7 @@ class LocalConstraintSolver(
                         bodyBInverseMass,
                         bodyBInverseMass,
                     ) +
-                    _c_j3Temp.set(_c_j3)._mul(bodyBInverseInertia).dot(_c_j3)
+                    _c_j3Temp.set(j3x, j3y, j3z)._mul(bodyBInverseInertia).dot(j3x, j3y, j3z)
 
 
                 n.put(den) // den
@@ -222,10 +261,10 @@ class LocalConstraintSolver(
 
                 val dva = _c_im.set(bodyAInverseMass).mul(_c_vec3.set(_norm).negate())
                 n.putVector3f(dva) // DVA
-                n.putVector3f(_c_j1Temp.set(_c_j1)._mul(bodyAInverseInertia)) // DOA
+                n.putVector3f(_c_j1Temp.set(j1x, j1y, j1z)._mul(bodyAInverseInertia)) // DOA
                 val dvb = _c_im.set(bodyBInverseMass).mul(_norm)
                 n.putVector3f(dvb) // DVB
-                n.putVector3f(_c_j3Temp.set(_c_j3)._mul(bodyBInverseInertia)) // DOB
+                n.putVector3f(_c_j3Temp.set(j3x, j3y, j3z)._mul(bodyBInverseInertia)) // DOB
 
                 n.put(Float.fromBits(manifolds.bodyAIdx(i))) // my id
                 n.put(Float.fromBits(manifolds.bodyBIdx(i))) // other id

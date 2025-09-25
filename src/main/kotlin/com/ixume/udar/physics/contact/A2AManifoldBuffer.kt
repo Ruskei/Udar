@@ -12,7 +12,7 @@ import kotlin.math.max
 //TODO: Switch to local manifold buffers to merge at end of collision detection step
 
 class A2AManifoldBuffer(maxContactNum: Int) : A2AManifoldCollection {
-    internal var arr = FloatArray(0)
+    override var arr = FloatArray(0)
     private val lock = ReentrantReadWriteLock()
     private val cursor = AtomicInteger(0)
 
@@ -291,6 +291,23 @@ class A2AManifoldBuffer(maxContactNum: Int) : A2AManifoldCollection {
         }
     }
 
+    override fun load(other: A2AManifoldCollection, otherManifoldIdx: Int) {
+        numContacts.addAndGet(other.numContacts(otherManifoldIdx))
+        val idx = cursor.andIncrement * manifoldDataSize
+
+        lock.read {
+            if (idx + manifoldDataSize < arr.size) {
+                System.arraycopy(other.arr, otherManifoldIdx * manifoldDataSize, arr, idx, manifoldDataSize)
+                return
+            }
+        }
+
+        lock.write {
+            grow(idx + manifoldDataSize)
+            System.arraycopy(other.arr, otherManifoldIdx * manifoldDataSize, arr, idx, manifoldDataSize)
+        }
+    }
+
     fun clear() {
         cursor.set(0)
         numContacts.set(0)
@@ -300,7 +317,7 @@ class A2AManifoldBuffer(maxContactNum: Int) : A2AManifoldCollection {
         return cursor.get() == 0
     }
 
-    fun numContacts(manifoldIdx: Int): Int {
+    override fun numContacts(manifoldIdx: Int): Int {
         return arr[manifoldIdx * manifoldDataSize + CONTACT_NUM_OFFSET].toRawBits()
     }
 
