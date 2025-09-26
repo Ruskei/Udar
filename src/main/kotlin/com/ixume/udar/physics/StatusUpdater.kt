@@ -13,10 +13,11 @@ class StatusUpdater(
         val birthTime = config.birthTime
         val linear = config.sleepLinearVelocity
         val angular = config.sleepAngularVelocity
+        val sleepTime = config.sleepTime
 
         for (obj in snapshot) {
             if (obj.isChild) continue
-            
+
             obj.age++
             if (obj.age > birthTime) {
                 if (obj.startled.get()) {
@@ -25,9 +26,18 @@ class StatusUpdater(
                     continue
                 }
 
-//                val sleep = (obj.linearDelta.length() < linear * timeStep && obj.angularDelta < angular * timeStep)
-//
-//                obj.awake.set(!sleep)
+                val sleep =
+                    obj.velocity.lengthSquared() < linear * timeStep && obj.omega.lengthSquared() < angular * timeStep
+                if (sleep) {
+                    obj.idleTime++
+
+                    if (obj.idleTime >= sleepTime) {
+                        obj.awake.set(false)
+                    }
+                } else {
+                    obj.idleTime = 0
+                    obj.awake.set(true)
+                }
             }
         }
     }

@@ -16,7 +16,6 @@ import org.joml.Quaterniond
 import org.joml.Vector3d
 import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.math.acos
 import kotlin.math.max
 import kotlin.math.min
 
@@ -45,6 +44,7 @@ class CompositeImpl(
     override var age: Int = 0
     override var awake = AtomicBoolean(true)
     override var startled = AtomicBoolean(true)
+    override var idleTime: Int = 0
 
     data class RelativePose(
         val pos: Vector3d,
@@ -232,8 +232,6 @@ class CompositeImpl(
 
     override val prevQ: Quaterniond = Quaterniond(q)
     private val prevP = Vector3d(pos)
-    override val linearDelta: Vector3d = Vector3d()
-    override var angularDelta: Double = 0.0
 
     override fun globalToLocal(vec: Vector3d): Vector3d {
         return Vector3d(vec).sub(pos).rotate(Quaterniond(q).conjugate())
@@ -258,13 +256,6 @@ class CompositeImpl(
 
             part.update()
         }
-
-        linearDelta.set(pos).sub(prevP)
-
-        val dQ = Quaterniond(q).mul(Quaterniond(prevQ).conjugate())
-        if (dQ.w < 0.0) dQ.mul(-1.0)
-        dQ.normalize()
-        angularDelta = 2.0 * acos(dQ.w.coerceIn(-1.0, 1.0))
 
         update()
     }

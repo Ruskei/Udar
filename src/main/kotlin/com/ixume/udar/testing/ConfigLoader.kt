@@ -81,6 +81,7 @@ data class Config(
     val debug: DebugConfig = DebugConfig(),
     val sleepLinearVelocity: Double = 1e-3,
     val sleepAngularVelocity: Double = 1e-3,
+    val sleepTime: Int = 20,
     val birthTime: Int = 20,
     val significant: Double = 1e-8,
 ) {

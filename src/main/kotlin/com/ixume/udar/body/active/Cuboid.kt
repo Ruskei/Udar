@@ -46,6 +46,7 @@ class Cuboid(
     override var age: Int = 0
     override var awake = AtomicBoolean(true)
     override var startled = AtomicBoolean(true)
+    override var idleTime: Int = 0
 
     val scale = Vector3d(width, height, length)
 
@@ -208,8 +209,6 @@ class Cuboid(
 
     override val prevQ = Quaterniond(q)
     private val prevP = Vector3d(pos)
-    override val linearDelta: Vector3d = Vector3d()
-    override var angularDelta: Double = 0.0
 
     private val _quat = Quaterniond()
     private val _quat2 = Quaterniond()
@@ -229,12 +228,6 @@ class Cuboid(
         localInverseInertia.set(1.0 / localInertia.x, 1.0 / localInertia.y, 1.0 / localInertia.z)
         updateII()
 
-        linearDelta.set(pos).sub(prevP)
-
-        val dQ = _quat.set(q).mul(_quat2.set(prevQ).conjugate())
-        if (dQ.w < 0.0) dQ.mul(-1.0)
-        dQ.normalize()
-        angularDelta = 2.0 * acos(dQ.w.coerceIn(-1.0, 1.0))
     }
 
     override fun update() {

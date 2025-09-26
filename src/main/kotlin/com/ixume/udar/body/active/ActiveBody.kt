@@ -30,14 +30,13 @@ interface ActiveBody : A2ACollidable, A2SCollidable, Body, Projectable {
 
     var awake: AtomicBoolean
     var startled: AtomicBoolean
-    val linearDelta: Vector3d
-    val angularDelta: Double
 
     val mass: Double
     val localInertia: Vector3d
     val prevQ: Quaterniond
 
     var hasGravity: Boolean
+    var idleTime: Int
 
     fun globalToLocal(vec: Vector3d): Vector3d
 
