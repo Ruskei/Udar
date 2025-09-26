@@ -295,14 +295,14 @@ class LocalMesher {
     ) {
         fun visualize(world: World) {
 //            println("visualizing mesh")
-            xEdges2?.visualize(world)
-            yEdges2?.visualize(world)
-            zEdges2?.visualize(world)
+//            xEdges2?.visualize(world)
+//            yEdges2?.visualize(world)
+//            zEdges2?.visualize(world)
 //            flatTree?.visualize(world)
 
 //            faces?.xFaces?.ls?.forEach { it.visualize(world) }
 //            faces?.yFaces?.ls?.forEach { it.visualize(world) }
-//            faces?.zFaces?.ls?.forEach { it.visualize(world) }
+            faces?.zFaces?.ls?.forEach { it.visualize(world) }
 ////
 //            xEdges?.visualize(world)
 //            yEdges?.visualize(world)

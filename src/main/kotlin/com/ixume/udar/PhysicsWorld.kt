@@ -343,47 +343,47 @@ class PhysicsWorld(
                     i++
                 }
 
-//                val es = envManifoldBuffer.size()
-//                var j = 0
-//                while (j < es) {
-//                    val num = envManifoldBuffer.numContacts(j)
-//                    var k = 0
-//                    while (k < num) {
-//                        world.spawnParticle(
-//                            Particle.REDSTONE,
-//                            Location(
-//                                world,
-//                                envManifoldBuffer.pointAX(j, k).toDouble(),
-//                                envManifoldBuffer.pointAY(j, k).toDouble(),
-//                                envManifoldBuffer.pointAZ(j, k).toDouble()
-//                            ),
-//                            1,
-//                            Particle.DustOptions(Color.RED, 0.3f),
-//                        )
-//
-//                        world.debugConnect(
-//                            start = Vector3d(
-//                                envManifoldBuffer.pointAX(j, k).toDouble(),
-//                                envManifoldBuffer.pointAY(j, k).toDouble(),
-//                                envManifoldBuffer.pointAZ(j, k).toDouble()
-//                            ),
-//                            end = Vector3d(
-//                                envManifoldBuffer.pointAX(j, k).toDouble(),
-//                                envManifoldBuffer.pointAY(j, k).toDouble(),
-//                                envManifoldBuffer.pointAZ(j, k).toDouble()
-//                            ).add(
-//                                envManifoldBuffer.normX(j, k).toDouble(),
-//                                envManifoldBuffer.normY(j, k).toDouble(),
-//                                envManifoldBuffer.normZ(j, k).toDouble()
-//                            ),
-//                            options = Particle.DustOptions(Color.BLUE, 0.25f),
-//                        )
-//
-//                        k++
-//                    }
-//
-//                    j++
-//                }
+                val es = envManifoldBuffer.size()
+                var j = 0
+                while (j < es) {
+                    val num = envManifoldBuffer.numContacts(j)
+                    var k = 0
+                    while (k < num) {
+                        world.spawnParticle(
+                            Particle.REDSTONE,
+                            Location(
+                                world,
+                                envManifoldBuffer.pointAX(j, k).toDouble(),
+                                envManifoldBuffer.pointAY(j, k).toDouble(),
+                                envManifoldBuffer.pointAZ(j, k).toDouble()
+                            ),
+                            1,
+                            Particle.DustOptions(Color.RED, 0.3f),
+                        )
+
+                        world.debugConnect(
+                            start = Vector3d(
+                                envManifoldBuffer.pointAX(j, k).toDouble(),
+                                envManifoldBuffer.pointAY(j, k).toDouble(),
+                                envManifoldBuffer.pointAZ(j, k).toDouble()
+                            ),
+                            end = Vector3d(
+                                envManifoldBuffer.pointAX(j, k).toDouble(),
+                                envManifoldBuffer.pointAY(j, k).toDouble(),
+                                envManifoldBuffer.pointAZ(j, k).toDouble()
+                            ).add(
+                                envManifoldBuffer.normX(j, k).toDouble(),
+                                envManifoldBuffer.normY(j, k).toDouble(),
+                                envManifoldBuffer.normZ(j, k).toDouble()
+                            ),
+                            options = Particle.DustOptions(Color.BLUE, 0.25f),
+                        )
+
+                        k++
+                    }
+
+                    j++
+                }
             }
         }
     }

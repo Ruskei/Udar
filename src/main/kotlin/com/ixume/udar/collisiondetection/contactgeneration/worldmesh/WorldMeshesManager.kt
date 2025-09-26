@@ -119,7 +119,7 @@ class WorldMeshesManager(
     }
 
     private fun tick() {
-//        positionedMeshes.values.forEach { it.visualize(world) }
+        positionedMeshes.values.forEach { it.visualize(world) }
 
         var rq: MeshRequest?
         while (queue.poll().also { rq = it } != null) {

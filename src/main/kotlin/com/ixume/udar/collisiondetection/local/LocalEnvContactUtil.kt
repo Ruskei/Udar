@@ -15,6 +15,9 @@ import it.unimi.dsi.fastutil.doubles.DoubleArrayList
 import it.unimi.dsi.fastutil.ints.IntArrayList
 import org.joml.Vector3d
 
+// TODO: face normal filtering
+// TODO: graph-based contact filtering
+
 class LocalEnvContactUtil(val math: LocalMathUtil) {
     private val _mf = mutableListOf<MeshFace>()
 
@@ -37,7 +40,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 
         val mfs = contactGen.meshFaces.get()
         val mes = contactGen.meshEdges.get()
-        
+
         var j = 0
         while (j < mfs.size) {
             val mf = mfs[j]
@@ -113,13 +116,13 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
             _validContacts2.clear()
 
             val face = faces[i]
-            
+
             val manifoldID = constructFaceID(
                 body = activeBody,
                 faceAxis = axis,
                 faceLevel = face.level
             )
-            
+
             val rawManifoldIdx = activeBody.physicsWorld.prevEnvContactMap.get(manifoldID)
 
             val any = math.collidePlane(
@@ -165,18 +168,25 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
             var j = 0
             while (j < _contacts2.size()) {
                 val pa = _contacts2.pointAComponent(j, axis.aOffset).toDouble()
+                val pb = _contacts2.pointAComponent(j, axis.bOffset).toDouble()
 
                 var valid = true
                 var k = 0
                 check(_overlappingAntiHoles.size % 4 == 0)
                 while (k < _overlappingAntiHoles.size / 4) {
                     val minA = _overlappingAntiHoles.getDouble(k * 4)
+                    val minB = _overlappingAntiHoles.getDouble(k * 4 + 1)
                     val maxA = _overlappingAntiHoles.getDouble(k * 4 + 2)
+                    val maxB = _overlappingAntiHoles.getDouble(k * 4 + 3)
 
                     if (contains(
                             minA = minA,
                             maxA = maxA,
                             a = pa,
+                        ) || contains(
+                            minA = minB,
+                            maxA = maxB,
+                            a = pb,
                         )
                     ) {
                         valid = false
@@ -197,12 +207,18 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                 check(_overlappingHoles.size % 4 == 0)
                 while (l < _overlappingHoles.size / 4) {
                     val minA = _overlappingHoles.getDouble(l * 4)
+                    val minB = _overlappingHoles.getDouble(l * 4 + 1)
                     val maxA = _overlappingHoles.getDouble(l * 4 + 2)
+                    val maxB = _overlappingHoles.getDouble(l * 4 + 3)
 
                     if (contains(
                             minA = minA,
                             maxA = maxA,
                             a = pa,
+                        ) && contains(
+                            minA = minB,
+                            maxA = maxB,
+                            a = pb,
                         )
                     ) {
                         valid = true

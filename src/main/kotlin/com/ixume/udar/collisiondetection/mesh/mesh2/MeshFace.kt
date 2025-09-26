@@ -14,10 +14,8 @@ class MeshFace(
     val edges = ArrayList<QuadtreeEdge>()
 
     fun visualize(world: World) {
-        if (axis == LocalMesher.AxisD.X) {
-//            holes.visualize(world, true)
-            antiHoles.visualize(world, false)
-        }
+        holes.visualize(world, true)
+        antiHoles.visualize(world, false)
     }
 
     override fun compareTo(other: MeshFace): Int {
