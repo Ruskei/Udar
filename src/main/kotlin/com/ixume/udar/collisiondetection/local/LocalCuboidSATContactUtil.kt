@@ -5,6 +5,7 @@ import com.ixume.udar.body.Body
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.Edge
 import com.ixume.udar.body.active.Face
+import com.ixume.udar.body.active.toStringFull
 import com.ixume.udar.physics.contact.A2AContactDataBuffer
 import com.ixume.udar.physics.contact.A2AManifoldCollection
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
@@ -350,6 +351,8 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
             val axis = if (minMyBodyOverlap < minOtherBodyOverlap) minMyBodyAxis else minOtherBodyAxis
             if (axis == null) return false
 
+//            println("FACE-FACE")
+
             val inDirOfAxis =
                 if (minMyBodyOverlap < minOtherBodyOverlap) minMyBodyInDirOfAxis else minOtherBodyInDirOfAxis
 
@@ -358,6 +361,8 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
             } else {
                 _norm.set(axis).negate().normalize()
             }
+
+//            println("| norm: $_norm")
 
             _faceManifold.clear()
 
@@ -368,12 +373,18 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
             var refFace: Face? = null
             var refIdx = -1
 
+//            println("FINDING MAX REF")
+
             var q = 0
             while (q < myFaces.size) {
                 val face = myFaces[q]
                 val p = face.normal.dot(_norm)
 
+//                println(" * face: ${face.vertices.joinToString { it.toString() }}")
+//                println(" | p: $p")
+
                 if (p > refMax) {
+//                    println(" | set as new refMax! was: $refMax")
                     refMax = p
                     refFace = face
                     refIdx = q
@@ -386,12 +397,20 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
             var incidentFace: Face? = null
             var incidentIdx = -1
 
+//            println("FINDING MIN INC")
+
+
             var l = 0
             while (l < otherFaces.size) {
                 val face = otherFaces[l]
                 val p = face.normal.dot(_norm)
 
+//                println(" * face: ${face.vertices.joinToString { it.toString() }}")
+//                println(" | p: $p")
+
                 if (p < incidentMin) {
+//                    println(" | set as new incMin! was: $incidentMin")
+                   
                     incidentMin = p
                     incidentFace = face
                     incidentIdx = l
@@ -410,12 +429,19 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
             _output.clear()
             incidentFace.populate(_output)
 
+//            println(" - incidentFace: ${incidentFace.vertices.joinToString { it.toStringFull() }}")
+//            println(" - refFace: ${refFace.vertices.joinToString { it.toStringFull() }}")
+
             var o = 0
             while (o < refFace.vertices.size) {
                 val v1 = refFace.vertices[o]
                 val v2 = refFace.vertices[(o + 1).mod(refFace.vertices.size)]
+//                println(" * EDGE")
 
                 val edgeNormal = _edgeNormal.set(v2).sub(v1).cross(_norm).normalize()
+
+//                println(" | v1: $v1, v2: $v2")
+//                println(" | edgeNormal: $edgeNormal")
 
                 _incidentVertices.clear()
                 _incidentVertices.addAll(_output)
@@ -442,6 +468,11 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                         end = _currIncidentVertex,
                         out = _intersectionOut,
                     )
+
+//                    println("   * POINT")
+//                    println("   | prev: ${_prevIncidentVertex.toStringFull()}")
+//                    println("   | curr: ${_currIncidentVertex.toStringFull()}")
+//                    println("   | int: ${_intersectionOut.toStringFull()}")
 
                     val prevInside = _incidentPoint.set(_prevIncidentVertex).sub(v1).dot(edgeNormal) <= 0
                     val currInside = _incidentPoint.set(_currIncidentVertex).sub(v1).dot(edgeNormal) <= 0
@@ -483,7 +514,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                     _output.getDouble(p * 3 + 2),
                 )
 
-                val d = -_tpProjected.set(_tp).sub(refFace.point()).dot(refFace.normal)
+                val d = -_tpProjected.set(_tp).sub(refFace.point()).dot(refFace.normal) // distance from ref face
 
                 if (d < 0.0) {
                     val closestIdx = activeBody.physicsWorld.prevContactData.closestB(
@@ -494,6 +525,13 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                     )
 
                     _tp2.set(_tp).sub(d * refFace.normal.x, d * refFace.normal.y, d * refFace.normal.z)
+
+//                    println(" * MANIFOLD")
+//                    println(" | a: (${_tp2.x}, ${_tp2.y}, ${_tp2.z})")
+//                    println(" | b: (${_tp.x}, ${_tp.y}, ${_tp.z})")
+//                    println(" | norm: (${_norm.x}, ${_norm.y}, ${_norm.z})")
+//                    println(" | depth: ${-d.toFloat()}")
+
                     collided = true
                     _faceManifold.loadInto(
                         pointAX = _tp2.x.toFloat(),

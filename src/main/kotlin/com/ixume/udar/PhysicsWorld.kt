@@ -127,7 +127,10 @@ class PhysicsWorld(
     }
 
     private fun tick() {
-//        bodyAABBTree.visualize(world)
+        if (Udar.CONFIG.debug.bbs) {
+            bodyAABBTree.visualize(world)
+        }
+
         time++
         repeat((0.05 / Udar.CONFIG.timeStep).roundToInt()) {
             var doTick = true
@@ -278,7 +281,7 @@ class PhysicsWorld(
                 while (i < s) {
                     val num = manifoldBuffer.numContacts(i)
                     var k = 0
-                    
+
                     while (k < num) {
                         world.spawnParticle(
                             Particle.REDSTONE,
@@ -290,6 +293,18 @@ class PhysicsWorld(
                             ),
                             1,
                             Particle.DustOptions(Color.RED, 0.3f),
+                        )
+
+                        world.spawnParticle(
+                            Particle.REDSTONE,
+                            Location(
+                                world,
+                                manifoldBuffer.pointBX(i, k).toDouble(),
+                                manifoldBuffer.pointBY(i, k).toDouble(),
+                                manifoldBuffer.pointBZ(i, k).toDouble()
+                            ),
+                            1,
+                            Particle.DustOptions(Color.WHITE, 0.3f),
                         )
 
                         world.spawnParticle(
@@ -315,9 +330,9 @@ class PhysicsWorld(
                                 manifoldBuffer.pointAY(i, k).toDouble(),
                                 manifoldBuffer.pointAZ(i, k).toDouble()
                             ).add(
-                                manifoldBuffer.normX(i, k).toDouble(),
-                                manifoldBuffer.normY(i, k).toDouble(),
-                                manifoldBuffer.normZ(i, k).toDouble()
+                                manifoldBuffer.normX(i, k).toDouble() * 0.77,
+                                manifoldBuffer.normY(i, k).toDouble() * 0.77,
+                                manifoldBuffer.normZ(i, k).toDouble() * 0.77,
                             ),
                             options = Particle.DustOptions(Color.PURPLE, 0.25f),
                         )
@@ -328,47 +343,47 @@ class PhysicsWorld(
                     i++
                 }
 
-                val es = envManifoldBuffer.size()
-                var j = 0
-                while (j < es) {
-                    val num = envManifoldBuffer.numContacts(j)
-                    var k = 0
-                    while (k < num) {
-                        world.spawnParticle(
-                            Particle.REDSTONE,
-                            Location(
-                                world,
-                                envManifoldBuffer.pointAX(j, k).toDouble(),
-                                envManifoldBuffer.pointAY(j, k).toDouble(),
-                                envManifoldBuffer.pointAZ(j, k).toDouble()
-                            ),
-                            1,
-                            Particle.DustOptions(Color.RED, 0.3f),
-                        )
-
-                        world.debugConnect(
-                            start = Vector3d(
-                                envManifoldBuffer.pointAX(j, k).toDouble(),
-                                envManifoldBuffer.pointAY(j, k).toDouble(),
-                                envManifoldBuffer.pointAZ(j, k).toDouble()
-                            ),
-                            end = Vector3d(
-                                envManifoldBuffer.pointAX(j, k).toDouble(),
-                                envManifoldBuffer.pointAY(j, k).toDouble(),
-                                envManifoldBuffer.pointAZ(j, k).toDouble()
-                            ).add(
-                                envManifoldBuffer.normX(j, k).toDouble(),
-                                envManifoldBuffer.normY(j, k).toDouble(),
-                                envManifoldBuffer.normZ(j, k).toDouble()
-                            ),
-                            options = Particle.DustOptions(Color.BLUE, 0.25f),
-                        )
-
-                        k++
-                    }
-
-                    j++
-                }
+//                val es = envManifoldBuffer.size()
+//                var j = 0
+//                while (j < es) {
+//                    val num = envManifoldBuffer.numContacts(j)
+//                    var k = 0
+//                    while (k < num) {
+//                        world.spawnParticle(
+//                            Particle.REDSTONE,
+//                            Location(
+//                                world,
+//                                envManifoldBuffer.pointAX(j, k).toDouble(),
+//                                envManifoldBuffer.pointAY(j, k).toDouble(),
+//                                envManifoldBuffer.pointAZ(j, k).toDouble()
+//                            ),
+//                            1,
+//                            Particle.DustOptions(Color.RED, 0.3f),
+//                        )
+//
+//                        world.debugConnect(
+//                            start = Vector3d(
+//                                envManifoldBuffer.pointAX(j, k).toDouble(),
+//                                envManifoldBuffer.pointAY(j, k).toDouble(),
+//                                envManifoldBuffer.pointAZ(j, k).toDouble()
+//                            ),
+//                            end = Vector3d(
+//                                envManifoldBuffer.pointAX(j, k).toDouble(),
+//                                envManifoldBuffer.pointAY(j, k).toDouble(),
+//                                envManifoldBuffer.pointAZ(j, k).toDouble()
+//                            ).add(
+//                                envManifoldBuffer.normX(j, k).toDouble(),
+//                                envManifoldBuffer.normY(j, k).toDouble(),
+//                                envManifoldBuffer.normZ(j, k).toDouble()
+//                            ),
+//                            options = Particle.DustOptions(Color.BLUE, 0.25f),
+//                        )
+//
+//                        k++
+//                    }
+//
+//                    j++
+//                }
             }
         }
     }
@@ -427,8 +442,9 @@ class PhysicsWorld(
     }
 
     private fun kill(obj: ActiveBody) {
-        bodyAABBTree.remove(obj.fatBB)
-        activeBodies.remove(obj.uuid)
+        if (activeBodies.remove(obj.uuid) != null) {
+            bodyAABBTree.remove(obj.fatBB)
+        }
         if (obj is Composite) {
             for (body in obj.parts) {
                 activeBodies.remove(body.uuid)

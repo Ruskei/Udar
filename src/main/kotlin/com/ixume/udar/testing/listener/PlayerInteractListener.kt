@@ -42,7 +42,7 @@ object PlayerInteractListener : Listener {
                 val snapshot = physicsWorld.bodiesSnapshot()
                 for (body in snapshot) {
                     if (body.isChild) continue
-                    
+
                     allIntersections += body.intersect(start, end).map { Triple(body, it.first, it.second) }
                 }
 
@@ -50,8 +50,7 @@ object PlayerInteractListener : Listener {
                     inter.distanceSquared(
                         start
                     )
-                }
-                                                   ?: return
+                } ?: return
 
                 e.player.world.spawnParticle(
                     Particle.REDSTONE, Location(
@@ -81,6 +80,28 @@ object PlayerInteractListener : Listener {
                     normal,
                     Vector3d(dir).normalize(PUSH_STRENGTH * e.player.inventory.itemInMainHand.amount)
                 )
+            } else if (type == Material.ACACIA_FENCE) {
+                e.isCancelled = true
+                val physicsWorld = e.player.world.physicsWorld ?: return
+                val start = e.player.eyeLocation.toVector().toVector3d()
+                val dir = e.player.location.direction.toVector3d().mul(20.0)
+                val end = Vector3d(start).add(dir)
+
+                val allIntersections = mutableListOf<Triple<ActiveBody, Vector3d, Vector3d>>()
+                val snapshot = physicsWorld.bodiesSnapshot()
+                for (body in snapshot) {
+                    if (body.isChild) continue
+
+                    allIntersections += body.intersect(start, end).map { Triple(body, it.first, it.second) }
+                }
+
+                val (body, intersection, normal) = allIntersections.minByOrNull { (_, inter, _) ->
+                    inter.distanceSquared(
+                        start
+                    )
+                } ?: return
+
+                physicsWorld.removeBody(body)
             }
         } else if (e.action == Action.LEFT_CLICK_BLOCK) {
             if (type == Material.DIAMOND_SWORD) {

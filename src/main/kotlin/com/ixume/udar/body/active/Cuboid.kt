@@ -76,7 +76,7 @@ class Cuboid(
     override val faces: Array<Face> = arrayOf(
         // wound counterclockwise
         Face(vertices = arrayOf(vertices[0], vertices[3], vertices[7], vertices[4])),
-        Face(vertices = arrayOf(vertices[0], vertices[1], vertices[5], vertices[4])),
+        Face(vertices = arrayOf(vertices[4], vertices[5], vertices[1], vertices[0])),
         Face(vertices = arrayOf(vertices[2], vertices[1], vertices[5], vertices[6])),
         Face(vertices = arrayOf(vertices[3], vertices[2], vertices[6], vertices[7])),
         Face(vertices = arrayOf(vertices[0], vertices[1], vertices[2], vertices[3])),
@@ -477,8 +477,6 @@ class Cuboid(
     }
 }
 
-private const val EPSILON = 1e-11
-private const val FUDGE = 4.0
 fun Vector3d.toStringFull(): String {
     return "( $x, $y, $z )"
 }

@@ -138,6 +138,7 @@ data class Config(
         val frequency: Int = 3,
         val mesh: Int = 0,
         val normals: Int = 0,
+        val bbs: Boolean = false,
         val collisionTimes: Int = 0,
         val data: Int = 0,
 
