@@ -1,6 +1,5 @@
 package com.ixume.udar
 
-import com.ixume.proverka.Proverka
 import com.ixume.udar.rp.RPManager
 import com.ixume.udar.testing.Config
 import com.ixume.udar.testing.ConfigLoader
@@ -26,10 +25,6 @@ class Udar : JavaPlugin() {
 
     override fun onDisable() {
         PhysicsWorldsManager.disable()
-
-        for (world in Bukkit.getWorlds()) {
-            Proverka.INSTANCE.getWorldManager(world).kill()
-        }
     }
 
     companion object {

@@ -13,7 +13,6 @@ class TestCommand : BukkitCommand("udar") {
         SDFProjectionCommand.arg to SDFProjectionCommand,
         FreezeCommand.arg to FreezeCommand,
         StepCommand.arg to StepCommand,
-        MarkPointCommand.arg to MarkPointCommand,
         CompositeCommand.arg to CompositeCommand,
         RunTestCommand.arg to RunTestCommand,
         StressGridCommand.arg to StressGridCommand,
