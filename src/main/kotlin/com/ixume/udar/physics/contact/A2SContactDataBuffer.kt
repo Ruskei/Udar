@@ -154,6 +154,18 @@ class A2SContactDataBuffer(private val numContacts: Int) {
     fun pointAComponent(contactIdx: Int, component: Int): Float {
         return arr[contactIdx * CONTACT_DATA_SIZE + POINT_A_X_OFFSET + component]
     }
+    
+    fun nx(contactIdx: Int): Float {
+        return arr[contactIdx * CONTACT_DATA_SIZE + NORM_X_OFFSET]
+    }
+
+    fun ny(contactIdx: Int): Float {
+        return arr[contactIdx * CONTACT_DATA_SIZE + NORM_Y_OFFSET]
+    }
+
+    fun nz(contactIdx: Int): Float {
+        return arr[contactIdx * CONTACT_DATA_SIZE + NORM_Z_OFFSET]
+    }
 }
 
 private const val CONTACT_DATA_SIZE = 16

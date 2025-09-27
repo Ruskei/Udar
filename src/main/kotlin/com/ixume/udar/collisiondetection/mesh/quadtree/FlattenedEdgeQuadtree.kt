@@ -19,6 +19,7 @@ import org.bukkit.Particle
 import org.bukkit.World
 import org.joml.Vector3d
 import kotlin.math.max
+import kotlin.math.min
 
 /**
  * Since this structure's leaves contain a variable amount of data that cannot be reasonably put into a fixed size, we store indices to the data instead
@@ -164,15 +165,10 @@ class FlattenedEdgeQuadtree(
                         var mounted = false
                         var mount = -1
 
-                        val d0 = itr.nextDouble()
-                        val d1 = itr.nextDouble()
+                        val d0 = min(max(itr.nextDouble(), levelMin), levelMax)
+                        val d1 = min(max(itr.nextDouble(), levelMin), levelMax)
 
-                        val d0Valid = d0 >= levelMin && d0 <= levelMax
-                        val d1Valid = d1 >= levelMin && d1 <= levelMax
-
-                        if (!d0Valid || !d1Valid) {
-                            continue
-                        }
+                        if (d1 <= d0) continue
 
                         val center = d0 * 0.5 + d1 * 0.5
 
@@ -749,14 +745,6 @@ class FlattenedEdgeQuadtree(
 
         _pts.add(start)
         _pts.add(end)
-
-//        val xored = xoredPoints(dataIdx)
-//        if (xored.contains(start) || xored.contains(end)) return
-//
-//        val _pts = _points(dataIdx)
-//
-//        _xor(start, xored, _pts)
-//        _xor(end, xored, _pts)
     }
 
     private fun Int._xor(d: Double, xored: DoubleAVLTreeSet, _pts: DoubleAVLTreeSet) {

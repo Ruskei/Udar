@@ -7,6 +7,7 @@ import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFaceSortedList
 import com.ixume.udar.collisiondetection.mesh.quadtree.FlattenedEdgeQuadtree
 import com.ixume.udar.dynamicaabb.AABB
+import com.ixume.udar.dynamicaabb.array.FlattenedAABBTree
 import org.bukkit.Bukkit
 import org.bukkit.scheduler.BukkitTask
 import java.util.concurrent.ConcurrentHashMap
@@ -58,6 +59,7 @@ class WorldMeshesManager(
 
         val faces = mutableListOf<MeshFaceSortedList>()
         val edges = mutableListOf<FlattenedEdgeQuadtree>()
+        val bbs = mutableListOf<FlattenedAABBTree>()
 
         if (prevBB != null) {
             val prevMinX = floor((prevBB.minX - BB_SAFETY) / MESH_SIZE).toInt()
@@ -99,6 +101,8 @@ class WorldMeshesManager(
                             mesh.xEdges2?.let { edges += it }
                             mesh.yEdges2?.let { edges += it }
                             mesh.zEdges2?.let { edges += it }
+                            
+                            mesh.flatTree?.let { bbs += it }
                         }
                     }
                 }
@@ -108,10 +112,12 @@ class WorldMeshesManager(
         if (toGen.isEmpty()) {
             envContactGenerator.meshFaces.set(faces)
             envContactGenerator.meshEdges.set(edges)
+            envContactGenerator.bbs.set(bbs)
         } else {
             queue += MeshRequest(
                 faces = faces,
                 edges = edges,
+                bbs = bbs,
                 toGen = toGen,
                 envContactGenerator = envContactGenerator,
             )
@@ -131,6 +137,7 @@ class WorldMeshesManager(
 
             rq.envContactGenerator.meshFaces.set(rq.faces)
             rq.envContactGenerator.meshEdges.set(rq.edges)
+            rq.envContactGenerator.bbs.set(rq.bbs)
         }
     }
 
@@ -193,6 +200,7 @@ class WorldMeshesManager(
 private class MeshRequest(
     val faces: MutableList<MeshFaceSortedList>,
     val edges: MutableList<FlattenedEdgeQuadtree>,
+    val bbs: MutableList<FlattenedAABBTree>,
     val toGen: List<MeshPosition>,
     val envContactGenerator: EnvironmentContactGenerator2,
 )

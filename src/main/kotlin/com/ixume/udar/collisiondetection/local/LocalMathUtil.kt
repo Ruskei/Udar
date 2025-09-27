@@ -36,6 +36,8 @@ class LocalMathUtil(
         vertices: Array<Vector3d>,
         out: A2SContactDataBuffer,
     ): Boolean {
+        println("PLANE COLLISION TEST")
+        println("| axis: $axis")
         axis.project(vertices, _mm)
         val min = _mm[0]
         val max = _mm[1]
@@ -72,6 +74,10 @@ class LocalMathUtil(
                         v.z.toFloat()
                     )
                     
+                    println("  * CONTACT")
+                    println("  | p: (${v.x} ${v.y} ${v.z})")
+                    println("  | n: ${axis.vec}")
+
                     out.loadInto(
                         pointAX = v.x.toFloat(),
                         pointAY = v.y.toFloat(),
@@ -106,7 +112,11 @@ class LocalMathUtil(
                         v.y.toFloat(),
                         v.z.toFloat()
                     )
-                    
+
+                    println("  * CONTACT")
+                    println("  | p: (${v.x} ${v.y} ${v.z})")
+                    println("  | n: ${axis.vec}")
+
                     out.loadInto(
                         pointAX = v.x.toFloat(),
                         pointAY = v.y.toFloat(),
@@ -130,6 +140,8 @@ class LocalMathUtil(
 
         return true
     }
+
+    private val _delta = Vector3d()
 
     /**
      * MUST NOT BE PARALLEL TO EDGE!! USE DIFFERENT METHOD IF THEY ARE!
@@ -325,7 +337,7 @@ class LocalMathUtil(
             just go through all the edges on cuboid and choose the closest
              */
 
-            var closestEdgeDistance = Double.MAX_VALUE
+            var maxEdgeDepth = -Double.MAX_VALUE
             val closestA = Vector3d()
 
             var l = 0
@@ -333,7 +345,7 @@ class LocalMathUtil(
             while (l < edges.size) {
                 val edge = edges[l]
 
-                val distance = closestPointsBetweenSegments(
+                closestPointsBetweenSegments(
                     a0 = edge.start,
                     a1 = edge.end,
                     b0 = edgeStart,
@@ -342,8 +354,10 @@ class LocalMathUtil(
                     outB = _outCB,
                 )
 
-                if (distance < closestEdgeDistance) {
-                    closestEdgeDistance = distance
+                val depth = _delta.set(_outCB).sub(_outCA).dot(norm)
+
+                if (depth > maxEdgeDepth) {
+                    maxEdgeDepth = depth
                     closestEdgeIdx = l
                     closestA.set(_outCA)
                 }
@@ -351,19 +365,19 @@ class LocalMathUtil(
                 l++
             }
 
-            check(closestEdgeDistance != Double.MAX_VALUE)
-            
+            check(maxEdgeDepth != Double.MAX_VALUE)
+
             val manifoldID = constructA2SEdgeManifoldID(
                 activeBody = activeBody,
                 edgeStart = edgeStart,
                 edgeEnd = edgeEnd,
                 edgeIdx = closestEdgeIdx
             )
-            
+
             val rawManifoldIdx = activeBody.physicsWorld.prevEnvContactMap.get(manifoldID)
-            
+
             check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx, 1) == 1)
-            
+
             out.addSingleManifold(
                 activeBody = activeBody,
 
@@ -458,7 +472,7 @@ class LocalMathUtil(
                     val pointAZ = (edgeStart.z + minBodyAxis.z * minBodyOverlap).toFloat()
 
                     check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx, 1) == 1)
-                    
+
                     out.addSingleManifold(
                         activeBody = activeBody,
 
@@ -523,9 +537,9 @@ class LocalMathUtil(
                     val pointAX = (edgeEnd.x + minBodyAxis.x * minBodyOverlap).toFloat()
                     val pointAY = (edgeEnd.y + minBodyAxis.y * minBodyOverlap).toFloat()
                     val pointAZ = (edgeEnd.z + minBodyAxis.z * minBodyOverlap).toFloat()
-                    
+
                     check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx, 1) == 1)
-                    
+
                     out.addSingleManifold(
                         activeBody = activeBody,
 

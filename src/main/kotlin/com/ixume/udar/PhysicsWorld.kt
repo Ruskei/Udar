@@ -18,6 +18,7 @@ import com.ixume.udar.physics.contact.A2SManifoldBuffer
 import com.ixume.udar.physics.contact.A2SPrevManifoldData
 import com.ixume.udar.testing.PhysicsWorldTestDebugData
 import com.ixume.udar.testing.debugConnect
+import com.ixume.udar.testing.listener.PlayerInteractListener
 import it.unimi.dsi.fastutil.ints.Int2ObjectMaps
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 import it.unimi.dsi.fastutil.ints.IntArrayList
@@ -127,6 +128,7 @@ class PhysicsWorld(
     }
 
     private fun tick() {
+        PlayerInteractListener.tick(world)
         if (Udar.CONFIG.debug.bbs) {
             bodyAABBTree.visualize(world)
         }

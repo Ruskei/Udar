@@ -9,13 +9,13 @@ import com.ixume.udar.collisiondetection.mesh.mesh2.EdgeMountAllowedNormals
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFace
 import com.ixume.udar.collisiondetection.mesh.quadtree.FlattenedEdgeQuadtree
+import com.ixume.udar.dynamicaabb.array.FlattenedAABBTree
 import com.ixume.udar.physics.contact.A2SContactDataBuffer
 import com.ixume.udar.physics.contact.A2SManifoldCollection
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
 import it.unimi.dsi.fastutil.ints.IntArrayList
 import org.joml.Vector3d
 
-// TODO: face normal filtering
 // TODO: graph-based contact filtering
 
 class LocalEnvContactUtil(val math: LocalMathUtil) {
@@ -40,13 +40,14 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 
         val mfs = contactGen.meshFaces.get()
         val mes = contactGen.meshEdges.get()
+        val bbs = contactGen.bbs.get()
 
         var j = 0
         while (j < mfs.size) {
             val mf = mfs[j]
             _mf.clear()
             mf.facesIn(bb, _mf)
-            collideFaces(activeBody, _mf, mf.axis, math, other, out)
+            collideFaces(activeBody, _mf, bbs, mf.axis, math, other, out)
             j++
         }
 
@@ -76,6 +77,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
     private fun collideFaces(
         activeBody: ActiveBody,
         faces: List<MeshFace>,
+        bbs: List<FlattenedAABBTree>,
         axis: LocalMesher.AxisD,
         math: LocalMathUtil,
         other: Body,
@@ -165,10 +167,39 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                 math = math,
             )
 
+            println("VALIDATING")
+
             var j = 0
             while (j < _contacts2.size()) {
                 val pa = _contacts2.pointAComponent(j, axis.aOffset).toDouble()
                 val pb = _contacts2.pointAComponent(j, axis.bOffset).toDouble()
+                val plevel = _contacts2.pointAComponent(j, axis.levelOffset).toDouble()
+
+                var x = -Double.MAX_VALUE
+                var y = -Double.MAX_VALUE
+                var z = -Double.MAX_VALUE
+
+                when (axis.aOffset) {
+                    0 -> x = pa
+                    1 -> y = pa
+                    2 -> z = pa
+                }
+
+                when (axis.bOffset) {
+                    0 -> x = pb
+                    1 -> y = pb
+                    2 -> z = pb
+                }
+
+                when (axis.levelOffset) {
+                    0 -> x = plevel
+                    1 -> y = plevel
+                    2 -> z = plevel
+                }
+
+                check(x != -Double.MAX_VALUE)
+                check(y != -Double.MAX_VALUE)
+                check(z != -Double.MAX_VALUE)
 
                 var valid = true
                 var k = 0
@@ -221,6 +252,9 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                             a = pb,
                         )
                     ) {
+                        println("  * CONTAINED IN HOLE:")
+                        println("  | min: ($minA $minB)")
+                        println("  | max: ($maxA $maxB)")
                         valid = true
                         break
                     }
@@ -233,17 +267,39 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                     continue
                 }
 
-                _contacts2.loadInto(count, _validContacts2)
+                valid = false
+
+                var o = 0
+                while (o < bbs.size) {
+                    val tree = bbs[o]
+                    if (tree.contains(x, y, z)) {
+                        valid = true
+                        break
+                    }
+
+                    o++
+                }
+
+                if (!valid) {
+                    j++
+                    continue
+                }
+
+                println("  - LOADED!")
+                println("  | ($x $y $z)")
+                _contacts2.loadInto(j, _validContacts2)
 
                 count++
                 j++
             }
 
-            out.addManifold(
-                activeBody = activeBody,
-                contactID = manifoldID,
-                buf = _validContacts2,
-            )
+            if (_validContacts2.size() > 0) {
+                out.addManifold(
+                    activeBody = activeBody,
+                    contactID = manifoldID,
+                    buf = _validContacts2,
+                )
+            }
 
             i++
         }

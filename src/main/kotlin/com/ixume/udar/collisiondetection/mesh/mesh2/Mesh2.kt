@@ -39,8 +39,8 @@ class LocalMesher {
             floor(boundingBox.maxZ).toInt(),
         )
 
-//        println("| meshStart: $meshStart")
-//        println("| meshEnd: $meshEnd")
+        println("| meshStart: $meshStart")
+        println("| meshEnd: $meshEnd")
 //
         val flatTree = FlattenedAABBTree(0)
         _bbs.clear()
@@ -80,15 +80,12 @@ class LocalMesher {
             )
         }
 
-//        println("BBs: ${_bbs.size}")
-
         val meshFaces = MeshFaces(
             createMeshFaces(AxisD.X, meshStart, meshEnd, flatTree),
             createMeshFaces(AxisD.Y, meshStart, meshEnd, flatTree),
             createMeshFaces(AxisD.Z, meshStart, meshEnd, flatTree),
         )
 
-//        createMeshEdges(meshStart, meshEnd, meshFaces, t)
         createMeshEdges2(meshStart, meshEnd, meshFaces, flatTree)
 
         return Mesh2(
@@ -188,27 +185,28 @@ class LocalMesher {
         meshFaces: MeshFaces,
         tree: FlattenedAABBTree,
     ) {
+        val epsilon = 0
         //TODO: Dont put out of bounds points on edges
         _xAxiss2 = FlattenedEdgeQuadtree(
             AxisD.X,
-            meshStart.y.toDouble(), meshStart.z.toDouble(),
-            meshEnd.y.toDouble() + 2.0, meshEnd.z.toDouble() + 2.0,
-            levelMin = meshStart.x.toDouble(),
-            levelMax = meshEnd.x.toDouble() + 1.0,
+            meshStart.y.toDouble() - epsilon, meshStart.z.toDouble() - epsilon,
+            meshEnd.y.toDouble() + 2.0 + epsilon, meshEnd.z.toDouble() + 2.0 + epsilon,
+            levelMin = meshStart.x.toDouble() - epsilon,
+            levelMax = meshEnd.x.toDouble() + 1.0 + epsilon,
         )
         _yAxiss2 = FlattenedEdgeQuadtree(
             AxisD.Y,
-            meshStart.x.toDouble(), meshStart.z.toDouble(),
-            meshEnd.x.toDouble() + 2.0, meshEnd.z.toDouble() + 2.0,
-            levelMin = meshStart.y.toDouble(),
-            levelMax = meshEnd.y.toDouble() + 1.0,
+            meshStart.x.toDouble() - epsilon, meshStart.z.toDouble() - epsilon,
+            meshEnd.x.toDouble() + 2.0 + epsilon, meshEnd.z.toDouble() + 2.0 + epsilon,
+            levelMin = meshStart.y.toDouble() - epsilon,
+            levelMax = meshEnd.y.toDouble() + 1.0 - epsilon,
         )
         _zAxiss2 = FlattenedEdgeQuadtree(
             AxisD.Z,
-            meshStart.x.toDouble(), meshStart.y.toDouble(),
-            meshEnd.x.toDouble() + 2.0, meshEnd.y.toDouble() + 2.0,
-            levelMin = meshStart.z.toDouble(),
-            levelMax = meshEnd.z.toDouble() + 1.0,
+            meshStart.x.toDouble() - epsilon, meshStart.y.toDouble() - epsilon,
+            meshEnd.x.toDouble() + 2.0 + epsilon, meshEnd.y.toDouble() + 2.0 + epsilon,
+            levelMin = meshStart.z.toDouble() - epsilon,
+            levelMax = meshEnd.z.toDouble() + 1.0 + epsilon,
         )
 
         val _bb = DoubleArray(6) // [ minX, minY, minZ, maxX, maxY, maxZ ]
@@ -220,6 +218,14 @@ class LocalMesher {
             //x axis
             val xStart = _bb[BB_MIN_X]
             val xEnd = _bb[BB_MAX_X]
+
+            //y axis
+            val yStart = _bb[BB_MIN_Y]
+            val yEnd = _bb[BB_MAX_Y]
+
+            //z axis
+            val zStart = _bb[BB_MIN_Z]
+            val zEnd = _bb[BB_MAX_Z]
 
             val x0aStart = _bb[BB_MIN_Y]
             val x0bStart = _bb[BB_MIN_Z]
@@ -237,10 +243,6 @@ class LocalMesher {
             val x3bStart = _bb[BB_MAX_Z]
             _xAxiss2.insertEdge(x3aStart, x3bStart, xStart, xEnd, meshFaces)
 
-            //y axis
-            val yStart = _bb[BB_MIN_Y]
-            val yEnd = _bb[BB_MAX_Y]
-
             val y0aStart = _bb[BB_MIN_X]
             val y0bStart = _bb[BB_MIN_Z]
             _yAxiss2.insertEdge(y0aStart, y0bStart, yStart, yEnd, meshFaces)
@@ -257,9 +259,6 @@ class LocalMesher {
             val y3bStart = _bb[BB_MAX_Z]
             _yAxiss2.insertEdge(y3aStart, y3bStart, yStart, yEnd, meshFaces)
 
-            //z axis
-            val zStart = _bb[BB_MIN_Z]
-            val zEnd = _bb[BB_MAX_Z]
 
             val z0aStart = _bb[BB_MIN_X]
             val z0bStart = _bb[BB_MIN_Y]
@@ -295,14 +294,14 @@ class LocalMesher {
     ) {
         fun visualize(world: World) {
 //            println("visualizing mesh")
-//            xEdges2?.visualize(world)
-//            yEdges2?.visualize(world)
-//            zEdges2?.visualize(world)
+            xEdges2?.visualize(world)
+            yEdges2?.visualize(world)
+            zEdges2?.visualize(world)
 //            flatTree?.visualize(world)
 
 //            faces?.xFaces?.ls?.forEach { it.visualize(world) }
 //            faces?.yFaces?.ls?.forEach { it.visualize(world) }
-            faces?.zFaces?.ls?.forEach { it.visualize(world) }
+//            faces?.zFaces?.ls?.forEach { it.visualize(world) }
 ////
 //            xEdges?.visualize(world)
 //            yEdges?.visualize(world)
