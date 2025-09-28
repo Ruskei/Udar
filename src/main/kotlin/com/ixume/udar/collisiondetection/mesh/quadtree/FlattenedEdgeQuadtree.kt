@@ -1093,7 +1093,7 @@ class FlattenedEdgeQuadtree(
                         world.debugConnect(
                             start = s,
                             end = e,
-                            options = Particle.DustOptions(Color.LIME, 0.3f),
+                            options = Particle.DustOptions(Color.LIME, 0.4f),
                         )
                     }
 

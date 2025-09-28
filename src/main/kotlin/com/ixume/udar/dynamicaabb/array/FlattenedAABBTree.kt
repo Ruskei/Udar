@@ -933,7 +933,7 @@ class FlattenedAABBTree(
         var i = 0
         val numNodes = arr.size / DATA_SIZE
         while (i < numNodes) {
-            if (i.isFree()) {
+            if (i.isFree() || !i.isLeaf()) {
                 i++
                 continue
             }

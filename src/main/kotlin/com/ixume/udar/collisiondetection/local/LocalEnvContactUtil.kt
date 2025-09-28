@@ -195,7 +195,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                 math = math,
             )
 
-//            println("VALIDATING")
+            println("VALIDATING")
 
             var j = 0
             while (j < _contacts2.size()) {
@@ -300,8 +300,10 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                     continue
                 }
 
-//                println("  - LOADED!")
-//                println("  | ($x $y $z)")
+                println("  - LOADED!")
+                println("  | ($x $y $z)")
+                println("  | depth: ${_contacts2.depth(j)}")
+                
                 _contacts2.loadInto(j, _validContacts2)
 
                 count++
@@ -376,9 +378,11 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
             minX = activeBody.tightBB.minX,
             minY = activeBody.tightBB.minY,
             minZ = activeBody.tightBB.minZ,
+
             maxX = activeBody.tightBB.maxX,
             maxY = activeBody.tightBB.maxY,
             maxZ = activeBody.tightBB.maxZ,
+
             outA = _outA,
             outB = _outB,
             outData = _outData,

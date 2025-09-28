@@ -36,8 +36,6 @@ class LocalMathUtil(
         vertices: Array<Vector3d>,
         out: A2SContactDataBuffer,
     ): Boolean {
-//        println("PLANE COLLISION TEST")
-//        println("| axis: $axis")
         axis.project(vertices, _mm)
         val min = _mm[0]
         val max = _mm[1]
@@ -59,6 +57,9 @@ class LocalMathUtil(
         find all penetrating points
          */
 
+        println("PLANE COLLISION TEST")
+        println("| axis: $axis")
+
         if (level - min < max - level) {
             var i = 0
             while (i < vertices.size) {
@@ -74,9 +75,9 @@ class LocalMathUtil(
                         v.z.toFloat()
                     )
 
-//                    println("  * CONTACT")
-//                    println("  | p: (${v.x} ${v.y} ${v.z})")
-//                    println("  | n: ${axis.vec}")
+                    println("  * CONTACT")
+                    println("  | p: (${v.x} ${v.y} ${v.z})")
+                    println("  | n: ${axis.vec}")
 
                     out.loadInto(
                         pointAX = v.x.toFloat(),
@@ -113,9 +114,9 @@ class LocalMathUtil(
                         v.z.toFloat()
                     )
 
-//                    println("  * CONTACT")
-//                    println("  | p: (${v.x} ${v.y} ${v.z})")
-//                    println("  | n: ${axis.vec}")
+                    println("  * CONTACT")
+                    println("  | p: (${v.x} ${v.y} ${v.z})")
+                    println("  | n: ${axis.vec}")
 
                     out.loadInto(
                         pointAX = v.x.toFloat(),
@@ -162,6 +163,7 @@ class LocalMathUtil(
         allowedNormals: Array<Vector3d>,
         out: A2SManifoldCollection,
     ) {
+        println("EDGE COLLISION TEST")
         var minBodyOverlap = Double.MAX_VALUE
         var minBodyAxis: Vector3d? = null
         var minBodyInDirOfAxis = true
@@ -307,7 +309,7 @@ class LocalMathUtil(
         /*
         check if the min axis is even allowed; if not, then we're on the wrong side of the edge
 
-        check this for both edge-edge and face-vertex since we don't want edges acting as points from behind, even if in theory this should never happen
+        check this for both edge-edge and face-vertex since we don't want edges aCting as points from behind, even if in theory this should never happen
          */
 
         if (minCrossOverlap < minBodyOverlap) {
@@ -328,6 +330,8 @@ class LocalMathUtil(
                 return
             }
 
+//            println("EDGE-EDGE")
+
             /*
             collision is edge-edge
 
@@ -337,15 +341,26 @@ class LocalMathUtil(
             just go through all the edges on cuboid and choose the closest
              */
 
+            val sameDepthEpsilon = 1e-5
+
             var maxEdgeDepth = -Double.MAX_VALUE
+            var minEdgeDistance = Double.MAX_VALUE
             val closestA = Vector3d()
+
+//            println(" - FINDING CLOSEST")
 
             var l = 0
             var closestEdgeIdx = -1
             while (l < edges.size) {
                 val edge = edges[l]
 
-                closestPointsBetweenSegments(
+//                println("  * TESTING EDGE $l")
+//                println("  | body.edge.start..end: ${edge.start}..${edge.end}")
+//                println("  | env.edge.start..end: ${edgeStart}..${edgeEnd}")
+
+                val depth = -min(edge.start.dot(norm), edge.end.dot(norm))
+
+                val dist = closestPointsBetweenSegments(
                     a0 = edge.start,
                     a1 = edge.end,
                     b0 = edgeStart,
@@ -354,12 +369,21 @@ class LocalMathUtil(
                     outB = _outCB,
                 )
 
-                val depth = _delta.set(_outCB).sub(_outCA).dot(norm)
+//                val depth = _delta.set(_outCB).sub(_outCA).dot(norm)
+//                println("  | depth: $depth")
 
-                if (depth > maxEdgeDepth) {
+                if (depth > maxEdgeDepth + sameDepthEpsilon) {
                     maxEdgeDepth = depth
+                    minEdgeDistance = dist
                     closestEdgeIdx = l
                     closestA.set(_outCA)
+                } else if (depth >= maxEdgeDepth - sameDepthEpsilon) {
+                    // same depth, so compare distances
+                    if (dist < minEdgeDistance) {
+                        minEdgeDistance = dist
+                        closestEdgeIdx = l
+                        closestA.set(_outCA)
+                    }
                 }
 
                 l++
@@ -377,6 +401,10 @@ class LocalMathUtil(
             val rawManifoldIdx = activeBody.physicsWorld.prevEnvContactMap.get(manifoldID)
 
             check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx, 1) == 1)
+
+            println("  * COLLIDED")
+            println("  | edgeIdx: $closestEdgeIdx")
+            println("  | p: (${closestA.x} ${closestA.y} ${closestA.z})")
 
             out.addSingleManifold(
                 activeBody = activeBody,
@@ -415,6 +443,7 @@ class LocalMathUtil(
                 return
             }
 
+//            println("FACE-VERTEX")
 
             /*
             collision is face-vertex, except here the vertex is one of the edge points; this means point of deepest collision is simply the part of the edge closer to the cuboid
@@ -440,6 +469,9 @@ class LocalMathUtil(
                     val pointAZ = (edgeEnd.z - minBodyAxis.z * minBodyOverlap).toFloat()
 
                     check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx, 1) == 1)
+
+                    println("  * COLLIDED")
+                    println("  | p: ($pointAX $pointAY $pointAZ)")
 
                     out.addSingleManifold(
                         activeBody = activeBody,
@@ -472,6 +504,9 @@ class LocalMathUtil(
                     val pointAZ = (edgeStart.z + minBodyAxis.z * minBodyOverlap).toFloat()
 
                     check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx, 1) == 1)
+
+                    println("  * COLLIDED")
+                    println("  | p: ($pointAX $pointAY $pointAZ)")
 
                     out.addSingleManifold(
                         activeBody = activeBody,
@@ -508,6 +543,9 @@ class LocalMathUtil(
 
                     check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx, 1) == 1)
 
+                    println("  * COLLIDED")
+                    println("  | p: ($pointAX $pointAY $pointAZ)")
+
                     out.addSingleManifold(
                         activeBody = activeBody,
 
@@ -539,6 +577,9 @@ class LocalMathUtil(
                     val pointAZ = (edgeEnd.z + minBodyAxis.z * minBodyOverlap).toFloat()
 
                     check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx, 1) == 1)
+
+                    println("  * COLLIDED")
+                    println("  | p: ($pointAX $pointAY $pointAZ)")
 
                     out.addSingleManifold(
                         activeBody = activeBody,
@@ -646,6 +687,7 @@ class LocalMathUtil(
         outA: Vector3d,
         outB: Vector3d,
     ): Double {
+//        println("CLOSEST POINTS BETWEEN SEGMENTS")
         val epsilon = 1e-10
 
         _an.set(a1).sub(a0).normalize()
@@ -671,14 +713,28 @@ class LocalMathUtil(
         //otherwise check vertex-vertex
         //check line-line
         val llD = closestPointsBetweenLines(a0, _an, b0, _bn, _onLLA, _onLLB)
+//        println("LL RESULTS")
+//        println("| onLLA: $_onLLA")
+//        println("| onLLB: $_onLLB")
+//        println("| llD: $llD")
 
         if (llD == Double.MAX_VALUE) {
             val p1 = outA.set(a0).mul(0.5).add(_an.set(a1).mul(0.5))
             val p2 = outB.set(b0).mul(0.5).add(_bn.set(b1).mul(0.5))
+//            println(" - PARALLEL!")
+//            println(" | outA: $p1")
+//            println(" | outB: $p2")
             return p1.distance(p2)
         }
 
-        if (_onLLA.inside(axMin, axMax, ayMin, ayMax, azMin, azMax) && _onLLB.inside(
+        if (_onLLA.inside(
+                axMin,
+                axMax,
+                ayMin,
+                ayMax,
+                azMin,
+                azMax,
+            ) && _onLLB.inside(
                 bxMin,
                 bxMax,
                 byMin,
@@ -689,6 +745,9 @@ class LocalMathUtil(
         ) {
             outA.set(_onLLA)
             outB.set(_onLLB)
+//            println(" - LINE-LINE")
+//            println(" | outA: $outA")
+//            println(" | outB: $outB")
             return llD
         }
 
@@ -697,18 +756,19 @@ class LocalMathUtil(
         //test vertex-line:
         //a0-b, a1-b, b0-a, b1-a
         //return closest valid, because if it's valid then it must be closer than it is to a vertex, otherwise try vertex-vertex
+//        println(" - VERTEX-LINE / VERTEX-VERTEX")
         val d0 = closestPointOnLine(b0, _bn, a0, _outP0)
         if (d0 < closestDistance && _outP0.inside(bxMin, bxMax, byMin, byMax, bzMin, bzMax)) {
             closestDistance = d0
-            outA.set(_outP0)
-            outB.set(a0)
+            outA.set(a0)
+            outB.set(_outP0)
         }
 
         val d1 = closestPointOnLine(b0, _bn, a1, _outP1)
         if (d1 < closestDistance && _outP1.inside(bxMin, bxMax, byMin, byMax, bzMin, bzMax)) {
             closestDistance = d1
-            outA.set(_outP1)
-            outB.set(a1)
+            outA.set(a1)
+            outB.set(_outP1)
         }
 
         val d2 = closestPointOnLine(a0, _an, b0, _outP2)
@@ -752,6 +812,9 @@ class LocalMathUtil(
             outB.set(b1)
         }
 
+//        println(" | outA: $outA")
+//        println(" | outB: $outB")
+
         check(closestDistance != Double.MAX_VALUE)
 
         return closestDistance
@@ -782,6 +845,11 @@ class LocalMathUtil(
         onLLA: Vector3d,
         onLLB: Vector3d,
     ): Double {
+//        println("CLOSEST POINTS BETWEEN LINES")
+//        println("| a0: $a0")
+//        println("| a: $a")
+//        println("| b0: $b0")
+//        println("| b: $b")
         an.set(a).normalize()
         bn.set(b).normalize()
         cn.set(an).cross(bn).normalize()
@@ -826,7 +894,9 @@ class LocalMathUtil(
         zMin: Double,
         zMax: Double,
     ): Boolean {
-        return x >= xMin && x <= xMax && y >= yMin && y <= yMax && z >= zMin && z <= zMax
+        return x >= xMin && x <= xMax &&
+               y >= yMin && y <= yMax &&
+               z >= zMin && z <= zMax
     }
 
     val _n = Vector3f()
