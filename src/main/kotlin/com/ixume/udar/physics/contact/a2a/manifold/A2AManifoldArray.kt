@@ -1,7 +1,8 @@
-package com.ixume.udar.physics.contact
+package com.ixume.udar.physics.contact.a2a.manifold
 
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
+import com.ixume.udar.physics.contact.a2a.A2AContactDataBuffer
 import kotlin.math.max
 
 class A2AManifoldArray(val maxContactNum: Int) : A2AManifoldCollection {
@@ -174,7 +175,7 @@ class A2AManifoldArray(val maxContactNum: Int) : A2AManifoldCollection {
     override fun numContacts(manifoldIdx: Int): Int {
         return arr[manifoldIdx * manifoldDataSize + CONTACT_NUM_OFFSET].toRawBits()
     }
-    
+
     fun setBodyData(
         manifoldIdx: Int,
         first: ActiveBody,

@@ -130,9 +130,19 @@ class MeshFaceSortedList(
         return out
     }
 
-    fun constructAntiHoles() {
+    private fun constructAntiHoles() {
         for (face in ls) {
             face.antiHoles = face.holes.constructCollisions()
+        }
+    }
+
+    fun finish() {
+        constructAntiHoles()
+
+        var i = 0
+        while (i < ls.size) {
+            ls[i].idx = i
+            i++
         }
     }
 

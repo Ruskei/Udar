@@ -7,8 +7,8 @@ import com.ixume.udar.collisiondetection.contactgeneration.CompositeCompositeCon
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.jacobiEigenDecomposition
-import com.ixume.udar.physics.contact.A2AManifoldCollection
-import com.ixume.udar.physics.contact.A2SManifoldCollection
+import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldCollection
+import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldCollection
 import com.ixume.udar.physicsWorld
 import org.bukkit.World
 import org.joml.Matrix3d

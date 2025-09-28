@@ -1,7 +1,8 @@
-package com.ixume.udar.physics.contact
+package com.ixume.udar.physics.contact.a2s.manifold
 
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
+import com.ixume.udar.physics.contact.a2s.A2SContactDataBuffer
 import org.joml.Matrix3f
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantReadWriteLock
@@ -13,13 +14,13 @@ class A2SManifoldBuffer(maxContactNum: Int) : A2SManifoldCollection {
     override var arr = FloatArray(0)
     private val lock = ReentrantReadWriteLock()
     private val cursor = AtomicInteger(0)
-    
+
     val numContacts = AtomicInteger(0)
 
     private val manifoldDataSize = MANIFOLD_PREFIX_SIZE + maxContactNum * CONTACT_DATA_SIZE
 
     val maxContactArrSize = maxContactNum * CONTACT_DATA_SIZE
-    
+
     fun size(): Int {
         return cursor.get()
     }
@@ -57,11 +58,11 @@ class A2SManifoldBuffer(maxContactNum: Int) : A2SManifoldCollection {
 
                 check(buf.dataSize() <= maxContactArrSize)
                 System.arraycopy(buf.arr, 0, arr, idx + CONTACTS_OFFSET, buf.dataSize())
-                
+
                 return
             }
         }
-        
+
         lock.write {
             grow(idx + manifoldDataSize)
 
@@ -88,10 +89,12 @@ class A2SManifoldBuffer(maxContactNum: Int) : A2SManifoldCollection {
             arr[idx + BODY_A_INVERSE_INERTIA_ZZ_OFFSET] = activeBody.inverseInertia.m22.toFloat()
 
             check(buf.dataSize() <= maxContactArrSize)
-            check(idx + CONTACTS_OFFSET + buf.arr.size <= arr.size) {"""
+            check(idx + CONTACTS_OFFSET + buf.arr.size <= arr.size) {
+                """
                 idx: $idx, manifoldDataSize: $manifoldDataSize
                 buf.arr.size: ${buf.arr.size}
-            """.trimIndent()}
+            """.trimIndent()
+            }
             System.arraycopy(buf.arr, 0, arr, idx + CONTACTS_OFFSET, buf.dataSize())
         }
     }
@@ -166,11 +169,11 @@ class A2SManifoldBuffer(maxContactNum: Int) : A2SManifoldCollection {
                 arr[contactArrIdx + NORMAL_LAMBDA_OFFSET] = normalLambda
                 arr[contactArrIdx + T1_LAMBDA_OFFSET] = t1Lambda
                 arr[contactArrIdx + T2_LAMBDA_OFFSET] = t2Lambda
-                
+
                 return
             }
         }
-        
+
         lock.write {
             grow(idx + manifoldDataSize)
 
@@ -249,7 +252,7 @@ class A2SManifoldBuffer(maxContactNum: Int) : A2SManifoldCollection {
     fun isEmpty(): Boolean {
         return cursor.get() == 0
     }
-    
+
     override fun numContacts(manifoldIdx: Int): Int {
         return arr[manifoldIdx * manifoldDataSize + CONTACT_NUM_OFFSET].toRawBits()
     }
@@ -276,11 +279,11 @@ class A2SManifoldBuffer(maxContactNum: Int) : A2SManifoldCollection {
     fun bodyZ(manifoldIdx: Int): Float {
         return arr[manifoldIdx * manifoldDataSize + BODY_A_POS_Z_OFFSET]
     }
-    
+
     fun bodyIM(manifoldIdx: Int): Float {
         return arr[manifoldIdx * manifoldDataSize + BODY_A_INVERSE_MASS_OFFSET]
     }
-    
+
     fun bodyII(manifoldIdx: Int, out: Matrix3f): Matrix3f {
         val baseIdx = manifoldIdx * manifoldDataSize
         return out.set(

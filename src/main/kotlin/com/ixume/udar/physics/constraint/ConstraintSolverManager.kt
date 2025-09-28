@@ -12,7 +12,7 @@ class ConstraintSolverManager(val physicsWorld: PhysicsWorld) {
 
     fun solve() {
         constraintSolver.setup()
-        
+
         constraintSolver.warmStart()
 
         var normalItrs = 1

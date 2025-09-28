@@ -1,4 +1,4 @@
-package com.ixume.udar.physics.contact
+package com.ixume.udar.physics.contact.a2a
 
 import it.unimi.dsi.fastutil.floats.FloatArrayList
 

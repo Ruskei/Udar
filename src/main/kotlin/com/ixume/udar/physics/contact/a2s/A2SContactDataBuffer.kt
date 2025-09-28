@@ -1,8 +1,9 @@
-package com.ixume.udar.physics.contact
+package com.ixume.udar.physics.contact.a2s
 
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
+import kotlin.math.max
 
-class A2SContactDataBuffer(private val numContacts: Int) {
+open class A2SContactDataBuffer(private val numContacts: Int) {
     val arr = FloatArray(CONTACT_DATA_SIZE * numContacts)
     var cursor = 0
 
@@ -135,36 +136,28 @@ class A2SContactDataBuffer(private val numContacts: Int) {
         arr[contactArrIdx + T1_LAMBDA_OFFSET] = t1Lambda
         arr[contactArrIdx + T2_LAMBDA_OFFSET] = t2Lambda
 
-        
+
         cursor++
-    }
-    
-    fun setNormalLambda(contactIdx: Int, value: Float) {
-        arr[contactIdx * CONTACT_DATA_SIZE + NORMAL_LAMBDA_OFFSET] = value
-    }
-
-    fun setT1Lambda(contactIdx: Int, value: Float) {
-        arr[contactIdx * CONTACT_DATA_SIZE + T1_LAMBDA_OFFSET] = value
-    }
-
-    fun setT2Lambda(contactIdx: Int, value: Float) {
-        arr[contactIdx * CONTACT_DATA_SIZE + T2_LAMBDA_OFFSET] = value
     }
 
     fun pointAComponent(contactIdx: Int, component: Int): Float {
         return arr[contactIdx * CONTACT_DATA_SIZE + POINT_A_X_OFFSET + component]
     }
-    
-    fun nx(contactIdx: Int): Float {
-        return arr[contactIdx * CONTACT_DATA_SIZE + NORM_X_OFFSET]
+
+    fun depth(contactIdx: Int): Float {
+        return arr[contactIdx * CONTACT_DATA_SIZE + DEPTH_OFFSET]
     }
 
-    fun ny(contactIdx: Int): Float {
-        return arr[contactIdx * CONTACT_DATA_SIZE + NORM_Y_OFFSET]
-    }
+    fun maxDepth(): Float {
+        var maxDepth = -Float.MAX_VALUE
+        var i = 0
+        while (i < numContacts) {
+            maxDepth = max(depth(i), maxDepth)
 
-    fun nz(contactIdx: Int): Float {
-        return arr[contactIdx * CONTACT_DATA_SIZE + NORM_Z_OFFSET]
+            i++
+        }
+
+        return maxDepth
     }
 }
 

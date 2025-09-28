@@ -57,9 +57,7 @@ class WorldMeshesManager(
 
         val toGen = mutableListOf<MeshPosition>()
 
-        val faces = mutableListOf<MeshFaceSortedList>()
-        val edges = mutableListOf<FlattenedEdgeQuadtree>()
-        val bbs = mutableListOf<FlattenedAABBTree>()
+        val meshes = mutableListOf<LocalMesher.Mesh2>()
 
         if (prevBB != null) {
             val prevMinX = floor((prevBB.minX - BB_SAFETY) / MESH_SIZE).toInt()
@@ -94,15 +92,7 @@ class WorldMeshesManager(
                         if (mesh == null) {
                             toGen += meshPos
                         } else {
-                            mesh.faces?.xFaces?.let { faces += it }
-                            mesh.faces?.yFaces?.let { faces += it }
-                            mesh.faces?.zFaces?.let { faces += it }
-
-                            mesh.xEdges2?.let { edges += it }
-                            mesh.yEdges2?.let { edges += it }
-                            mesh.zEdges2?.let { edges += it }
-                            
-                            mesh.flatTree?.let { bbs += it }
+                            meshes += mesh
                         }
                     }
                 }
@@ -110,14 +100,10 @@ class WorldMeshesManager(
         }
 
         if (toGen.isEmpty()) {
-            envContactGenerator.meshFaces.set(faces)
-            envContactGenerator.meshEdges.set(edges)
-            envContactGenerator.bbs.set(bbs)
+            envContactGenerator.meshes.set(meshes)
         } else {
             queue += MeshRequest(
-                faces = faces,
-                edges = edges,
-                bbs = bbs,
+                meshes = meshes,
                 toGen = toGen,
                 envContactGenerator = envContactGenerator,
             )
@@ -125,37 +111,27 @@ class WorldMeshesManager(
     }
 
     private fun tick() {
-        positionedMeshes.values.forEach { it.visualize(world) }
+//        positionedMeshes.values.forEach { it.visualize(world) }
 
         var rq: MeshRequest?
         while (queue.poll().also { rq = it } != null) {
             rq ?: return
 
             for (tg in rq.toGen) {
-                genIfNecessary(tg, rq.faces, rq.edges)?.let { positionedMeshes[tg] = it }
+                genIfNecessary(tg, rq.meshes)?.let { positionedMeshes[tg] = it }
             }
 
-            rq.envContactGenerator.meshFaces.set(rq.faces)
-            rq.envContactGenerator.meshEdges.set(rq.edges)
-            rq.envContactGenerator.bbs.set(rq.bbs)
+            rq.envContactGenerator.meshes.set(rq.meshes)
         }
     }
 
     private fun genIfNecessary(
         meshPos: MeshPosition,
-        outFaces: MutableList<MeshFaceSortedList>,
-        outEdges: MutableList<FlattenedEdgeQuadtree>,
+        outMeshes: MutableList<LocalMesher.Mesh2>,
     ): LocalMesher.Mesh2? {
         val existingMesh = positionedMeshes[meshPos]
         if (existingMesh != null) {
-            existingMesh.faces?.xFaces?.let { outFaces += it }
-            existingMesh.faces?.yFaces?.let { outFaces += it }
-            existingMesh.faces?.zFaces?.let { outFaces += it }
-
-            existingMesh.xEdges2?.let { outEdges += it }
-            existingMesh.yEdges2?.let { outEdges += it }
-            existingMesh.zEdges2?.let { outEdges += it }
-
+            outMeshes += existingMesh
             return null
         }
 
@@ -179,14 +155,7 @@ class WorldMeshesManager(
 
         println("Generated mesh in ${t / 1_000_000.0}ms!")
 
-        mesh.faces?.xFaces?.let { outFaces += it }
-        mesh.faces?.yFaces?.let { outFaces += it }
-        mesh.faces?.zFaces?.let { outFaces += it }
-
-        mesh.xEdges2?.let { outEdges += it }
-        mesh.yEdges2?.let { outEdges += it }
-        mesh.zEdges2?.let { outEdges += it }
-
+        outMeshes += mesh
         return mesh
     }
 
@@ -198,9 +167,7 @@ class WorldMeshesManager(
 }
 
 private class MeshRequest(
-    val faces: MutableList<MeshFaceSortedList>,
-    val edges: MutableList<FlattenedEdgeQuadtree>,
-    val bbs: MutableList<FlattenedAABBTree>,
+    val meshes: MutableList<LocalMesher.Mesh2>,
     val toGen: List<MeshPosition>,
     val envContactGenerator: EnvironmentContactGenerator2,
 )

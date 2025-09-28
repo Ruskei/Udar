@@ -1,12 +1,13 @@
-package com.ixume.udar.physics.contact
+package com.ixume.udar.physics.contact.a2s.manifold
 
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
+import com.ixume.udar.physics.contact.a2s.A2SContactDataBuffer
 import kotlin.math.max
 
 class A2SManifoldArray(maxContactNum: Int) : A2SManifoldCollection {
     override var arr = FloatArray(0)
-    private var cursor = 0
+    var cursor = 0
 
     private val manifoldDataSize = MANIFOLD_PREFIX_SIZE + maxContactNum * CONTACT_DATA_SIZE
 
@@ -149,7 +150,7 @@ class A2SManifoldArray(maxContactNum: Int) : A2SManifoldCollection {
         activeBody: ActiveBody,
     ) {
         val idx = manifoldIdx * manifoldDataSize
-        
+
         arr[idx + BODY_A_IDX_OFFSET] = Float.fromBits(activeBody.idx)
         arr[idx + BODY_A_POS_X_OFFSET] = activeBody.pos.x.toFloat()
         arr[idx + BODY_A_POS_Y_OFFSET] = activeBody.pos.y.toFloat()
@@ -164,6 +165,22 @@ class A2SManifoldArray(maxContactNum: Int) : A2SManifoldCollection {
         arr[idx + BODY_A_INVERSE_INERTIA_ZX_OFFSET] = activeBody.inverseInertia.m20.toFloat()
         arr[idx + BODY_A_INVERSE_INERTIA_ZY_OFFSET] = activeBody.inverseInertia.m21.toFloat()
         arr[idx + BODY_A_INVERSE_INERTIA_ZZ_OFFSET] = activeBody.inverseInertia.m22.toFloat()
+    }
+
+    fun maxDepth(manifoldIdx: Int): Float {
+        val numContacts = arr[manifoldIdx * manifoldDataSize + CONTACT_NUM_OFFSET].toRawBits()
+        val contactDataIdx = manifoldIdx * manifoldDataSize + CONTACTS_OFFSET
+
+        var maxDepth = -Float.MAX_VALUE
+        var i = 0
+        while (i < numContacts) {
+            val d = arr[contactDataIdx + i * CONTACT_DATA_SIZE + DEPTH_OFFSET]
+            maxDepth = max(d, maxDepth)
+           
+            i++
+        }
+
+        return maxDepth
     }
 
     private fun grow(required: Int) {

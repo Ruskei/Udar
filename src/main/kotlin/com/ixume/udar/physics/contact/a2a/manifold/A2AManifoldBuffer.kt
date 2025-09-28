@@ -1,7 +1,8 @@
-package com.ixume.udar.physics.contact
+package com.ixume.udar.physics.contact.a2a.manifold
 
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
+import com.ixume.udar.physics.contact.a2a.A2AContactDataBuffer
 import org.joml.Matrix3f
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantReadWriteLock
@@ -121,10 +122,12 @@ class A2AManifoldBuffer(maxContactNum: Int) : A2AManifoldCollection {
             arr[idx + BODY_B_INVERSE_INERTIA_ZZ_OFFSET] = second.inverseInertia.m22.toFloat()
 
             check(buf.dataSize() <= maxContactArrSize)
-            check(idx + CONTACTS_OFFSET + buf.dataSize() <= arr.size) {"""
+            check(idx + CONTACTS_OFFSET + buf.dataSize() <= arr.size) {
+                """
                 idx: $idx, manifoldDataSize: $manifoldDataSize
                 buf.arr.size: ${buf.arr.size}
-            """.trimIndent()}
+            """.trimIndent()
+            }
             System.arraycopy(buf.arr, 0, arr, idx + CONTACTS_OFFSET, buf.dataSize())
         }
     }
@@ -141,7 +144,7 @@ class A2AManifoldBuffer(maxContactNum: Int) : A2AManifoldCollection {
 
         depth: Float,
         math: LocalMathUtil,
-        
+
         normalLambda: Float, t1Lambda: Float, t2Lambda: Float,
     ) {
         numContacts.incrementAndGet()
@@ -502,7 +505,7 @@ class A2AManifoldBuffer(maxContactNum: Int) : A2AManifoldCollection {
         val baseIdx = manifoldIdx * manifoldDataSize + CONTACTS_OFFSET + contactIdx * CONTACT_DATA_SIZE
         val l = arr[baseIdx + NORMAL_LAMBDA_OFFSET]
 //        if (l == 0f) println("accessing cold lambda")
-        return  l
+        return l
     }
 
     fun setNormalLambda(manifoldIdx: Int, contactIdx: Int, value: Float) {
@@ -537,6 +540,7 @@ class A2AManifoldBuffer(maxContactNum: Int) : A2AManifoldCollection {
         arr = arr.copyOf(newSize)
     }
 }
+
 // Manifold data layout
 private const val MANIFOLD_PREFIX_SIZE = 31
 private const val CONTACT_DATA_SIZE = 19 // 16 floats per contact

@@ -1,5 +1,6 @@
-package com.ixume.udar.physics.contact
+package com.ixume.udar.physics.contact.a2a.manifold
 
+import com.ixume.udar.physics.contact.a2a.A2APrevContactDataBuffer
 import it.unimi.dsi.fastutil.floats.FloatArrayList
 import java.lang.Math.fma
 

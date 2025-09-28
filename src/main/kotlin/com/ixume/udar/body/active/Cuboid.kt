@@ -9,8 +9,8 @@ import com.ixume.udar.collisiondetection.contactgeneration.CuboidSATContactGener
 import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentContactGenerator2
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.dynamicaabb.AABB
-import com.ixume.udar.physics.contact.A2AManifoldCollection
-import com.ixume.udar.physics.contact.A2SManifoldCollection
+import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldCollection
+import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldCollection
 import com.ixume.udar.physicsWorld
 import org.bukkit.Material
 import org.bukkit.World

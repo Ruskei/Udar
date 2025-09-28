@@ -12,10 +12,10 @@ import com.ixume.udar.physics.EntityUpdater
 import com.ixume.udar.physics.NarrowPhaseCallable
 import com.ixume.udar.physics.StatusUpdater
 import com.ixume.udar.physics.constraint.ConstraintSolverManager
-import com.ixume.udar.physics.contact.A2AManifoldBuffer
-import com.ixume.udar.physics.contact.A2APrevManifoldData
-import com.ixume.udar.physics.contact.A2SManifoldBuffer
-import com.ixume.udar.physics.contact.A2SPrevManifoldData
+import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldBuffer
+import com.ixume.udar.physics.contact.a2a.manifold.A2APrevManifoldData
+import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldBuffer
+import com.ixume.udar.physics.contact.a2s.manifold.A2SPrevManifoldData
 import com.ixume.udar.testing.PhysicsWorldTestDebugData
 import com.ixume.udar.testing.debugConnect
 import com.ixume.udar.testing.listener.PlayerInteractListener

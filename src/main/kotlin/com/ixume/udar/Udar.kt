@@ -5,7 +5,6 @@ import com.ixume.udar.testing.Config
 import com.ixume.udar.testing.ConfigLoader
 import com.ixume.udar.testing.commands.TestCommand
 import com.ixume.udar.testing.listener.PlayerInteractListener
-import org.bukkit.Bukkit
 import org.bukkit.plugin.java.JavaPlugin
 import java.util.logging.Logger
 

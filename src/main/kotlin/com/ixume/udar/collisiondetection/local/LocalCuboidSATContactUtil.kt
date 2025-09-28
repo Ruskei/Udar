@@ -5,9 +5,8 @@ import com.ixume.udar.body.Body
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.Edge
 import com.ixume.udar.body.active.Face
-import com.ixume.udar.body.active.toStringFull
-import com.ixume.udar.physics.contact.A2AContactDataBuffer
-import com.ixume.udar.physics.contact.A2AManifoldCollection
+import com.ixume.udar.physics.contact.a2a.A2AContactDataBuffer
+import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldCollection
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
 import org.joml.Vector3d
 import kotlin.math.abs
@@ -410,7 +409,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
 
                 if (p < incidentMin) {
 //                    println(" | set as new incMin! was: $incidentMin")
-                   
+
                     incidentMin = p
                     incidentFace = face
                     incidentIdx = l

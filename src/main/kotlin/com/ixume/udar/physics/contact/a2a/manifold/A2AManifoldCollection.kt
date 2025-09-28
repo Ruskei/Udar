@@ -1,11 +1,12 @@
-package com.ixume.udar.physics.contact
+package com.ixume.udar.physics.contact.a2a.manifold
 
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
+import com.ixume.udar.physics.contact.a2a.A2AContactDataBuffer
 
 interface A2AManifoldCollection {
     val arr: FloatArray
-    
+
     fun addManifold(
         first: ActiveBody,
         second: ActiveBody,

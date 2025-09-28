@@ -127,7 +127,7 @@ class FlattenedBodyAABBTree(
                     if (ab.overlaps(bb)) {
                         var arr = out.get(ab.idx)
                         if (arr == null) {
-                            arr = IntArrayList() 
+                            arr = IntArrayList()
                             out.put(ab.idx, arr)
                         }
 

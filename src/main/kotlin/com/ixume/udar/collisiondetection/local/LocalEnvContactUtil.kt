@@ -10,18 +10,16 @@ import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFace
 import com.ixume.udar.collisiondetection.mesh.quadtree.FlattenedEdgeQuadtree
 import com.ixume.udar.dynamicaabb.array.FlattenedAABBTree
-import com.ixume.udar.physics.contact.A2SContactDataBuffer
-import com.ixume.udar.physics.contact.A2SManifoldCollection
+import com.ixume.udar.physics.contact.a2s.A2SContactDataBuffer
+import com.ixume.udar.physics.contact.a2s.EnvPlaneManifoldBuffer
+import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldCollection
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
 import it.unimi.dsi.fastutil.ints.IntArrayList
 import org.joml.Vector3d
 
-// TODO: graph-based contact filtering
-
 class LocalEnvContactUtil(val math: LocalMathUtil) {
-    private val _mf = mutableListOf<MeshFace>()
-
     private val _contacts2 = A2SContactDataBuffer(4)
+    private val _planeContacts = EnvPlaneManifoldBuffer(4)
     private val _validContacts2 = A2SContactDataBuffer(4)
 
     fun collides(
@@ -38,34 +36,65 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
             envContactGenerator = contactGen,
         )
 
-        val mfs = contactGen.meshFaces.get()
-        val mes = contactGen.meshEdges.get()
-        val bbs = contactGen.bbs.get()
-
-        var j = 0
-        while (j < mfs.size) {
-            val mf = mfs[j]
-            _mf.clear()
-            mf.facesIn(bb, _mf)
-            collideFaces(activeBody, _mf, bbs, mf.axis, math, other, out)
-            j++
-        }
-
         setupBodyAxiss(activeBody)
 
-        var i = 0
-        while (i < mes.size) {
-            val me = mes[i]
+        val meshes = contactGen.meshes.get()
 
-            collideEdges(
-                activeBody = activeBody,
-                tree = me,
-                math = math,
-                other = other,
-                out = out,
-            )
-            i++
+        var m = 0
+        while (m < meshes.size) {
+            val mesh = meshes[m]
+            val faces = mesh.faces
+            val bbs = mesh.flatTree
+            if (bbs == null) {
+                m++
+                continue
+            }
+
+            val faceGraph = mesh.convexFaceGraph!!
+            _planeContacts.graph = faceGraph
+            _planeContacts.clear()
+
+            if (faces != null) {
+                collideFaces(activeBody, faces.xFaces.ls, bbs, LocalMesher.AxisD.X, math, other)
+                collideFaces(activeBody, faces.yFaces.ls, bbs, LocalMesher.AxisD.Y, math, other)
+                collideFaces(activeBody, faces.zFaces.ls, bbs, LocalMesher.AxisD.Z, math, other)
+            }
+
+            _planeContacts.post(out)
+
+            mesh.xEdges2?.let {
+                collideEdges(
+                    activeBody = activeBody,
+                    tree = it,
+                    math = math,
+                    other = other,
+                    out = out,
+                )
+            }
+
+            mesh.yEdges2?.let {
+                collideEdges(
+                    activeBody = activeBody,
+                    tree = it,
+                    math = math,
+                    other = other,
+                    out = out,
+                )
+            }
+
+            mesh.zEdges2?.let {
+                collideEdges(
+                    activeBody = activeBody,
+                    tree = it,
+                    math = math,
+                    other = other,
+                    out = out,
+                )
+            }
+
+            m++
         }
+
 
         return false
     }
@@ -77,11 +106,10 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
     private fun collideFaces(
         activeBody: ActiveBody,
         faces: List<MeshFace>,
-        bbs: List<FlattenedAABBTree>,
+        bbs: FlattenedAABBTree,
         axis: LocalMesher.AxisD,
         math: LocalMathUtil,
         other: Body,
-        out: A2SManifoldCollection,
     ) {
         val bb = activeBody.tightBB
         //faces are guaranteed to be inside BB
@@ -167,7 +195,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                 math = math,
             )
 
-            println("VALIDATING")
+//            println("VALIDATING")
 
             var j = 0
             while (j < _contacts2.size()) {
@@ -252,9 +280,9 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                             a = pb,
                         )
                     ) {
-                        println("  * CONTAINED IN HOLE:")
-                        println("  | min: ($minA $minB)")
-                        println("  | max: ($maxA $maxB)")
+//                        println("  * CONTAINED IN HOLE:")
+//                        println("  | min: ($minA $minB)")
+//                        println("  | max: ($maxA $maxB)")
                         valid = true
                         break
                     }
@@ -267,26 +295,13 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                     continue
                 }
 
-                valid = false
-
-                var o = 0
-                while (o < bbs.size) {
-                    val tree = bbs[o]
-                    if (tree.contains(x, y, z)) {
-                        valid = true
-                        break
-                    }
-
-                    o++
-                }
-
-                if (!valid) {
+                if (!bbs.contains(x, y, z)) {
                     j++
                     continue
                 }
 
-                println("  - LOADED!")
-                println("  | ($x $y $z)")
+//                println("  - LOADED!")
+//                println("  | ($x $y $z)")
                 _contacts2.loadInto(j, _validContacts2)
 
                 count++
@@ -294,10 +309,11 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
             }
 
             if (_validContacts2.size() > 0) {
-                out.addManifold(
+                _planeContacts.addManifold(
                     activeBody = activeBody,
                     contactID = manifoldID,
                     buf = _validContacts2,
+                    faceIdx = face.idx,
                 )
             }
 

@@ -95,7 +95,7 @@ object PlayerInteractListener : Listener {
                     allIntersections += body.intersect(start, end).map { Triple(body, it.first, it.second) }
                 }
 
-                val (body, intersection, normal) = allIntersections.minByOrNull { (_, inter, _) ->
+                val (body, _, _) = allIntersections.minByOrNull { (_, inter, _) ->
                     inter.distanceSquared(
                         start
                     )

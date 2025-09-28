@@ -4,11 +4,12 @@ import com.ixume.udar.body.A2SCollidable
 import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
+import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFaceSortedList
 import com.ixume.udar.collisiondetection.mesh.quadtree.FlattenedEdgeQuadtree
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.dynamicaabb.array.FlattenedAABBTree
-import com.ixume.udar.physics.contact.A2SManifoldCollection
+import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldCollection
 import java.util.concurrent.atomic.AtomicReference
 
 class EnvironmentContactGenerator2(
@@ -20,9 +21,7 @@ class EnvironmentContactGenerator2(
         return 0
     }
 
-    val meshFaces = AtomicReference<List<MeshFaceSortedList>>(emptyList())
-    val meshEdges = AtomicReference<List<FlattenedEdgeQuadtree>>(emptyList())
-    val bbs = AtomicReference<List<FlattenedAABBTree>>(emptyList())
+    val meshes = AtomicReference<List<LocalMesher.Mesh2>>(emptyList())
 
     override fun collides(other: EnvironmentBody, math: LocalMathUtil, out: A2SManifoldCollection): Boolean {
         return math.envContactUtil.collides(this, activeBody, other, out)

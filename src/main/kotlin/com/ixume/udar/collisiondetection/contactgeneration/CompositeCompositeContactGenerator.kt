@@ -4,7 +4,7 @@ import com.ixume.udar.body.A2ACollidable
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.Composite
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
-import com.ixume.udar.physics.contact.A2AManifoldCollection
+import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldCollection
 import com.ixume.udar.physicsWorld
 
 class CompositeCompositeContactGenerator(

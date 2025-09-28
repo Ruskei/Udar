@@ -1,7 +1,7 @@
 package com.ixume.udar.collisiondetection.mesh.mesh2
 
 import com.ixume.udar.collisiondetection.mesh.aabbtree2d.FlattenedAABBTree2D
-import com.ixume.udar.collisiondetection.mesh.quadtree.QuadtreeEdge
+import it.unimi.dsi.fastutil.ints.IntArrayList
 import org.bukkit.World
 
 class MeshFace(
@@ -11,7 +11,9 @@ class MeshFace(
     val holes: FlattenedAABBTree2D,
 ) : Comparable<MeshFace> {
     lateinit var antiHoles: FlattenedAABBTree2D
-    val edges = ArrayList<QuadtreeEdge>()
+    val edges = IntArrayList()
+    
+    var idx = -1
 
     fun visualize(world: World) {
         holes.visualize(world, true)

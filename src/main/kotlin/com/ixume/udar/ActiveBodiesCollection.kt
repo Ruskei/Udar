@@ -51,11 +51,11 @@ class ActiveBodiesCollection {
     operator fun get(idx: Int): ActiveBody? = lock.read {
         return allBodies.getOrNull(idx)
     }
-    
+
     fun fastGet(idx: Int): ActiveBody? {
         return allBodies.getOrNull(idx)
     }
-    
+
     operator fun get(uuid: UUID): ActiveBody? = lock.read {
         return lookupMap[uuid]
     }

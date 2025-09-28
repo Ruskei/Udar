@@ -1,7 +1,7 @@
 package com.ixume.udar.body
 
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
-import com.ixume.udar.physics.contact.A2SManifoldCollection
+import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldCollection
 
 interface A2SCollidable {
     /**

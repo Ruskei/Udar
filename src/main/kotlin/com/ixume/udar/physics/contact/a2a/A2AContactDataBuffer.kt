@@ -1,4 +1,4 @@
-package com.ixume.udar.physics.contact
+package com.ixume.udar.physics.contact.a2a
 
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import org.joml.Vector3f

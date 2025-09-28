@@ -1,14 +1,14 @@
-package com.ixume.udar.physics.contact
+package com.ixume.udar.physics.contact.a2s
 
 import it.unimi.dsi.fastutil.floats.FloatArrayList
 
 class A2SPrevContactDataBuffer {
     private val ls = FloatArrayList()
-    
+
     fun clear() {
         ls.clear()
     }
-    
+
     fun add(
         x: Float, y: Float, z: Float,
         normalLambda: Float, t1Lambda: Float, t2Lambda: Float,
@@ -16,12 +16,12 @@ class A2SPrevContactDataBuffer {
         ls.add(x)
         ls.add(y)
         ls.add(z)
-        
+
         ls.add(normalLambda)
         ls.add(t1Lambda)
         ls.add(t2Lambda)
     }
-    
+
     fun x(idx: Int): Float {
         return ls.getFloat(idx * DATA_SIZE + X_OFFSET)
     }
@@ -33,7 +33,7 @@ class A2SPrevContactDataBuffer {
     fun z(idx: Int): Float {
         return ls.getFloat(idx * DATA_SIZE + Z_OFFSET)
     }
-    
+
     fun normalLambda(idx: Int): Float {
         return ls.getFloat(idx * DATA_SIZE + NORMAL_LAMBDA_OFFSET)
     }

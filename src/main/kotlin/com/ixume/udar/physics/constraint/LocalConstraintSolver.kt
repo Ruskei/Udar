@@ -2,17 +2,16 @@ package com.ixume.udar.physics.constraint
 
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.Udar
-import com.ixume.udar.physics.contact.A2AManifoldBuffer
-import com.ixume.udar.physics.contact.A2APrevContactDataBuffer
-import com.ixume.udar.physics.contact.A2SManifoldBuffer
-import com.ixume.udar.physics.contact.A2SPrevContactDataBuffer
+import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldBuffer
+import com.ixume.udar.physics.contact.a2a.A2APrevContactDataBuffer
+import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldBuffer
+import com.ixume.udar.physics.contact.a2s.A2SPrevContactDataBuffer
 import org.joml.Matrix3d
 import org.joml.Matrix3f
 import org.joml.Quaterniond
 import org.joml.Quaternionf
 import org.joml.Vector3d
 import org.joml.Vector3f
-import java.lang.Math
 import java.lang.Math.fma
 import java.nio.FloatBuffer
 import kotlin.math.abs
@@ -189,7 +188,7 @@ class LocalConstraintSolver(
                 val j3x = fma(rby, nz, -rbz * ny)
                 val j3y = fma(rbz, nx, -rbx * nz)
                 val j3z = fma(rbx, ny, -rby * nx)
-                
+
                 n.put(j1x)
                 n.put(j1y)
                 n.put(j1z)
@@ -200,7 +199,7 @@ class LocalConstraintSolver(
 //                        .sub(manifolds.pointAX(i, m), manifolds.pointAY(i, m), manifolds.pointAZ(i, m))
 //                        .cross(_norm)
 //                ) //j1
-                
+
                 n.put(j3x)
                 n.put(j3y)
                 n.put(j3z)
@@ -549,40 +548,40 @@ class LocalConstraintSolver(
         val oBz = flatBodyData[otherIdx + O_OFFSET + 2]
 
         var lambda =
-            Math.fma(
+            fma(
                 -nx,
                 vAx,
-                Math.fma(
+                fma(
                     -ny,
                     vAy,
-                    Math.fma(
+                    fma(
                         -nz,
                         vAz,
-                        Math.fma(
+                        fma(
                             data[contactIdx + A2A_N_J1_OFFSET],
                             oAx,
-                            Math.fma(
+                            fma(
                                 data[contactIdx + A2A_N_J1_OFFSET + 1],
                                 oAy,
-                                Math.fma(
+                                fma(
                                     data[contactIdx + A2A_N_J1_OFFSET + 2],
                                     oAz,
-                                    Math.fma(
+                                    fma(
                                         nx,
                                         vBx,
-                                        Math.fma(
+                                        fma(
                                             ny,
                                             vBy,
-                                            Math.fma(
+                                            fma(
                                                 nz,
                                                 vBz,
-                                                Math.fma(
+                                                fma(
                                                     data[contactIdx + A2A_N_J3_OFFSET],
                                                     oBx,
-                                                    Math.fma(
+                                                    fma(
                                                         data[contactIdx + A2A_N_J3_OFFSET + 1],
                                                         oBy,
-                                                        Math.fma(
+                                                        fma(
                                                             data[contactIdx + A2A_N_J3_OFFSET + 2],
                                                             oBz,
                                                             bias
@@ -690,22 +689,22 @@ class LocalConstraintSolver(
         val oAz = flatBodyData[myIdx + O_OFFSET + 2]
 
         var lambda =
-            Math.fma(
+            fma(
                 -nx,
                 vAx,
-                Math.fma(
+                fma(
                     -ny,
                     vAy,
-                    Math.fma(
+                    fma(
                         -nz,
                         vAz,
-                        Math.fma(
+                        fma(
                             data[contactIdx + A2S_N_J1_OFFSET],
                             oAx,
-                            Math.fma(
+                            fma(
                                 data[contactIdx + A2S_N_J1_OFFSET + 1],
                                 oAy,
-                                Math.fma(
+                                fma(
                                     data[contactIdx + A2S_N_J1_OFFSET + 2],
                                     oAz,
                                     bias
@@ -907,9 +906,9 @@ private inline fun Vector3f._mul(mat: Matrix3d): Vector3f {
     val lx: Float = x
     val ly: Float = y
     val lz: Float = z
-    this.x = Math.fma(mat.m00.toFloat(), lx, Math.fma(mat.m10.toFloat(), ly, mat.m20.toFloat() * lz))
-    this.y = Math.fma(mat.m01.toFloat(), lx, Math.fma(mat.m11.toFloat(), ly, mat.m21.toFloat() * lz))
-    this.z = Math.fma(mat.m02.toFloat(), lx, Math.fma(mat.m12.toFloat(), ly, mat.m22.toFloat() * lz))
+    this.x = fma(mat.m00.toFloat(), lx, fma(mat.m10.toFloat(), ly, mat.m20.toFloat() * lz))
+    this.y = fma(mat.m01.toFloat(), lx, fma(mat.m11.toFloat(), ly, mat.m21.toFloat() * lz))
+    this.z = fma(mat.m02.toFloat(), lx, fma(mat.m12.toFloat(), ly, mat.m22.toFloat() * lz))
 
     return this
 }
@@ -918,9 +917,9 @@ private inline fun Vector3f._mul(mat: Matrix3f): Vector3f {
     val lx: Float = x
     val ly: Float = y
     val lz: Float = z
-    this.x = Math.fma(mat.m00, lx, Math.fma(mat.m10, ly, mat.m20 * lz))
-    this.y = Math.fma(mat.m01, lx, Math.fma(mat.m11, ly, mat.m21 * lz))
-    this.z = Math.fma(mat.m02, lx, Math.fma(mat.m12, ly, mat.m22 * lz))
+    this.x = fma(mat.m00, lx, fma(mat.m10, ly, mat.m20 * lz))
+    this.y = fma(mat.m01, lx, fma(mat.m11, ly, mat.m21 * lz))
+    this.z = fma(mat.m02, lx, fma(mat.m12, ly, mat.m22 * lz))
 
     return this
 }

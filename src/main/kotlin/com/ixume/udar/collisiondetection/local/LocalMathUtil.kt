@@ -6,8 +6,8 @@ import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.Edge
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.dynamicaabb.array.IntQueue
-import com.ixume.udar.physics.contact.A2SContactDataBuffer
-import com.ixume.udar.physics.contact.A2SManifoldCollection
+import com.ixume.udar.physics.contact.a2s.A2SContactDataBuffer
+import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldCollection
 import org.joml.Vector3d
 import org.joml.Vector3f
 import kotlin.math.abs
@@ -36,8 +36,8 @@ class LocalMathUtil(
         vertices: Array<Vector3d>,
         out: A2SContactDataBuffer,
     ): Boolean {
-        println("PLANE COLLISION TEST")
-        println("| axis: $axis")
+//        println("PLANE COLLISION TEST")
+//        println("| axis: $axis")
         axis.project(vertices, _mm)
         val min = _mm[0]
         val max = _mm[1]
@@ -73,10 +73,10 @@ class LocalMathUtil(
                         v.y.toFloat(),
                         v.z.toFloat()
                     )
-                    
-                    println("  * CONTACT")
-                    println("  | p: (${v.x} ${v.y} ${v.z})")
-                    println("  | n: ${axis.vec}")
+
+//                    println("  * CONTACT")
+//                    println("  | p: (${v.x} ${v.y} ${v.z})")
+//                    println("  | n: ${axis.vec}")
 
                     out.loadInto(
                         pointAX = v.x.toFloat(),
@@ -113,9 +113,9 @@ class LocalMathUtil(
                         v.z.toFloat()
                     )
 
-                    println("  * CONTACT")
-                    println("  | p: (${v.x} ${v.y} ${v.z})")
-                    println("  | n: ${axis.vec}")
+//                    println("  * CONTACT")
+//                    println("  | p: (${v.x} ${v.y} ${v.z})")
+//                    println("  | n: ${axis.vec}")
 
                     out.loadInto(
                         pointAX = v.x.toFloat(),

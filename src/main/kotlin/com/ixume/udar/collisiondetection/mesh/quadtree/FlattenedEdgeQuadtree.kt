@@ -4,12 +4,11 @@ import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFaces
 import com.ixume.udar.collisiondetection.mesh.mesh2.axiss
-import com.ixume.udar.collisiondetection.mesh.quadtree.EdgeQuadtreeNode.Companion.MAX_POINTS_PER_NODE
-import com.ixume.udar.collisiondetection.mesh.quadtree.EdgeQuadtreeNode.Companion.MOUNT_EPSILON
 import com.ixume.udar.dynamicaabb.array.FlattenedAABBTree
 import com.ixume.udar.dynamicaabb.array.IntQueue
 import com.ixume.udar.dynamicaabb.array.withHigher
 import com.ixume.udar.dynamicaabb.array.withLower
+import com.ixume.udar.physics.I2IUnionFind
 import com.ixume.udar.testing.debugConnect
 import it.unimi.dsi.fastutil.doubles.DoubleAVLTreeSet
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
@@ -109,8 +108,8 @@ class FlattenedEdgeQuadtree(
         )
     }
 
-    fun insertEdge(x: Double, y: Double, start: Double, end: Double, meshFaces: MeshFaces) {
-        _insertEdge(x, y, start, end - ASYMMETRY_EPSILON, meshFaces)
+    fun insertEdge(x: Double, y: Double, start: Double, end: Double, meshFaces: MeshFaces, graph: I2IUnionFind) {
+        _insertEdge(x, y, start, end - ASYMMETRY_EPSILON, meshFaces, graph)
     }
 
     private val fixupQueue = IntQueue()
@@ -362,7 +361,14 @@ class FlattenedEdgeQuadtree(
 
     private val edgeInsertionQueue = IntQueue()
 
-    private fun _insertEdge(a: Double, b: Double, start: Double, end: Double, meshFaces: MeshFaces): Boolean {
+    private fun _insertEdge(
+        a: Double,
+        b: Double,
+        start: Double,
+        end: Double,
+        meshFaces: MeshFaces,
+        graph: I2IUnionFind,
+    ): Boolean {
         edgeInsertionQueue.enqueue(rootIdx)
 
         while (edgeInsertionQueue.hasNext()) {
@@ -391,21 +397,27 @@ class FlattenedEdgeQuadtree(
 
                 val numPts = node.numPoints()
                 if (numPts < MAX_POINTS_PER_NODE) {
-                    val f1 = when (axis) {
-                        LocalMesher.AxisD.X -> meshFaces.yFaces.getFaceIdxAt(a)
-                        LocalMesher.AxisD.Y -> meshFaces.xFaces.getFaceIdxAt(a)
-                        LocalMesher.AxisD.Z -> meshFaces.xFaces.getFaceIdxAt(a)
+                    val aFaces = when (axis) {
+                        LocalMesher.AxisD.X -> meshFaces.yFaces
+                        LocalMesher.AxisD.Y -> meshFaces.xFaces
+                        LocalMesher.AxisD.Z -> meshFaces.xFaces
                     }
+
+                    val f1 = aFaces.getFaceIdxAt(a)
 
                     check(f1 != -1)
 
-                    val f2 = when (axis) {
-                        LocalMesher.AxisD.X -> meshFaces.zFaces.getFaceIdxAt(b)
-                        LocalMesher.AxisD.Y -> meshFaces.zFaces.getFaceIdxAt(b)
-                        LocalMesher.AxisD.Z -> meshFaces.yFaces.getFaceIdxAt(b)
+                    val bFaces = when (axis) {
+                        LocalMesher.AxisD.X -> meshFaces.zFaces
+                        LocalMesher.AxisD.Y -> meshFaces.zFaces
+                        LocalMesher.AxisD.Z -> meshFaces.yFaces
                     }
 
+                    val f2 = bFaces.getFaceIdxAt(b)
+
                     check(f2 != -1)
+
+                    graph.union(graph.idxOf(f1), graph.idxOf(f2))
 
                     val idx = newDataIdx()
 
@@ -419,6 +431,9 @@ class FlattenedEdgeQuadtree(
                         axis = axis,
                         idx = idx,
                     )
+
+                    aFaces.ls[f1].edges.add(ne)
+                    bFaces.ls[f2].edges.add(ne)
 
                     ne.xor(start, end, ne.dataIdx())
 
@@ -746,15 +761,6 @@ class FlattenedEdgeQuadtree(
         _pts.add(start)
         _pts.add(end)
     }
-
-    private fun Int._xor(d: Double, xored: DoubleAVLTreeSet, _pts: DoubleAVLTreeSet) {
-        if (!_pts.remove(d)) {
-            _pts.add(d)
-        } else {
-            xored.add(d)
-        }
-    }
-
 
     private fun Int._points(dataIdx: Int): DoubleArrayList {
         return _points[dataIdx]
@@ -1103,6 +1109,9 @@ class FlattenedEdgeQuadtree(
     }
 }
 
+const val MAX_POINTS_PER_NODE = 4
+const val MOUNT_EPSILON = 1e-6
+
 private const val NODE_DATA_SIZE = 7 + MAX_POINTS_PER_NODE
 
 private const val IS_LEAF_OFFSET = 0 // lower 32 bits
@@ -1136,3 +1145,6 @@ private const val B_OFFSET = 2
 
 private const val DATA_IDX_OFFSET = 3 // lower half
 private const val AXIS_OFFSET = 3 // upper half
+
+const val ASYMMETRY_EPSILON = 1e-8
+const val ABOVE_ASYMMETRY_EPSILON = 2f * ASYMMETRY_EPSILON
