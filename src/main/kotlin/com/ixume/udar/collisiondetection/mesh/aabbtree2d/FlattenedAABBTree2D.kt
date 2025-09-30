@@ -3,7 +3,7 @@ package com.ixume.udar.collisiondetection.mesh.aabbtree2d
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.collisiondetection.mesh.aabbtree2d.AABB2D.Companion.withLevel
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
-import com.ixume.udar.dynamicaabb.array.IntQueue
+import com.ixume.udar.dynamicaabb.array.IntStack
 import com.ixume.udar.testing.debugConnect
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
 import it.unimi.dsi.fastutil.ints.IntComparator
@@ -59,7 +59,7 @@ class FlattenedAABBTree2D(
         return sign(k1.exploredCost() - k2.exploredCost()).toInt()
     }
 
-    private val q = IntQueue()
+    private val q = IntStack()
 
     fun contains(x: Double, y: Double): Boolean {
         while (q.hasNext()) {
@@ -86,8 +86,8 @@ class FlattenedAABBTree2D(
 
         val out = FlattenedAABBTree2D(0, level, axis)
 
-        val aq = IntQueue()
-        val bq = IntQueue()
+        val aq = IntStack()
+        val bq = IntStack()
 
         aq.enqueue(rootIdx.child1())
         bq.enqueue(rootIdx.child2())
@@ -930,31 +930,35 @@ class FlattenedAABBTree2D(
         math: LocalMathUtil,
     ) {
         if (rootIdx == -1) return
-
-        val q = math.envOverlapQueue
-
-        q.enqueue(rootIdx)
-
-        while (q.hasNext()) {
-            val node = q.dequeue()
-
-            if (!node.overlaps(minX, minY, maxX, maxY)) continue
-
-            if (node.isLeaf()) {
-                out.add(node.minX())
-                out.add(node.minY())
-                out.add(node.maxX())
-                out.add(node.maxY())
-
-                continue
-            }
-
-            q.enqueue(node.child1())
-            q.enqueue(node.child2())
-        }
+        
+        rootIdx._overlaps(minX, minY, maxX, maxY, out, math)
     }
 
-    private val visualizationQueue = IntQueue()
+    private fun Int._overlaps(
+        minX: Double,
+        minY: Double,
+        maxX: Double,
+        maxY: Double,
+
+        out: DoubleArrayList,
+        math: LocalMathUtil,
+    ) {
+        if (!overlaps(minX, minY, maxX, maxY)) return
+
+        if (isLeaf()) {
+            out.add(minX())
+            out.add(minY())
+            out.add(maxX())
+            out.add(maxY())
+
+            return
+        }
+        
+        child1()._overlaps(minX, minY, maxX, maxY, out, math)
+        child2()._overlaps(minX, minY, maxX, maxY, out, math)
+    }
+
+    private val visualizationQueue = IntStack()
 
     fun visualize(world: World, isHole: Boolean) {
         if (rootIdx == -1) return

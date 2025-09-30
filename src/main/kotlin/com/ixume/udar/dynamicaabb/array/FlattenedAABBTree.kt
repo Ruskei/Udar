@@ -58,7 +58,7 @@ class FlattenedAABBTree(
         return FlattenedAABBTreeIterator(this)
     }
 
-    val containmentQueue = IntQueue()
+    val containmentQueue = IntStack()
 
     fun contains(x: Double, y: Double, z: Double): Boolean {
         if (rootIdx == -1) return false

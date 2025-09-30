@@ -7,7 +7,7 @@ import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFaces
 import com.ixume.udar.collisiondetection.mesh.mesh2.axiss
 import com.ixume.udar.collisiondetection.mesh.mesh2.faceID
 import com.ixume.udar.dynamicaabb.array.FlattenedAABBTree
-import com.ixume.udar.dynamicaabb.array.IntQueue
+import com.ixume.udar.dynamicaabb.array.IntStack
 import com.ixume.udar.dynamicaabb.array.withHigher
 import com.ixume.udar.dynamicaabb.array.withLower
 import com.ixume.udar.physics.contact.LongGraph
@@ -15,7 +15,6 @@ import com.ixume.udar.testing.debugConnect
 import it.unimi.dsi.fastutil.doubles.DoubleAVLTreeSet
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
 import it.unimi.dsi.fastutil.ints.IntArrayList
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap
 import org.bukkit.Color
 import org.bukkit.Particle
 import org.bukkit.World
@@ -115,7 +114,7 @@ class FlattenedEdgeQuadtree(
         _insertEdge(x, y, start, end - ASYMMETRY_EPSILON, meshFaces, graph)
     }
 
-    private val fixupQueue = IntQueue()
+    private val fixupQueue = IntStack()
 
     private val _vec3Mounts = DoubleArray(12)
 
@@ -298,16 +297,6 @@ class FlattenedEdgeQuadtree(
         }
     }
 
-    fun edgeID(edgeIdx: Int, s: Double, e: Double): Long {
-        val prime = when (axis) {
-            LocalMesher.AxisD.X -> X_PRIME
-            LocalMesher.AxisD.Y -> Y_PRIME
-            LocalMesher.AxisD.Z -> Z_PRIME
-        }
-
-        return (IntMath.pow(prime, edgeIdx).toLong() shl 32) xor s.toRawBits() xor e.toRawBits()
-    }
-
     fun overlaps(
         minX: Double,
         minY: Double,
@@ -325,104 +314,114 @@ class FlattenedEdgeQuadtree(
     ) {
         if (rootIdx == -1) return
 
-        val q = math.envEdgeOverlapQueue
+        rootIdx._overlaps(minX, minY, minZ, maxX, maxY, maxZ, outA, outB, outEdges, outData, math)
+    }
 
-        q.enqueue(rootIdx)
+    private fun Int._overlaps(
+        minX: Double,
+        minY: Double,
+        minZ: Double,
+        maxX: Double,
+        maxY: Double,
+        maxZ: Double,
 
-        while (q.hasNext()) {
-            val node = q.dequeue()
+        outA: DoubleArrayList,
+        outB: DoubleArrayList,
+        outEdges: IntArrayList,
+        outData: IntArrayList,
 
-            when (axis) {
-                LocalMesher.AxisD.X -> {
-                    if (!node.overlaps(minY, minZ, maxY, maxZ)) continue
+        math: LocalMathUtil,
+    ) {
+        when (axis) {
+            LocalMesher.AxisD.X -> {
+                if (!overlaps(minY, minZ, maxY, maxZ)) return
 
-                    if (node.isLeaf()) {
-                        val np = node.numPoints()
-                        var i = 0
-                        while (i < np) {
-                            val e = node.edge(i)
-                            val a = e.a()
-                            val b = e.b()
+                if (isLeaf()) {
+                    val np = numPoints()
+                    var i = 0
+                    while (i < np) {
+                        val e = edge(i)
+                        val a = e.a()
+                        val b = e.b()
 
-                            if (a >= minY && a <= maxY &&
-                                b >= minZ && b <= maxZ
-                            ) {
-                                outA.add(a)
-                                outB.add(b)
-                                outEdges.add(e)
-                                outData.add(e.dataIdx())
-                            }
-
-                            i++
+                        if (a >= minY && a <= maxY &&
+                            b >= minZ && b <= maxZ
+                        ) {
+                            outA.add(a)
+                            outB.add(b)
+                            outEdges.add(e)
+                            outData.add(e.dataIdx())
                         }
 
-                        continue
+                        i++
                     }
-                }
 
-                LocalMesher.AxisD.Y -> {
-                    if (!node.overlaps(minX, minZ, maxX, maxZ)) continue
-
-                    if (node.isLeaf()) {
-                        val np = node.numPoints()
-                        var i = 0
-                        while (i < np) {
-                            val e = node.edge(i)
-                            val a = e.a()
-                            val b = e.b()
-
-                            if (a >= minX && a <= maxX &&
-                                b >= minZ && b <= maxZ
-                            ) {
-                                outA.add(a)
-                                outB.add(b)
-                                outEdges.add(e)
-                                outData.add(e.dataIdx())
-                            }
-
-                            i++
-                        }
-
-                        continue
-                    }
-                }
-
-                LocalMesher.AxisD.Z -> {
-                    if (!node.overlaps(minX, minY, maxX, maxY)) continue
-
-                    if (node.isLeaf()) {
-                        val np = node.numPoints()
-                        var i = 0
-                        while (i < np) {
-                            val e = node.edge(i)
-                            val a = e.a()
-                            val b = e.b()
-
-                            if (a >= minX && a <= maxX &&
-                                b >= minY && b <= maxY
-                            ) {
-                                outA.add(a)
-                                outB.add(b)
-                                outEdges.add(e)
-                                outData.add(e.dataIdx())
-                            }
-
-                            i++
-                        }
-
-                        continue
-                    }
+                    return
                 }
             }
 
-            q.enqueue(node.child1())
-            q.enqueue(node.child2())
-            q.enqueue(node.child3())
-            q.enqueue(node.child4())
+            LocalMesher.AxisD.Y -> {
+                if (!overlaps(minX, minZ, maxX, maxZ)) return
+
+                if (isLeaf()) {
+                    val np = numPoints()
+                    var i = 0
+                    while (i < np) {
+                        val e = edge(i)
+                        val a = e.a()
+                        val b = e.b()
+
+                        if (a >= minX && a <= maxX &&
+                            b >= minZ && b <= maxZ
+                        ) {
+                            outA.add(a)
+                            outB.add(b)
+                            outEdges.add(e)
+                            outData.add(e.dataIdx())
+                        }
+
+                        i++
+                    }
+
+                    return
+                }
+            }
+
+            LocalMesher.AxisD.Z -> {
+                if (!overlaps(minX, minY, maxX, maxY)) return
+
+                if (isLeaf()) {
+                    val np = numPoints()
+                    var i = 0
+                    while (i < np) {
+                        val e = edge(i)
+                        val a = e.a()
+                        val b = e.b()
+
+                        if (a >= minX && a <= maxX &&
+                            b >= minY && b <= maxY
+                        ) {
+                            outA.add(a)
+                            outB.add(b)
+                            outEdges.add(e)
+                            outData.add(e.dataIdx())
+                        }
+
+                        i++
+                    }
+
+                    return
+                }
+            }
         }
+
+        child1()._overlaps(minX, minY, minZ, maxX, maxY, maxZ, outA, outB, outEdges, outData, math)
+        child2()._overlaps(minX, minY, minZ, maxX, maxY, maxZ, outA, outB, outEdges, outData, math)
+        child3()._overlaps(minX, minY, minZ, maxX, maxY, maxZ, outA, outB, outEdges, outData, math)
+        child4()._overlaps(minX, minY, minZ, maxX, maxY, maxZ, outA, outB, outEdges, outData, math)
     }
 
-    private val edgeInsertionQueue = IntQueue()
+    private val edgeInsertionQueue = IntStack()
 
     private fun _insertEdge(
         a: Double,
@@ -1120,7 +1119,7 @@ class FlattenedEdgeQuadtree(
     }
 
     fun visualize(world: World) {
-        val q = IntQueue()
+        val q = IntStack()
 
         if (rootIdx == -1) return
 
