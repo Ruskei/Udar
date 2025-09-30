@@ -5,8 +5,8 @@ import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.Edge
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
-import com.ixume.udar.collisiondetection.mesh.quadtree.EdgeConnection
-import com.ixume.udar.dynamicaabb.array.IntQueue
+import com.ixume.udar.dynamicaabb.AABB
+import com.ixume.udar.dynamicaabb.array.IntStack
 import com.ixume.udar.physics.contact.a2s.A2SContactDataBuffer
 import com.ixume.udar.physics.contact.a2s.EnvManifoldBuffer
 import org.joml.Vector3d
@@ -22,8 +22,8 @@ class LocalMathUtil(
     val cuboidSATContactUtil = LocalCuboidSATContactUtil(this)
     val compositeUtil = LocalCompositeUtil()
 
-    val envOverlapQueue = IntQueue()
-    val envEdgeOverlapQueue = IntQueue()
+    val envOverlapQueue = IntStack()
+    val envEdgeOverlapQueue = IntStack()
 
     private val _mm = DoubleArray(2)
 
@@ -35,11 +35,20 @@ class LocalMathUtil(
         axis: LocalMesher.AxisD,
         level: Double,
         vertices: Array<Vector3d>,
+        bb: AABB,
         out: A2SContactDataBuffer,
     ): Boolean {
-        axis.project(vertices, _mm)
-        val min = _mm[0]
-        val max = _mm[1]
+        val min = when (axis) {
+            LocalMesher.AxisD.X -> bb.minX
+            LocalMesher.AxisD.Y -> bb.minY
+            LocalMesher.AxisD.Z -> bb.minZ
+        }
+        
+        val max = when (axis) {
+            LocalMesher.AxisD.X -> bb.maxX
+            LocalMesher.AxisD.Y -> bb.maxY
+            LocalMesher.AxisD.Z -> bb.maxZ
+        }
 
         if (level < min || level > max) {
             return false

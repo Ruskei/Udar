@@ -3,7 +3,7 @@ package com.ixume.udar.dynamicaabb
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.dynamicaabb.AABB.Companion.FAT_MARGIN
-import com.ixume.udar.dynamicaabb.array.IntQueue
+import com.ixume.udar.dynamicaabb.array.IntStack
 import com.ixume.udar.dynamicaabb.array.withHigher
 import com.ixume.udar.dynamicaabb.array.withLower
 import com.ixume.udar.testing.debugConnect
@@ -55,7 +55,7 @@ class FlattenedBodyAABBTree(
         return sign(k1.exploredCost() - k2.exploredCost()).toInt()
     }
 
-    val containmentQueue = IntQueue()
+    val containmentQueue = IntStack()
 
     fun contains(x: Double, y: Double, z: Double): Boolean {
         if (rootIdx == -1) return false

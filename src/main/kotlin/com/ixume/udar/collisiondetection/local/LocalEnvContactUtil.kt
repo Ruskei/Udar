@@ -40,6 +40,8 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 
         val meshes = contactGen.meshes.get()
 
+//        println("ENV COLLISION CHECK")
+
         var m = 0
         while (m < meshes.size) {
             val mesh = meshes[m]
@@ -55,6 +57,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
             _possibleManifolds.clear()
 
             if (faces != null) {
+//                println(" - TESTING MESH FACES")
                 collideFaces(activeBody, faces.xFaces.ls, bbs, LocalMesher.AxisD.X, math, other)
                 collideFaces(activeBody, faces.yFaces.ls, bbs, LocalMesher.AxisD.Y, math, other)
                 collideFaces(activeBody, faces.zFaces.ls, bbs, LocalMesher.AxisD.Z, math, other)
@@ -147,6 +150,11 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 
             val face = faces[i]
 
+            if (!face.overlaps(bb)) {
+                i++
+                continue
+            }
+
             val manifoldID = constructFaceID(
                 body = activeBody,
                 faceAxis = axis,
@@ -155,12 +163,15 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 
             val rawManifoldIdx = activeBody.physicsWorld.prevEnvContactMap.get(manifoldID)
 
+            count++
+
             val any = math.collidePlane(
                 axis = axis,
                 level = face.level,
                 vertices = vertices,
                 out = _contacts2,
                 rawManifoldIdx = rawManifoldIdx,
+                bb = bb,
             )
 
             if (!any) {
@@ -308,7 +319,6 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 
                 _contacts2.loadInto(j, _validContacts2)
 
-                count++
                 j++
             }
 
@@ -323,6 +333,8 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 
             i++
         }
+
+//        println("  - Tested $count $axis faces!")
     }
 
     private fun constructFaceID(body: ActiveBody, faceAxis: LocalMesher.AxisD, faceLevel: Double): Long {
@@ -404,7 +416,6 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 
         val aItr = _outA.iterator()
         val bItr = _outB.iterator()
-        val edgeItr = _outEdges.iterator()
         val dataItr = _outData.iterator()
 
         var collided = false
@@ -412,7 +423,6 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         while (aItr.hasNext()) {
             val a = aItr.nextDouble()
             val b = bItr.nextDouble()
-            val edge = edgeItr.nextInt()
             val data = dataItr.nextInt()
 
             _edgeStart.setComponent(axis.aOffset, a)

@@ -2,7 +2,7 @@ package com.ixume.udar.dynamicaabb.array
 
 import kotlin.math.max
 
-class IntQueue {
+class IntStack {
     private var size = 0
     private var arr = IntArray(0)
 

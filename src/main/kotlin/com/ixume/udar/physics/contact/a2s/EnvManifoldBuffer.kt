@@ -132,32 +132,6 @@ class EnvManifoldBuffer(numContacts: Int) {
         t1Lambda: Float,
         t2Lambda: Float,
     ) {
-//        println("ADDING EDGE MANIFOLD")
-//        var existing = running.get(edgeConnection.edgeID)
-//        if (existing == null) {
-//            existing = ManifoldNode(LongOpenHashSet(), true)
-//            running.put(edgeConnection.edgeID, existing)
-//        } else {
-//            existing.isEdge = true
-//        }
-//
-//        val my = running.get(edgeConnection.myFaceID)
-//        val other = running.get(edgeConnection.otherFaceID)
-//       
-//        if (my != null) {
-//            println("  - connected with existing face $my")
-//            existing.set.add(edgeConnection.myFaceID)
-//            my.set.add(edgeConnection.edgeID)
-//        }
-//
-//        if (other != null) {
-//            println("  - connected with existing face $other")
-//            existing.set.add(edgeConnection.otherFaceID)
-//            other.set.add(edgeConnection.edgeID)
-//        }
-//
-//        println("  - adding edge(${edgeConnection.edgeID}) as ${buffer.cursor}")
-//        idxMap.put(edgeConnection.edgeID, buffer.cursor)
         edgeManifolds.add(buffer.cursor)
         buffer.addSingleManifold(
             activeBody = activeBody,

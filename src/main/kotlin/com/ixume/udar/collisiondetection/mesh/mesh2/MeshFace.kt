@@ -2,6 +2,7 @@ package com.ixume.udar.collisiondetection.mesh.mesh2
 
 import com.ixume.udar.collisiondetection.mesh.aabbtree2d.FlattenedAABBTree2D
 import com.ixume.udar.collisiondetection.mesh.quadtree.EdgeConnection
+import com.ixume.udar.dynamicaabb.AABB
 import org.bukkit.World
 
 class MeshFace(
@@ -28,6 +29,14 @@ class MeshFace(
             0
         } else {
             -1
+        }
+    }
+    
+    fun overlaps(bb: AABB): Boolean {
+        return when (axis) {
+            LocalMesher.AxisD.X -> level in bb.minX..bb.maxX
+            LocalMesher.AxisD.Y -> level in bb.minY..bb.maxY
+            LocalMesher.AxisD.Z -> level in bb.minZ..bb.maxZ
         }
     }
 }
