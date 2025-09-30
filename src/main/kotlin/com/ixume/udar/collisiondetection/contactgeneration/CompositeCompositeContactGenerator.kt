@@ -32,12 +32,6 @@ class CompositeCompositeContactGenerator(
 
                 if (!myPart.tightBB.overlaps(otherPart.tightBB)) continue
 
-                val d = myPart.pos.distance(otherPart.pos)
-                if (d > myPart.radius + otherPart.radius) {
-                    pw.debugData.missedEarlies++
-                    continue
-                }
-
                 pw.debugData.totalCompositeCollisionChecks++
 
                 val result = myPart.collides(otherPart, math, out)

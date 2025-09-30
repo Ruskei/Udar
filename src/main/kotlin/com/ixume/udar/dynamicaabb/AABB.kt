@@ -81,6 +81,10 @@ open class AABB(
         other.maxZ = maxZ
     }
 
+    override fun toString(): String {
+        return "{min: ($minX $minY $minZ), max: ($maxX $maxY $maxZ)}"
+    }
+        
     fun visualize(world: World, depth: Int) {
         val options = options(depth)
 

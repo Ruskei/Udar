@@ -50,7 +50,6 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                 continue
             }
 
-            val faceGraph = mesh.convexFaceGraph!!
             _possibleManifolds.setup(mesh)
             _possibleManifolds.clear()
 
