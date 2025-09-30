@@ -17,6 +17,11 @@ class JavaModelBody private constructor(
 ) : Composite by composite {
     private val display: ItemDisplay
 
+    private val _v = Vector3f()
+    private val _s = Vector3f(1f)
+    private val _r = Quaternionf()
+    private val _eq = Quaternionf()
+
     init {
         val p = Vector3d(composite.pos).sub(Vector3d(composite.comOffset)).rotate(composite.q)
         display = world.spawnEntity(
@@ -27,38 +32,33 @@ class JavaModelBody private constructor(
         display.setItemStack(RPManager.item(model.id))
 
         display.transformation = createTransformation()
-        display.interpolationDuration = 3
+        display.interpolationDuration = 2
         display.interpolationDelay = 0
         display.teleportDuration = 2
     }
 
     private fun createTransformation(): Transformation {
-//        val rot = Quaternionf(q.x.toFloat(), q.y.toFloat(), q.z.toFloat(), q.w.toFloat())
-
-        /*
-        process:
-        - multiply by pi around y axis
-	    - matrices.translate(-0.5F, -0.5F, -0.5F);
-         */
-
-        val rot = Quaternionf(composite.q).rotateY(Math.PI.toFloat())
+        val rot = _r.set(composite.q).rotateY(Math.PI.toFloat())
         return Transformation(
-            Vector3f(-0.5f, 0.5f, -0.5f).rotate(rot),
+            _v,
             rot,
-            Vector3f(1f),
-            Quaternionf(),
+            _s,
+            _eq,
         )
     }
 
+    private val _pos2 = Vector3d()
+    private val _rp = Vector3d()
+
     override fun visualize() {
-        val pos2 = Vector3d(composite.pos).sub(Vector3d(composite.comOffset).rotate(composite.q))
-        display.interpolationDuration = 3
+        if (!awake.get()) return
+
+        val pos2 = _pos2.set(composite.pos).sub(_rp.set(composite.comOffset).rotate(composite.q))
+        display.interpolationDuration = 2
         display.interpolationDelay = 0
         display.teleportDuration = 2
         display.transformation = createTransformation()
         display.teleport(Location(world, pos2.x, pos2.y, pos2.z))
-
-//        composite.visualize()
     }
 
     override fun onKill() {
