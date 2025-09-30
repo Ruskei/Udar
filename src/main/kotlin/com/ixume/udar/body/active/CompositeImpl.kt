@@ -65,7 +65,7 @@ class CompositeImpl(
     }
 
     val comOffset: Vector3d
-    override var pos: Vector3d
+    override val pos: Vector3d
 
     override val torque: Vector3d = Vector3d()
 
@@ -239,20 +239,27 @@ class CompositeImpl(
 
     private val rotationIntegrator = RigidbodyRotationIntegrator(this)
 
+    private val _np = Vector3d()
+    private val _rp = Vector3d()
+    private val _nv = Vector3d()
+    private val _q = Quaterniond()
+
     override fun step() {
         prevQ.set(q)
         prevP.set(pos)
 
-        pos.add(Vector3d(velocity).mul(Udar.CONFIG.timeStep))
+        val tStep = Udar.CONFIG.timeStep
+
+        pos.add(velocity.x * tStep, velocity.y * tStep, velocity.z * tStep)
         rotationIntegrator.process()
 
         for (part in parts) {
             val pose = relativePoses[part.uuid]!!
-            val np = Vector3d(pos).add(Vector3d(pose.pos).rotate(q))
-            val v = Vector3d(np).sub(part.pos).div(Udar.CONFIG.timeStep)
+            val np = _np.set(pos).add(_rp.set(pose.pos).rotate(q))
+            val v = _nv.set(np).sub(part.pos).div(Udar.CONFIG.timeStep)
             part.pos.set(np)
             part.velocity.set(v)
-            part.q.set(Quaterniond(q).mul(pose.rot))
+            part.q.set(_q.set(q).mul(pose.rot))
 
             part.update()
         }

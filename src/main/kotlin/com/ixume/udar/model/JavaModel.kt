@@ -12,8 +12,9 @@ class JavaModel(
     val index: Int,
 ) {
     fun realize(pw: PhysicsWorld, origin: Vector3d): CompositeImpl {
+        val adjustedOrigin = Vector3d(-0.5, -0.5, -0.5).add(origin)
         val bs = elems.map {
-            it.realize(pw, origin).apply {
+            it.realize(pw, adjustedOrigin).apply {
                 isChild = true
             }
         }

@@ -3,7 +3,9 @@ package com.ixume.udar.model.element.instance
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.Cuboid
+import com.ixume.udar.body.active.blockEntity
 import com.ixume.udar.model.element.Axis
+import org.bukkit.Material
 import org.joml.Quaterniond
 import org.joml.Vector3d
 
@@ -54,7 +56,7 @@ class CubeElement(
             omega = Vector3d(0.0, 0.0, 0.0),
             density = 1.0,
             hasGravity = false,
-        )
+        )//.blockEntity(Material.BLACKSTONE)
 
         return c
     }
