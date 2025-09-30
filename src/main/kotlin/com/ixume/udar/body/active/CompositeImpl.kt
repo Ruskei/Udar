@@ -157,18 +157,6 @@ class CompositeImpl(
 
     override val isConvex: Boolean = false
 
-    private fun calcRadius(): Double {
-        var r = -Double.MAX_VALUE
-        for (part in parts) {
-            val candidate = part.pos.distance(pos) + part.radius
-            r = max(candidate, r)
-        }
-
-        return r
-    }
-
-    override val radius: Double = calcRadius()
-
     private val relativePoses: Map<UUID, RelativePose> = parts.associateBy(
         keySelector = { it.uuid },
         valueTransform = { RelativePose(Vector3d(it.pos).sub(pos), Quaterniond(it.q)) }
@@ -361,9 +349,6 @@ class CompositeImpl(
             var isCollided = false
             for (part in parts) {
                 if (!part.tightBB.overlaps(other.tightBB)) continue
-                val d = part.pos.distance(other.pos)
-                if (d > part.radius + other.radius) continue
-
                 val r = part.collides(other, math, out)
                 if (r) {
                     isCollided = true

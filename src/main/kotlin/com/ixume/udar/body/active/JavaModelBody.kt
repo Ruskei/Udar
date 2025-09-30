@@ -59,6 +59,7 @@ class JavaModelBody private constructor(
         display.teleportDuration = 2
         display.transformation = createTransformation()
         display.teleport(Location(world, pos2.x, pos2.y, pos2.z))
+//        composite.visualize()
     }
 
     override fun onKill() {

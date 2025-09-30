@@ -50,8 +50,6 @@ class Cuboid(
 
     val scale = Vector3d(width, height, length)
 
-    override val radius: Double = Vector3d(width, height, length).mul(0.5).mul(scale).length()
-
     fun localToGlobal(vec: Vector3d): Vector3d {
         return Vector3d(vec).mul(scale).rotate(q).add(pos)
     }
@@ -117,18 +115,18 @@ class Cuboid(
 
     private fun updateBB() {
         tightBB.minX = Double.MAX_VALUE
-        tightBB.maxX = -Double.MAX_VALUE
         tightBB.minY = Double.MAX_VALUE
-        tightBB.maxY = -Double.MAX_VALUE
         tightBB.minZ = Double.MAX_VALUE
+        tightBB.maxX = -Double.MAX_VALUE
+        tightBB.maxY = -Double.MAX_VALUE
         tightBB.maxZ = -Double.MAX_VALUE
 
         for (vertex in vertices) {
             tightBB.minX = min(tightBB.minX, vertex.x)
-            tightBB.maxX = max(tightBB.maxX, vertex.x)
             tightBB.minY = min(tightBB.minY, vertex.y)
-            tightBB.maxY = max(tightBB.maxY, vertex.y)
             tightBB.minZ = min(tightBB.minZ, vertex.z)
+            tightBB.maxX = max(tightBB.maxX, vertex.x)
+            tightBB.maxY = max(tightBB.maxY, vertex.y)
             tightBB.maxZ = max(tightBB.maxZ, vertex.z)
         }
 
@@ -458,6 +456,10 @@ class Cuboid(
             q.rotateXYZ(perturbation, perturbation, perturbation)
             ensureNonAligned()
         }
+    }
+
+    override fun visualize() {
+//        tightBB.visualize(world, 1)
     }
 
 //    private val contactGenerator: ContactGenerator = SATContactGenerator(this)

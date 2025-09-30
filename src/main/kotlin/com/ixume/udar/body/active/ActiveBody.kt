@@ -24,7 +24,6 @@ interface ActiveBody : A2ACollidable, A2SCollidable, Body, Projectable {
     val vertices: Array<Vector3d>
     val faces: Array<Face>
     val edges: Array<Edge>
-    val radius: Double
     var fatBB: Int
     val tightBB: AABB
 
