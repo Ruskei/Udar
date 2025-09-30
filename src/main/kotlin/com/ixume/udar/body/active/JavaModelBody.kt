@@ -24,7 +24,7 @@ class JavaModelBody private constructor(
             EntityType.ITEM_DISPLAY
         ) as ItemDisplay
 
-        display.itemStack = RPManager.item(model.id)
+        display.setItemStack(RPManager.item(model.id))
 
         display.transformation = createTransformation()
         display.interpolationDuration = 3

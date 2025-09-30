@@ -17,7 +17,7 @@ object SDFProjectionCommand : Command {
         sender: CommandSender,
         command: org.bukkit.command.Command,
         label: String,
-        args: Array<out String>?,
+        args: Array<out String>,
     ): List<String?> {
         return emptyList()
     }
@@ -60,7 +60,7 @@ object SDFProjectionCommand : Command {
                 val p = Vector3d(o).sub(Vector3d(gradient).mul(d))
 
                 world.spawnParticle(
-                    Particle.REDSTONE, Location(
+                    Particle.DUST, Location(
                         world, p.x, p.y, p.z
                     ), 5, Particle.DustOptions(Color.RED, 0.3f)
                 )

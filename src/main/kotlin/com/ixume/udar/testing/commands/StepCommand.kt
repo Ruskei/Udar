@@ -9,7 +9,7 @@ object StepCommand : Command {
         sender: CommandSender,
         command: org.bukkit.command.Command,
         label: String,
-        args: Array<out String>?,
+        args: Array<out String>,
     ): List<String?>? {
         return listOf("<ticks>", "collision")
     }

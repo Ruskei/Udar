@@ -288,7 +288,7 @@ class PhysicsWorld(
 
                     while (k < num) {
                         world.spawnParticle(
-                            Particle.REDSTONE,
+                            Particle.DUST,
                             Location(
                                 world,
                                 manifoldBuffer.pointAX(i, k).toDouble(),
@@ -300,7 +300,7 @@ class PhysicsWorld(
                         )
 
                         world.spawnParticle(
-                            Particle.REDSTONE,
+                            Particle.DUST,
                             Location(
                                 world,
                                 manifoldBuffer.pointBX(i, k).toDouble(),
@@ -312,7 +312,7 @@ class PhysicsWorld(
                         )
 
                         world.spawnParticle(
-                            Particle.REDSTONE,
+                            Particle.DUST,
                             Location(
                                 world,
                                 manifoldBuffer.pointAX(i, k).toDouble(),
@@ -354,7 +354,7 @@ class PhysicsWorld(
                     var k = 0
                     while (k < num) {
                         world.spawnParticle(
-                            Particle.REDSTONE,
+                            Particle.DUST,
                             Location(
                                 world,
                                 envManifoldBuffer.pointAX(j, k).toDouble(),
