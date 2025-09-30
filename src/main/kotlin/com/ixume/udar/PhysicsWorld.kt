@@ -194,6 +194,8 @@ class PhysicsWorld(
                 val envDuration = measureNanoTime {
                     try {
                         for (body in bodiesSnapshot) {
+                            if (body.isChild) continue
+
                             if (!body.awake.get()) {
                                 continue
                             }
@@ -215,7 +217,7 @@ class PhysicsWorld(
                 }
 
                 for (body in bodiesSnapshot) {
-                    if (body.awake.get() && body.hasGravity) body.velocity.add(
+                    if (!body.isChild && body.awake.get() && body.hasGravity) body.velocity.add(
                         Vector3d(Udar.CONFIG.gravity).mul(
                             Udar.CONFIG.timeStep
                         )

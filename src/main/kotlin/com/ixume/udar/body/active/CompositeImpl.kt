@@ -22,7 +22,7 @@ import kotlin.math.min
 class CompositeImpl(
     override val world: World,
     val origin: Vector3d,
-    override var velocity: Vector3d,
+    override val velocity: Vector3d,
 
     override val q: Quaterniond,
 
