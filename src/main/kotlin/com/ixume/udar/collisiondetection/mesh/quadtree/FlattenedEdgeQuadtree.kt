@@ -1,18 +1,21 @@
 package com.ixume.udar.collisiondetection.mesh.quadtree
 
+import com.google.common.math.IntMath
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFaces
 import com.ixume.udar.collisiondetection.mesh.mesh2.axiss
+import com.ixume.udar.collisiondetection.mesh.mesh2.faceID
 import com.ixume.udar.dynamicaabb.array.FlattenedAABBTree
 import com.ixume.udar.dynamicaabb.array.IntQueue
 import com.ixume.udar.dynamicaabb.array.withHigher
 import com.ixume.udar.dynamicaabb.array.withLower
-import com.ixume.udar.physics.I2IUnionFind
+import com.ixume.udar.physics.contact.LongGraph
 import com.ixume.udar.testing.debugConnect
 import it.unimi.dsi.fastutil.doubles.DoubleAVLTreeSet
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
 import it.unimi.dsi.fastutil.ints.IntArrayList
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap
 import org.bukkit.Color
 import org.bukkit.Particle
 import org.bukkit.World
@@ -108,7 +111,7 @@ class FlattenedEdgeQuadtree(
         )
     }
 
-    fun insertEdge(x: Double, y: Double, start: Double, end: Double, meshFaces: MeshFaces, graph: I2IUnionFind) {
+    fun insertEdge(x: Double, y: Double, start: Double, end: Double, meshFaces: MeshFaces, graph: LongGraph) {
         _insertEdge(x, y, start, end - ASYMMETRY_EPSILON, meshFaces, graph)
     }
 
@@ -116,7 +119,7 @@ class FlattenedEdgeQuadtree(
 
     private val _vec3Mounts = DoubleArray(12)
 
-    fun fixUp(tree: FlattenedAABBTree) {
+    fun fixUp(tree: FlattenedAABBTree, faces: MeshFaces) {
         if (rootIdx == -1) return
 
         fixupQueue.enqueue(rootIdx)
@@ -238,6 +241,52 @@ class FlattenedEdgeQuadtree(
                     edgePts.add(latestEnd)
                     edgeMounts.add(currentEdgeMount)
 
+                    check(edgePts.size % 2 == 0)
+                    // create the graph
+                    val completedItr = edgePts.doubleIterator()
+                    while (completedItr.hasNext()) {
+                        val s = completedItr.nextDouble()
+                        val e = completedItr.nextDouble()
+                        check(e > s)
+
+                        val aFaces = when (axis) {
+                            LocalMesher.AxisD.X -> faces.yFaces
+                            LocalMesher.AxisD.Y -> faces.xFaces
+                            LocalMesher.AxisD.Z -> faces.xFaces
+                        }
+
+                        val f1 = aFaces.getFaceIdxAt(a)
+
+                        check(f1 != -1)
+
+                        val bFaces = when (axis) {
+                            LocalMesher.AxisD.X -> faces.zFaces
+                            LocalMesher.AxisD.Y -> faces.zFaces
+                            LocalMesher.AxisD.Z -> faces.yFaces
+                        }
+
+                        val f2 = bFaces.getFaceIdxAt(b)
+
+                        check(f2 != -1)
+
+                        val aFID = faceID(aFaces.axis, f1)
+                        val bFID = faceID(bFaces.axis, f2)
+
+                        aFaces.ls[f1].edgeConnections += EdgeConnection(
+                            tree = this,
+                            otherFaceID = bFID,
+                            min = s,
+                            max = e,
+                        )
+
+                        bFaces.ls[f2].edgeConnections += EdgeConnection(
+                            tree = this,
+                            otherFaceID = aFID,
+                            min = s,
+                            max = e,
+                        )
+                    }
+
                     i++
                 }
             } else {
@@ -247,6 +296,16 @@ class FlattenedEdgeQuadtree(
                 fixupQueue.enqueue(node.child4())
             }
         }
+    }
+
+    fun edgeID(edgeIdx: Int, s: Double, e: Double): Long {
+        val prime = when (axis) {
+            LocalMesher.AxisD.X -> X_PRIME
+            LocalMesher.AxisD.Y -> Y_PRIME
+            LocalMesher.AxisD.Z -> Z_PRIME
+        }
+
+        return (IntMath.pow(prime, edgeIdx).toLong() shl 32) xor s.toRawBits() xor e.toRawBits()
     }
 
     fun overlaps(
@@ -259,6 +318,7 @@ class FlattenedEdgeQuadtree(
 
         outA: DoubleArrayList,
         outB: DoubleArrayList,
+        outEdges: IntArrayList,
         outData: IntArrayList,
 
         math: LocalMathUtil,
@@ -289,6 +349,7 @@ class FlattenedEdgeQuadtree(
                             ) {
                                 outA.add(a)
                                 outB.add(b)
+                                outEdges.add(e)
                                 outData.add(e.dataIdx())
                             }
 
@@ -315,6 +376,7 @@ class FlattenedEdgeQuadtree(
                             ) {
                                 outA.add(a)
                                 outB.add(b)
+                                outEdges.add(e)
                                 outData.add(e.dataIdx())
                             }
 
@@ -341,6 +403,7 @@ class FlattenedEdgeQuadtree(
                             ) {
                                 outA.add(a)
                                 outB.add(b)
+                                outEdges.add(e)
                                 outData.add(e.dataIdx())
                             }
 
@@ -367,7 +430,7 @@ class FlattenedEdgeQuadtree(
         start: Double,
         end: Double,
         meshFaces: MeshFaces,
-        graph: I2IUnionFind,
+        graph: LongGraph,
     ): Boolean {
         edgeInsertionQueue.enqueue(rootIdx)
 
@@ -417,8 +480,6 @@ class FlattenedEdgeQuadtree(
 
                     check(f2 != -1)
 
-                    graph.union(graph.idxOf(f1), graph.idxOf(f2))
-
                     val idx = newDataIdx()
 
                     val ne = newEdge(
@@ -432,8 +493,14 @@ class FlattenedEdgeQuadtree(
                         idx = idx,
                     )
 
-                    aFaces.ls[f1].edges.add(ne)
-                    bFaces.ls[f2].edges.add(ne)
+                    /*
+                    face1<->face2
+                    face1<->edge
+                    face2<->edge
+                    
+                    connections need to be spatial... so an edge can only connect a certain range of 2 faces
+                    
+                     */
 
                     ne.xor(start, end, ne.dataIdx())
 
@@ -1148,3 +1215,7 @@ private const val AXIS_OFFSET = 3 // upper half
 
 const val ASYMMETRY_EPSILON = 1e-8
 const val ABOVE_ASYMMETRY_EPSILON = 2f * ASYMMETRY_EPSILON
+
+private const val X_PRIME = 65282653
+private const val Y_PRIME = 49021097
+private const val Z_PRIME = 20262443

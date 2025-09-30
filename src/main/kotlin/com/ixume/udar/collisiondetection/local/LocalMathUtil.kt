@@ -5,9 +5,10 @@ import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.Edge
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
+import com.ixume.udar.collisiondetection.mesh.quadtree.EdgeConnection
 import com.ixume.udar.dynamicaabb.array.IntQueue
 import com.ixume.udar.physics.contact.a2s.A2SContactDataBuffer
-import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldCollection
+import com.ixume.udar.physics.contact.a2s.EnvManifoldBuffer
 import org.joml.Vector3d
 import org.joml.Vector3f
 import kotlin.math.abs
@@ -57,16 +58,18 @@ class LocalMathUtil(
         find all penetrating points
          */
 
-        println("PLANE COLLISION TEST")
-        println("| axis: $axis")
+//        println("PLANE COLLISION TEST")
+//        println("| axis: $axis")
+//        println("| level: $level")
+//        println("| min..max: $min..$max")
 
         if (level - min < max - level) {
             var i = 0
             while (i < vertices.size) {
                 val v = vertices[i]
-                val p = axis.project(v)
+                val p = axis.project(v).toFloat().toDouble() // for consistency with exclusion with holes
 
-                if (p < level) {
+                if (p <= level) {
 
                     val closest = world.prevEnvContactData.closest(
                         rawManifoldIdx,
@@ -75,9 +78,10 @@ class LocalMathUtil(
                         v.z.toFloat()
                     )
 
-                    println("  * CONTACT")
-                    println("  | p: (${v.x} ${v.y} ${v.z})")
-                    println("  | n: ${axis.vec}")
+//                    println("  * CONTACT (POS)")
+//                    println("  | p: (${v.x} ${v.y} ${v.z})")
+//                    println("  | p: $p")
+//                    println("  | n: ${axis.vec}")
 
                     out.loadInto(
                         pointAX = v.x.toFloat(),
@@ -99,14 +103,14 @@ class LocalMathUtil(
                 i++
             }
         } else {
-            val negatedAxis = Vector3d(axis.vec).normalize()
+            val negatedAxis = Vector3d(axis.vec).negate().normalize()
             //approached from bottom
             var i = 0
             while (i < vertices.size) {
                 val v = vertices[i]
-                val p = axis.project(v)
+                val p = axis.project(v).toFloat().toDouble()
 
-                if (p > level) {
+                if (p >= level) {
                     val closest = world.prevEnvContactData.closest(
                         rawManifoldIdx,
                         v.x.toFloat(),
@@ -114,9 +118,10 @@ class LocalMathUtil(
                         v.z.toFloat()
                     )
 
-                    println("  * CONTACT")
-                    println("  | p: (${v.x} ${v.y} ${v.z})")
-                    println("  | n: ${axis.vec}")
+//                    println("  * CONTACT (NEG)")
+//                    println("  | p: (${v.x} ${v.y} ${v.z})")
+//                    println("  | p: $p")
+//                    println("  | n: $negatedAxis")
 
                     out.loadInto(
                         pointAX = v.x.toFloat(),
@@ -147,7 +152,7 @@ class LocalMathUtil(
     /**
      * MUST NOT BE PARALLEL TO EDGE!! USE DIFFERENT METHOD IF THEY ARE!
      */
-    fun collideCuboidEdge(
+    fun collideEdge(
         activeBody: ActiveBody,
 
         edgeStart: Vector3d,
@@ -161,9 +166,9 @@ class LocalMathUtil(
         edges: Array<Edge>,
 
         allowedNormals: Array<Vector3d>,
-        out: A2SManifoldCollection,
+        out: EnvManifoldBuffer,
     ) {
-        println("EDGE COLLISION TEST")
+//        println("EDGE COLLISION TEST")
         var minBodyOverlap = Double.MAX_VALUE
         var minBodyAxis: Vector3d? = null
         var minBodyInDirOfAxis = true
@@ -322,7 +327,7 @@ class LocalMathUtil(
             }
 
             check(abs(norm.length() - 1.0) < 1e-5)
-
+            
             if (norm.dot(allowedNormals[0]) < 0.0) {
                 return
             }
@@ -402,11 +407,11 @@ class LocalMathUtil(
 
             check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx, 1) == 1)
 
-            println("  * COLLIDED")
-            println("  | edgeIdx: $closestEdgeIdx")
-            println("  | p: (${closestA.x} ${closestA.y} ${closestA.z})")
+//            println("  * COLLIDED")
+//            println("  | edgeIdx: $closestEdgeIdx")
+//            println("  | p: (${closestA.x} ${closestA.y} ${closestA.z})")
 
-            out.addSingleManifold(
+            out.addEdgeManifold(
                 activeBody = activeBody,
 
                 pointAX = closestA.x.toFloat(),
@@ -470,10 +475,10 @@ class LocalMathUtil(
 
                     check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx, 1) == 1)
 
-                    println("  * COLLIDED")
-                    println("  | p: ($pointAX $pointAY $pointAZ)")
+//                    println("  * COLLIDED")
+//                    println("  | p: ($pointAX $pointAY $pointAZ)")
 
-                    out.addSingleManifold(
+                    out.addEdgeManifold(
                         activeBody = activeBody,
 
                         pointAX = pointAX,
@@ -505,10 +510,10 @@ class LocalMathUtil(
 
                     check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx, 1) == 1)
 
-                    println("  * COLLIDED")
-                    println("  | p: ($pointAX $pointAY $pointAZ)")
+//                    println("  * COLLIDED")
+//                    println("  | p: ($pointAX $pointAY $pointAZ)")
 
-                    out.addSingleManifold(
+                    out.addEdgeManifold(
                         activeBody = activeBody,
 
                         pointAX = pointAX,
@@ -543,10 +548,10 @@ class LocalMathUtil(
 
                     check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx, 1) == 1)
 
-                    println("  * COLLIDED")
-                    println("  | p: ($pointAX $pointAY $pointAZ)")
+//                    println("  * COLLIDED")
+//                    println("  | p: ($pointAX $pointAY $pointAZ)")
 
-                    out.addSingleManifold(
+                    out.addEdgeManifold(
                         activeBody = activeBody,
 
                         pointAX = pointAX,
@@ -578,10 +583,10 @@ class LocalMathUtil(
 
                     check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx, 1) == 1)
 
-                    println("  * COLLIDED")
-                    println("  | p: ($pointAX $pointAY $pointAZ)")
+//                    println("  * COLLIDED")
+//                    println("  | p: ($pointAX $pointAY $pointAZ)")
 
-                    out.addSingleManifold(
+                    out.addEdgeManifold(
                         activeBody = activeBody,
 
                         pointAX = pointAX,

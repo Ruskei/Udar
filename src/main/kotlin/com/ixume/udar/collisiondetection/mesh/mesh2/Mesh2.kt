@@ -3,8 +3,11 @@ package com.ixume.udar.collisiondetection.mesh.mesh2
 import com.ixume.udar.collisiondetection.mesh.quadtree.FlattenedEdgeQuadtree
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.dynamicaabb.array.FlattenedAABBTree
-import com.ixume.udar.physics.I2IUnionFind
+import com.ixume.udar.physics.Long2IntUnionFind
+import com.ixume.udar.physics.contact.LongGraph
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap
 import org.bukkit.World
 import org.joml.Vector3d
 import org.joml.Vector3i
@@ -88,7 +91,7 @@ class LocalMesher {
             createMeshFaces(AxisD.Z, meshStart, meshEnd, flatTree),
         )
 
-        val graph = meshFaces.constructUF()
+        val graph = LongGraph()
 
         createMeshEdges2(meshStart, meshEnd, meshFaces, flatTree, graph)
 
@@ -105,16 +108,14 @@ class LocalMesher {
         )
     }
 
-    private fun MeshFaces.constructUF(): I2IUnionFind {
+    private fun MeshFaces.constructUF(): Long2IntUnionFind {
         val size = xFaces.ls.size + yFaces.ls.size + zFaces.ls.size
-        val map = Int2IntOpenHashMap(size)
-        val arr = IntArray(size)
+        val uf = Long2IntUnionFind(size)
         var count = 0
 
         var x = 0
         while (x < xFaces.ls.size) {
-            map.put(x, count)
-            arr[count] = x
+            uf.insert(x.toLong())
             count++
             x++
         }
@@ -122,21 +123,19 @@ class LocalMesher {
 
         var y = 0
         while (y < yFaces.ls.size) {
-            map.put(y, count)
-            arr[count] = y
+            uf.insert(y.toLong())
             count++
             y++
         }
 
         var z = 0
         while (z < zFaces.ls.size) {
-            map.put(z, count)
-            arr[count] = z
+            uf.insert(z.toLong())
             count++
             z++
         }
 
-        return I2IUnionFind(map, arr, size)
+        return uf
     }
 
     private fun createMeshFaces(
@@ -223,7 +222,7 @@ class LocalMesher {
         meshEnd: Vector3i,
         meshFaces: MeshFaces,
         tree: FlattenedAABBTree,
-        convexFaceGraph: I2IUnionFind,
+        convexFaceGraph: LongGraph,
     ) {
         val epsilon = 0
         //TODO: Dont put out of bounds points on edges
@@ -317,9 +316,9 @@ class LocalMesher {
             _zAxiss2.insertEdge(z3aStart, z3bStart, zStart, zEnd, meshFaces, convexFaceGraph)
         }
 
-        _xAxiss2.fixUp(tree)
-        _yAxiss2.fixUp(tree)
-        _zAxiss2.fixUp(tree)
+        _xAxiss2.fixUp(tree, meshFaces)
+        _yAxiss2.fixUp(tree, meshFaces)
+        _zAxiss2.fixUp(tree, meshFaces)
     }
 
     class Mesh2(
@@ -330,17 +329,17 @@ class LocalMesher {
         val xEdges2: FlattenedEdgeQuadtree? = null,
         val yEdges2: FlattenedEdgeQuadtree? = null,
         val zEdges2: FlattenedEdgeQuadtree? = null,
-        val convexFaceGraph: I2IUnionFind? = null,
+        val convexFaceGraph: LongGraph? = null,
         val flatTree: FlattenedAABBTree?,
     ) {
         fun visualize(world: World) {
 //            println("visualizing mesh")
-            xEdges2?.visualize(world)
-            yEdges2?.visualize(world)
-            zEdges2?.visualize(world)
-            flatTree?.visualize(world)
+//            xEdges2?.visualize(world)
+//            yEdges2?.visualize(world)
+//            zEdges2?.visualize(world)
+//            flatTree?.visualize(world)
 
-//            faces?.xFaces?.ls?.forEach { it.visualize(world) }
+            faces?.xFaces?.ls?.forEach { it.visualize(world) }
 //            faces?.yFaces?.ls?.forEach { it.visualize(world) }
 //            faces?.zFaces?.ls?.forEach { it.visualize(world) }
 ////

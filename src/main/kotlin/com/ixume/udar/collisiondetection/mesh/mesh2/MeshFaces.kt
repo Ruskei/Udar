@@ -1,5 +1,8 @@
 package com.ixume.udar.collisiondetection.mesh.mesh2
 
+import com.google.common.math.IntMath
+import com.google.common.math.LongMath
+
 class MeshFaces(
     val xFaces: MeshFaceSortedList,
     val yFaces: MeshFaceSortedList,
@@ -33,4 +36,18 @@ class MeshFaces(
 
         return face
     }
+}
+
+private const val X_PRIME = 93960703
+private const val Y_PRIME = 56726983
+private const val Z_PRIME = 35230339
+
+fun faceID(axis: LocalMesher.AxisD, idx: Int): Long {
+    val prime = when (axis) {
+        LocalMesher.AxisD.X -> X_PRIME
+        LocalMesher.AxisD.Y -> Y_PRIME
+        LocalMesher.AxisD.Z -> Z_PRIME
+    }
+
+    return IntMath.pow(prime, idx).toLong()
 }

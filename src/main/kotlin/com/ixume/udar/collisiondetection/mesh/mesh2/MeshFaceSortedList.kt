@@ -141,7 +141,9 @@ class MeshFaceSortedList(
 
         var i = 0
         while (i < ls.size) {
-            ls[i].idx = i
+            val f = ls[i]
+            f.idx = i
+            f.id = faceID(axis, i)
             i++
         }
     }

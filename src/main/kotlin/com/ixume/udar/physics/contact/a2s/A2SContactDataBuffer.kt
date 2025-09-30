@@ -2,6 +2,7 @@ package com.ixume.udar.physics.contact.a2s
 
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import kotlin.math.max
+import kotlin.math.min
 
 open class A2SContactDataBuffer(private val numContacts: Int) {
     val arr = FloatArray(CONTACT_DATA_SIZE * numContacts)
@@ -136,7 +137,6 @@ open class A2SContactDataBuffer(private val numContacts: Int) {
         arr[contactArrIdx + T1_LAMBDA_OFFSET] = t1Lambda
         arr[contactArrIdx + T2_LAMBDA_OFFSET] = t2Lambda
 
-
         cursor++
     }
 
@@ -146,6 +146,100 @@ open class A2SContactDataBuffer(private val numContacts: Int) {
 
     fun depth(contactIdx: Int): Float {
         return arr[contactIdx * CONTACT_DATA_SIZE + DEPTH_OFFSET]
+    }
+
+    operator fun get(idx: Int): Contact {
+        return Contact(idx)
+    }
+
+    fun Contact.x(): Float {
+        return arr[value * CONTACT_DATA_SIZE + POINT_A_X_OFFSET]
+    }
+
+    fun Contact.y(): Float {
+        return arr[value * CONTACT_DATA_SIZE + POINT_A_Y_OFFSET]
+    }
+
+    fun Contact.z(): Float {
+        return arr[value * CONTACT_DATA_SIZE + POINT_A_Z_OFFSET]
+    }
+
+    fun minX(): Float {
+        var minX = Float.MAX_VALUE
+        var i = 0
+        while (i < cursor) {
+            val contact = this[i]
+            minX = min(minX, contact.x())
+
+            i++
+        }
+
+        return minX
+    }
+
+    fun minY(): Float {
+        var minY = Float.MAX_VALUE
+        var i = 0
+        while (i < cursor) {
+            val contact = this[i]
+            minY = min(minY, contact.y())
+
+            i++
+        }
+
+        return minY
+    }
+
+    fun minZ(): Float {
+        var minZ = Float.MAX_VALUE
+        var i = 0
+        while (i < cursor) {
+            val contact = this[i]
+            minZ = min(minZ, contact.z())
+
+            i++
+        }
+
+        return minZ
+    }
+
+    fun maxX(): Float {
+        var maxX = Float.MAX_VALUE
+        var i = 0
+        while (i < cursor) {
+            val contact = this[i]
+            maxX = max(maxX, contact.x())
+
+            i++
+        }
+
+        return maxX
+    }
+
+    fun maxY(): Float {
+        var maxY = Float.MAX_VALUE
+        var i = 0
+        while (i < cursor) {
+            val contact = this[i]
+            maxY = max(maxY, contact.y())
+
+            i++
+        }
+
+        return maxY
+    }
+
+    fun maxZ(): Float {
+        var maxZ = Float.MAX_VALUE
+        var i = 0
+        while (i < cursor) {
+            val contact = this[i]
+            maxZ = max(maxZ, contact.z())
+
+            i++
+        }
+
+        return maxZ
     }
 
     fun maxDepth(): Float {
@@ -185,3 +279,6 @@ private const val DEPTH_OFFSET = 12 // 1 float
 private const val NORMAL_LAMBDA_OFFSET = 13 // 3 floats
 private const val T1_LAMBDA_OFFSET = 14
 private const val T2_LAMBDA_OFFSET = 15
+
+@JvmInline
+value class Contact(val value: Int)

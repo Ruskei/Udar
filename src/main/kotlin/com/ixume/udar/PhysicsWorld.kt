@@ -351,10 +351,6 @@ class PhysicsWorld(
                     val num = envManifoldBuffer.numContacts(j)
                     var k = 0
                     while (k < num) {
-                        if (envManifoldBuffer.depth(j, k).toDouble() > 0.01) {
-                            frozen.set(true)
-                        }
-
                         world.spawnParticle(
                             Particle.REDSTONE,
                             Location(

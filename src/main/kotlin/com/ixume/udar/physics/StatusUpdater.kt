@@ -27,7 +27,7 @@ class StatusUpdater(
                 }
 
                 val sleep =
-                    obj.velocity.lengthSquared() < linear * timeStep && obj.omega.lengthSquared() < angular * timeStep
+                    obj.velocity.lengthSquared() < linear && obj.omega.lengthSquared() < angular
                 if (sleep) {
                     obj.idleTime++
 

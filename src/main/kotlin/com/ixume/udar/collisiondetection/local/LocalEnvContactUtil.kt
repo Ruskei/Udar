@@ -11,7 +11,7 @@ import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFace
 import com.ixume.udar.collisiondetection.mesh.quadtree.FlattenedEdgeQuadtree
 import com.ixume.udar.dynamicaabb.array.FlattenedAABBTree
 import com.ixume.udar.physics.contact.a2s.A2SContactDataBuffer
-import com.ixume.udar.physics.contact.a2s.EnvPlaneManifoldBuffer
+import com.ixume.udar.physics.contact.a2s.EnvManifoldBuffer
 import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldCollection
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
 import it.unimi.dsi.fastutil.ints.IntArrayList
@@ -19,7 +19,7 @@ import org.joml.Vector3d
 
 class LocalEnvContactUtil(val math: LocalMathUtil) {
     private val _contacts2 = A2SContactDataBuffer(4)
-    private val _planeContacts = EnvPlaneManifoldBuffer(4)
+    private val _possibleManifolds = EnvManifoldBuffer(4)
     private val _validContacts2 = A2SContactDataBuffer(4)
 
     fun collides(
@@ -51,16 +51,14 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
             }
 
             val faceGraph = mesh.convexFaceGraph!!
-            _planeContacts.graph = faceGraph
-            _planeContacts.clear()
+            _possibleManifolds.setup(mesh)
+            _possibleManifolds.clear()
 
             if (faces != null) {
                 collideFaces(activeBody, faces.xFaces.ls, bbs, LocalMesher.AxisD.X, math, other)
                 collideFaces(activeBody, faces.yFaces.ls, bbs, LocalMesher.AxisD.Y, math, other)
                 collideFaces(activeBody, faces.zFaces.ls, bbs, LocalMesher.AxisD.Z, math, other)
             }
-
-            _planeContacts.post(out)
 
             mesh.xEdges2?.let {
                 collideEdges(
@@ -91,6 +89,8 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                     out = out,
                 )
             }
+
+            _possibleManifolds.post(out)
 
             m++
         }
@@ -195,7 +195,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                 math = math,
             )
 
-            println("VALIDATING")
+//            println("VALIDATING")
 
             var j = 0
             while (j < _contacts2.size()) {
@@ -242,7 +242,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                             minA = minA,
                             maxA = maxA,
                             a = pa,
-                        ) || contains(
+                        ) && contains(
                             minA = minB,
                             maxA = maxB,
                             a = pb,
@@ -291,19 +291,21 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                 }
 
                 if (!valid) {
+//                    println("  - REJECTED: NO HOLE")
                     j++
                     continue
                 }
 
                 if (!bbs.contains(x, y, z)) {
+//                    println("  - REJECTED: NOT CONTAINED")
                     j++
                     continue
                 }
 
-                println("  - LOADED!")
-                println("  | ($x $y $z)")
-                println("  | depth: ${_contacts2.depth(j)}")
-                
+//                println("  - LOADED!")
+//                println("  | ($x $y $z)")
+//                println("  | depth: ${_contacts2.depth(j)}")
+
                 _contacts2.loadInto(j, _validContacts2)
 
                 count++
@@ -311,11 +313,11 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
             }
 
             if (_validContacts2.size() > 0) {
-                _planeContacts.addManifold(
+                _possibleManifolds.addFaceManifold(
                     activeBody = activeBody,
                     contactID = manifoldID,
                     buf = _validContacts2,
-                    faceIdx = face.idx,
+                    face = face,
                 )
             }
 
@@ -357,6 +359,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 
     private val _outA = DoubleArrayList()
     private val _outB = DoubleArrayList()
+    private val _outEdges = IntArrayList()
     private val _outData = IntArrayList()
 
     private fun collideEdges(
@@ -372,6 +375,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 
         _outA.clear()
         _outB.clear()
+        _outEdges.clear()
         _outData.clear()
 
         tree.overlaps(
@@ -385,6 +389,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 
             outA = _outA,
             outB = _outB,
+            outEdges = _outEdges,
             outData = _outData,
             math = math,
         )
@@ -399,6 +404,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 
         val aItr = _outA.iterator()
         val bItr = _outB.iterator()
+        val edgeItr = _outEdges.iterator()
         val dataItr = _outData.iterator()
 
         var collided = false
@@ -406,6 +412,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         while (aItr.hasNext()) {
             val a = aItr.nextDouble()
             val b = bItr.nextDouble()
+            val edge = edgeItr.nextInt()
             val data = dataItr.nextInt()
 
             _edgeStart.setComponent(axis.aOffset, a)
@@ -438,7 +445,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 
                 collided = true
 
-                math.collideCuboidEdge(
+                math.collideEdge(
                     activeBody = activeBody,
                     edgeStart = _edgeStart,
                     edgeEnd = _edgeEnd,
@@ -447,7 +454,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                     vertices = vertices,
                     allowedNormals = _allowedNormals,
                     edges = activeBody.edges,
-                    out = out,
+                    out = _possibleManifolds,
                 )
 
                 i++

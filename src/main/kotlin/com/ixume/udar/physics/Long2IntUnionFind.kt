@@ -1,17 +1,20 @@
 package com.ixume.udar.physics
 
-import it.unimi.dsi.fastutil.ints.Int2IntMap
+import it.unimi.dsi.fastutil.ints.IntArrayList
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap
 
-class I2IUnionFind(
-    val map: Int2IntMap,
-    val arr: IntArray,
-    val size: Int,
+class Long2IntUnionFind(
+    size: Int,
 ) {
+    val map = Long2IntOpenHashMap(size)
+    val elems = IntArrayList(size)
+    var size = 0
+
     private val sizes = IntArray(size)
     var islands = size
         private set
 
-    fun idxOf(elem: Int): UnionIdx {
+    fun idxOf(elem: Long): UnionIdx {
         return UnionIdx(map[elem])
     }
 
@@ -19,14 +22,14 @@ class I2IUnionFind(
         var idx = i
         var idx2 = idx
 
-        while (idx.value != arr[idx.value]) {
-            idx = UnionIdx(arr[idx.value])
+        while (idx.value != elems.getInt(idx.value)) {
+            idx = UnionIdx(elems.getInt(idx.value))
         }
 
         var t: Int
         while (idx2 != idx) {
-            t = arr[idx2.value]
-            arr[idx2.value] = idx.value
+            t = elems.getInt(idx2.value)
+            elems.set(idx2.value, idx.value)
             idx2 = UnionIdx(t)
         }
 
@@ -49,13 +52,21 @@ class I2IUnionFind(
 
         if (sizes[aI.value] < sizes[bI.value]) {
             sizes[bI.value] += sizes[aI.value]
-            arr[aI.value] = bI.value
+            elems.set(aI.value, bI.value)
         } else {
             sizes[aI.value] += sizes[bI.value]
-            arr[bI.value] = aI.value
+            elems.set(bI.value, aI.value)
         }
 
         islands--
+    }
+
+    fun insert(e: Long): UnionIdx {
+        elems.add(idxOf(e).value)
+        map.put(e, size)
+        size++
+
+        return UnionIdx(size - 1)
     }
 }
 
