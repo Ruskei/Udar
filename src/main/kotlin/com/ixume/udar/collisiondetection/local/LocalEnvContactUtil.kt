@@ -301,7 +301,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                 }
 
                 if (!valid) {
-//                    println("  - REJECTED: NO HOLE")
+//                    Println("  - REJECTED: NO HOLE")
                     j++
                     continue
                 }
@@ -337,13 +337,21 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
     }
 
     private fun constructFaceID(body: ActiveBody, faceAxis: LocalMesher.AxisD, faceLevel: Double): Long {
-        return pow(
-            body.uuid.leastSignificantBits xor faceLevel.toRawBits(),
-            faceAxis.ordinal + 1
-        ) xor pow(
-            body.uuid.leastSignificantBits xor faceLevel.toRawBits(),
-            faceAxis.ordinal + 1
-        )
+        var result = 31L
+
+        val prime = 31L
+
+        val mostSigBits = body.uuid.mostSignificantBits
+        val leastSigBits = body.uuid.leastSignificantBits
+        result = result * prime + mostSigBits
+        result = result * prime + leastSigBits
+
+        result = result * prime + faceAxis.ordinal
+
+        val doubleBits = faceLevel.toRawBits()
+        result = result * prime + doubleBits
+
+        return result
     }
 
     private val _bodyAxiss = Array(3) { Vector3d() }

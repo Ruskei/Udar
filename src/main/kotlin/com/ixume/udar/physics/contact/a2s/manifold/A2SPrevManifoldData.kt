@@ -1,5 +1,6 @@
 package com.ixume.udar.physics.contact.a2s.manifold
 
+import com.ixume.udar.Udar
 import com.ixume.udar.physics.contact.a2s.A2SPrevContactDataBuffer
 import it.unimi.dsi.fastutil.floats.FloatArrayList
 import java.lang.Math.fma
@@ -89,15 +90,13 @@ class A2SPrevManifoldData {
 
             val d = fma(cx - x, cx - x, fma(cy - y, cy - y, (cz - z) * (cz - z)))
 
-            if (d < minDistance) {
+            if (d < Udar.CONFIG.collision.sameContactThreshold &&  d < minDistance) {
                 minDistance = d
                 minIdx = i
             }
 
             i++
         }
-
-        check(minIdx != -1)
 
         return minIdx
     }

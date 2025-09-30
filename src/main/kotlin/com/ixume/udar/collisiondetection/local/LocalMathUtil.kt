@@ -1,12 +1,10 @@
 package com.ixume.udar.collisiondetection.local
 
-import com.google.common.math.LongMath.pow
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.Edge
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.dynamicaabb.AABB
-import com.ixume.udar.dynamicaabb.array.IntStack
 import com.ixume.udar.physics.contact.a2s.A2SContactDataBuffer
 import com.ixume.udar.physics.contact.a2s.EnvManifoldBuffer
 import org.joml.Vector3d
@@ -21,11 +19,6 @@ class LocalMathUtil(
     val envContactUtil = LocalEnvContactUtil(this)
     val cuboidSATContactUtil = LocalCuboidSATContactUtil(this)
     val compositeUtil = LocalCompositeUtil()
-
-    val envOverlapQueue = IntStack()
-    val envEdgeOverlapQueue = IntStack()
-
-    private val _mm = DoubleArray(2)
 
     private val _outCA = Vector3d()
     private val _outCB = Vector3d()
@@ -43,7 +36,7 @@ class LocalMathUtil(
             LocalMesher.AxisD.Y -> bb.minY
             LocalMesher.AxisD.Z -> bb.minZ
         }
-        
+
         val max = when (axis) {
             LocalMesher.AxisD.X -> bb.maxX
             LocalMesher.AxisD.Y -> bb.maxY
@@ -79,13 +72,22 @@ class LocalMathUtil(
                 val p = axis.project(v).toFloat().toDouble() // for consistency with exclusion with holes
 
                 if (p <= level) {
-
                     val closest = world.prevEnvContactData.closest(
                         rawManifoldIdx,
                         v.x.toFloat(),
                         v.y.toFloat(),
                         v.z.toFloat()
                     )
+
+                    var normalLambda = 0f
+                    var t1Lambda = 0f
+                    var t2Lambda = 0f
+
+                    if (closest != -1) {
+                        normalLambda = world.prevEnvContactData.normalLambda(rawManifoldIdx, closest)
+                        t1Lambda = world.prevEnvContactData.t1Lambda(rawManifoldIdx, closest)
+                        t2Lambda = world.prevEnvContactData.t2Lambda(rawManifoldIdx, closest)
+                    }
 
 //                    println("  * CONTACT (POS)")
 //                    println("  | p: (${v.x} ${v.y} ${v.z})")
@@ -103,9 +105,9 @@ class LocalMathUtil(
                         depth = (level - p).toFloat(),
                         math = this,
 
-                        normalLambda = world.prevEnvContactData.normalLambda(rawManifoldIdx, closest),
-                        t1Lambda = world.prevEnvContactData.t1Lambda(rawManifoldIdx, closest),
-                        t2Lambda = world.prevEnvContactData.t2Lambda(rawManifoldIdx, closest),
+                        normalLambda = normalLambda,
+                        t1Lambda = t1Lambda,
+                        t2Lambda = t2Lambda,
                     )
                 }
 
@@ -127,6 +129,17 @@ class LocalMathUtil(
                         v.z.toFloat()
                     )
 
+
+                    var normalLambda = 0f
+                    var t1Lambda = 0f
+                    var t2Lambda = 0f
+
+                    if (closest != -1) {
+                        normalLambda = world.prevEnvContactData.normalLambda(rawManifoldIdx, closest)
+                        t1Lambda = world.prevEnvContactData.t1Lambda(rawManifoldIdx, closest)
+                        t2Lambda = world.prevEnvContactData.t2Lambda(rawManifoldIdx, closest)
+                    }
+
 //                    println("  * CONTACT (NEG)")
 //                    println("  | p: (${v.x} ${v.y} ${v.z})")
 //                    println("  | p: $p")
@@ -143,9 +156,9 @@ class LocalMathUtil(
                         depth = (p - level).toFloat(),
                         math = this,
 
-                        normalLambda = world.prevEnvContactData.normalLambda(rawManifoldIdx, closest),
-                        t1Lambda = world.prevEnvContactData.t1Lambda(rawManifoldIdx, closest),
-                        t2Lambda = world.prevEnvContactData.t2Lambda(rawManifoldIdx, closest),
+                        normalLambda = normalLambda,
+                        t1Lambda = t1Lambda,
+                        t2Lambda = t2Lambda,
                     )
                 }
 
@@ -155,8 +168,6 @@ class LocalMathUtil(
 
         return true
     }
-
-    private val _delta = Vector3d()
 
     /**
      * MUST NOT BE PARALLEL TO EDGE!! USE DIFFERENT METHOD IF THEY ARE!
@@ -336,7 +347,7 @@ class LocalMathUtil(
             }
 
             check(abs(norm.length() - 1.0) < 1e-5)
-            
+
             if (norm.dot(allowedNormals[0]) < 0.0) {
                 return
             }
@@ -626,11 +637,24 @@ class LocalMathUtil(
         edgeStart: Vector3d,
         edgeEnd: Vector3d,
         edgeIdx: Int,
-    ): Long { // this "hashing" is probably garbage i'm ngl
-        return pow(
-            (edgeStart.x.toRawBits() xor edgeStart.x.toRawBits() xor edgeStart.x.toRawBits()) xor
-                    (edgeEnd.x.toRawBits() xor edgeEnd.x.toRawBits() xor edgeEnd.x.toRawBits()), edgeIdx
-        ) xor activeBody.uuid.leastSignificantBits xor activeBody.uuid.mostSignificantBits
+    ): Long {
+        var result = 31L
+        val prime = 31L
+
+        result = result * prime + activeBody.uuid.mostSignificantBits
+        result = result * prime + activeBody.uuid.leastSignificantBits
+
+        result = result * prime + edgeStart.x.toRawBits()
+        result = result * prime + edgeStart.y.toRawBits()
+        result = result * prime + edgeStart.z.toRawBits()
+
+        result = result * prime + edgeEnd.x.toRawBits()
+        result = result * prime + edgeEnd.y.toRawBits()
+        result = result * prime + edgeEnd.z.toRawBits()
+
+        result = result * prime + edgeIdx
+
+        return result
     }
 
     private fun constructA2SEdgeManifoldID(
@@ -638,16 +662,24 @@ class LocalMathUtil(
         edgeStart: Vector3d,
         edgeEnd: Vector3d,
         inDir: Boolean,
-    ): Long { // this "hashing" is probably garbage i'm ngl
-        val l = (edgeStart.x.toRawBits() xor edgeStart.x.toRawBits() xor edgeStart.x.toRawBits()) xor
-                (edgeEnd.x.toRawBits() xor edgeEnd.x.toRawBits() xor edgeEnd.x.toRawBits()) xor
-                activeBody.uuid.leastSignificantBits xor activeBody.uuid.mostSignificantBits
+    ): Long {
+        var result = 31L
+        val prime = 31L
 
-        return if (inDir) {
-            l
-        } else {
-            l.inv()
-        }
+        result = result * prime + activeBody.uuid.mostSignificantBits
+        result = result * prime + activeBody.uuid.leastSignificantBits
+
+        result = result * prime + edgeStart.x.toRawBits()
+        result = result * prime + edgeStart.y.toRawBits()
+        result = result * prime + edgeStart.z.toRawBits()
+
+        result = result * prime + edgeEnd.x.toRawBits()
+        result = result * prime + edgeEnd.y.toRawBits()
+        result = result * prime + edgeEnd.z.toRawBits()
+
+        result = result * prime + if (inDir) 1 else 0
+
+        return result
     }
 
     inline fun checkOverlap(
