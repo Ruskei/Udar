@@ -9,6 +9,7 @@ import com.ixume.udar.collisiondetection.pool.MathPool
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.dynamicaabb.FlattenedBodyAABBTree
 import com.ixume.udar.physics.EntityUpdater
+import com.ixume.udar.physics.EnvPhaseCallable
 import com.ixume.udar.physics.NarrowPhaseCallable
 import com.ixume.udar.physics.StatusUpdater
 import com.ixume.udar.physics.constraint.ConstraintSolverManager
@@ -22,7 +23,7 @@ import com.ixume.udar.testing.listener.PlayerInteractListener
 import it.unimi.dsi.fastutil.ints.Int2ObjectMaps
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 import it.unimi.dsi.fastutil.ints.IntArrayList
-import it.unimi.dsi.fastutil.longs.Long2IntAVLTreeMap
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap
 import org.bukkit.*
 import org.joml.Vector3d
 import java.util.concurrent.CountDownLatch
@@ -54,12 +55,12 @@ class PhysicsWorld(
 
     val manifoldBuffer = A2AManifoldBuffer(4)
 
-    val prevContactMap = Long2IntAVLTreeMap()
+    val prevContactMap = Long2IntOpenHashMap()
     val prevContactData = A2APrevManifoldData()
 
     val envManifoldBuffer = A2SManifoldBuffer(8)
 
-    val prevEnvContactMap = Long2IntAVLTreeMap()
+    val prevEnvContactMap = Long2IntOpenHashMap()
     val prevEnvContactData = A2SPrevManifoldData()
 
     init {
@@ -69,7 +70,7 @@ class PhysicsWorld(
 
     val meshes: MutableList<Mesh> = mutableListOf()
 
-    private val environmentBody = EnvironmentBody(this)
+    val environmentBody = EnvironmentBody(this)
 
     private var time = 0
     private var physicsTime = 0
@@ -90,9 +91,13 @@ class PhysicsWorld(
     private val busy = AtomicBoolean(false)
 
     private val NARROWPHASE_PROCESSORS = 5//Runtime.getRuntime().availableProcessors()
+    private val ENV_PROCESSORS = 5
     val mathPool = MathPool(this, NARROWPHASE_PROCESSORS)
     private val executor = Executors.newFixedThreadPool(NARROWPHASE_PROCESSORS)
     private val narrowPhaseCallables = Array(NARROWPHASE_PROCESSORS) { NarrowPhaseCallable(this) }
+
+    private val envPhaseCallables = Array(ENV_PROCESSORS) { EnvPhaseCallable(this) }
+
     private val constraintSolverManager = ConstraintSolverManager(this)
 
     private val dataInterval = 400
@@ -189,31 +194,34 @@ class PhysicsWorld(
 
                 val endNarrowTime = System.nanoTime()
 
-                val math = mathPool.get()
-
 //                println("TICK")
                 val envDuration = measureNanoTime {
-                    try {
-                        for (body in bodiesSnapshot) {
-                            if (body.isChild) continue
-
-                            if (!body.awake.get()) {
-                                continue
+                    if (bodiesSnapshot.isNotEmpty()) {
+                        val per = (bodiesSnapshot.size / ENV_PROCESSORS).coerceAtLeast(1)
+                        val latch = CountDownLatch(ENV_PROCESSORS)
+//                        println("ENV PHASE")
+                        var last = 0
+                        for (proc in 0..<ENV_PROCESSORS) {
+                            val callable = envPhaseCallables[proc]
+                            callable.start = last
+                            last = if (proc == ENV_PROCESSORS - 1) {
+                                bodiesSnapshot.size
+                            } else {
+                                (per * (proc + 1)).coerceAtMost(bodiesSnapshot.size)
                             }
 
-                            if (body.capableCollision(environmentBody) < 0) continue
+                            callable.end = last
 
-                            val collided = body.collides(environmentBody, math, envManifoldBuffer)
+                            callable.bodiesSnapshot = bodiesSnapshot
 
-                            debugData.totalEnvironmentCollisionChecks++
+                            executor.execute {
+                                callable.run()
 
-                            if (!collided) continue
-
-                            debugData.environmentCollisions++
+                                latch.countDown()
+                            }
                         }
 
-                    } finally {
-                        mathPool.put(math)
+                        latch.await()
                     }
                 }
 

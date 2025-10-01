@@ -27,8 +27,8 @@ interface ActiveBody : A2ACollidable, A2SCollidable, Body, Projectable {
     var fatBB: Int
     val tightBB: AABB
 
-    var awake: AtomicBoolean
-    var startled: AtomicBoolean
+    val awake: AtomicBoolean
+    val startled: AtomicBoolean
 
     val mass: Double
     val localInertia: Vector3d

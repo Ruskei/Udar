@@ -44,8 +44,8 @@ class Cuboid(
 
     override var isChild: Boolean = false
     override var age: Int = 0
-    override var awake = AtomicBoolean(true)
-    override var startled = AtomicBoolean(true)
+    override val awake = AtomicBoolean(true)
+    override val startled = AtomicBoolean(true)
     override var idleTime: Int = 0
 
     val scale = Vector3d(width, height, length)

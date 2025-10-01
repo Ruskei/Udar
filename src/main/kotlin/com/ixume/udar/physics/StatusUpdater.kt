@@ -25,6 +25,14 @@ class StatusUpdater(
                     obj.idleTime = 0
                     obj.awake.set(true)
                     obj.startled.set(false)
+                    if (obj is Composite) {
+                        var i = 0
+                        val parts = obj.parts
+                        while (i < parts.size) {
+                            parts[i].startled.set(false)
+                            i++
+                        }
+                    }
                     continue
                 }
 

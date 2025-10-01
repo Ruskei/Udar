@@ -120,7 +120,7 @@ class WorldMeshesManager(
 
     private fun tick() {
         val t = measureNanoTime {
-            positionedMeshes.forEach { it.value.visualize(world) }
+//            positionedMeshes.forEach { it.value.visualize(world) }
 
             var rq: MeshRequest?
             while (queue.poll().also { rq = it } != null) {
