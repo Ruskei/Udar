@@ -311,16 +311,6 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                     continue
                 }
 
-//                println("  - LOADED!")
-//                println("  | ($x $y $z)")
-//                println("  | depth: ${_contacts2.depth(j)}")
-
-//                if (axis == LocalMesher.AxisD.Y) {
-//                    println("manifoldID: $manifoldID")
-//                    println(" - body: ${activeBody.uuid}")
-//                    println(" - level: ${face.level}")
-//                }
-
                 _contacts2.loadInto(j, _validContacts2)
 
                 j++

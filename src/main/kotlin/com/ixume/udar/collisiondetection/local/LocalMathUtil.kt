@@ -77,14 +77,14 @@ class LocalMathUtil(
 
                 if (p <= level) {
                     if (
-                        !(v.x >= faces.meshStart.x && v.x < faces.meshEnd.x &&
-                          v.y >= faces.meshStart.y && v.y < faces.meshEnd.y &&
-                          v.z >= faces.meshStart.z && v.z < faces.meshEnd.z)
+                        !(v.x >= faces.meshStart.x && v.x < faces.meshEnd.x + 1 &&
+                          v.y >= faces.meshStart.y && v.y < faces.meshEnd.y + 1 &&
+                          v.z >= faces.meshStart.z && v.z < faces.meshEnd.z + 1)
                     ) {
                         i++
                         continue
                     }
-                    
+
                     val closest = world.prevEnvContactData.closest(
                         rawManifoldIdx,
                         v.x.toFloat(),
@@ -137,14 +137,14 @@ class LocalMathUtil(
 
                 if (p >= level) {
                     if (
-                        !(v.x >= faces.meshStart.x && v.x < faces.meshEnd.x &&
-                          v.y >= faces.meshStart.y && v.y < faces.meshEnd.y &&
-                          v.z >= faces.meshStart.z && v.z < faces.meshEnd.z)
+                        !(v.x >= faces.meshStart.x && v.x < faces.meshEnd.x + 1 &&
+                          v.y >= faces.meshStart.y && v.y < faces.meshEnd.y + 1 &&
+                          v.z >= faces.meshStart.z && v.z < faces.meshEnd.z + 1)
                     ) {
                         i++
                         continue
                     }
-                    
+
                     val closest = world.prevEnvContactData.closest(
                         rawManifoldIdx,
                         v.x.toFloat(),
@@ -663,7 +663,7 @@ class LocalMathUtil(
         edgeStart: Vector3d,
         edgeEnd: Vector3d,
         edgeIdx: Int,
-        mesh: LocalMesher.Mesh2
+        mesh: LocalMesher.Mesh2,
     ): Long {
         var result = 31L
         val prime = 31L
@@ -680,7 +680,7 @@ class LocalMathUtil(
         result = result * prime + edgeEnd.z.toRawBits()
 
         result = result * prime + edgeIdx
-        
+
         result + result * prime + mesh.hashCode()
 
         return result

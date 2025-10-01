@@ -120,7 +120,7 @@ class WorldMeshesManager(
 
     private fun tick() {
         val t = measureNanoTime {
-//            positionedMeshes.forEach { it.value.visualize(world) }
+            positionedMeshes.forEach { it.value.visualize(world) }
 
             var rq: MeshRequest?
             while (queue.poll().also { rq = it } != null) {
@@ -176,6 +176,7 @@ class WorldMeshesManager(
                                 val mp =  MeshPosition(x, y, z, world)
                                 val sum = (positionedMeshes[mp] ?: continue).states[key]
                                 if (sum != null && sum != state) {
+//                                    println("DIFF!")
                                     diff = true
                                     mpsToUpdate.getOrPut(mp) { ArrayList() } += gen
                                 }
