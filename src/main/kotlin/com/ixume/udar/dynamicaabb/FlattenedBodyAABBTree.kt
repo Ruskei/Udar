@@ -55,29 +55,6 @@ class FlattenedBodyAABBTree(
         return sign(k1.exploredCost() - k2.exploredCost()).toInt()
     }
 
-    val containmentQueue = IntStack()
-
-    fun contains(x: Double, y: Double, z: Double): Boolean {
-        if (rootIdx == -1) return false
-
-        containmentQueue.enqueue(rootIdx)
-
-        while (containmentQueue.hasNext()) {
-            val i = containmentQueue.dequeue()
-
-            if (!i.contains(x, y, z)) continue
-
-            if (i.isLeaf()) {
-                return true
-            }
-
-            containmentQueue.enqueue(i.child1())
-            containmentQueue.enqueue(i.child2())
-        }
-
-        return false
-    }
-
     fun contains(
         bb: Int,
         minX: Double, minY: Double, minZ: Double,
@@ -87,12 +64,6 @@ class FlattenedBodyAABBTree(
         return bb.minX() <= minX && bb.maxX() >= maxX &&
                bb.minY() <= minY && bb.maxY() >= maxY &&
                bb.minZ() <= minZ && bb.maxZ() >= maxZ
-    }
-
-    private fun Int.contains(x: Double, y: Double, z: Double): Boolean {
-        return x >= minX() && x <= maxX() &&
-               y >= minY() && y <= maxY() &&
-               z >= minZ() && z <= maxZ()
     }
 
     fun constructCollisions(out: Int2ObjectOpenHashMap<IntArrayList>) {

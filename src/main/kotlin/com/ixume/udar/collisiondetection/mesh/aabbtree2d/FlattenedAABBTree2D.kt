@@ -59,25 +59,6 @@ class FlattenedAABBTree2D(
         return sign(k1.exploredCost() - k2.exploredCost()).toInt()
     }
 
-    private val q = IntStack()
-
-    fun contains(x: Double, y: Double): Boolean {
-        while (q.hasNext()) {
-            val i = q.dequeue()
-
-            if (!i.contains(x, y)) continue
-
-            if (i.isLeaf()) {
-                return true
-            }
-
-            q.enqueue(i.child1())
-            q.enqueue(i.child2())
-        }
-
-        return false
-    }
-
     private val _overlap = DoubleArray(4)
 
     fun constructCollisions(): FlattenedAABBTree2D {
@@ -930,7 +911,7 @@ class FlattenedAABBTree2D(
         math: LocalMathUtil,
     ) {
         if (rootIdx == -1) return
-        
+
         rootIdx._overlaps(minX, minY, maxX, maxY, out, math)
     }
 
@@ -953,7 +934,7 @@ class FlattenedAABBTree2D(
 
             return
         }
-        
+
         child1()._overlaps(minX, minY, maxX, maxY, out, math)
         child2()._overlaps(minX, minY, maxX, maxY, out, math)
     }

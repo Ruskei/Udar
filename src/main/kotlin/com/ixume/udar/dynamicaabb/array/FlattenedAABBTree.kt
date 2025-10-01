@@ -3,6 +3,7 @@ package com.ixume.udar.dynamicaabb.array
 import com.ixume.udar.testing.debugConnect
 import it.unimi.dsi.fastutil.ints.IntComparator
 import it.unimi.dsi.fastutil.ints.IntHeapPriorityQueue
+import kotlinx.coroutines.DEBUG_PROPERTY_VALUE_ON
 import org.bukkit.Color
 import org.bukkit.Particle
 import org.bukkit.World
@@ -58,26 +59,22 @@ class FlattenedAABBTree(
         return FlattenedAABBTreeIterator(this)
     }
 
-    val containmentQueue = IntStack()
-
     fun contains(x: Double, y: Double, z: Double): Boolean {
         if (rootIdx == -1) return false
 
-        containmentQueue.enqueue(rootIdx)
+        return rootIdx._contains(x, y, z)
+    }
+    
+    fun Int._contains(x: Double, y: Double, z: Double): Boolean {
+        if (!contains(x, y, z)) return false
 
-        while (containmentQueue.hasNext()) {
-            val i = containmentQueue.dequeue()
-
-            if (!i.contains(x, y, z)) continue
-
-            if (i.isLeaf()) {
-                return true
-            }
-
-            containmentQueue.enqueue(i.child1())
-            containmentQueue.enqueue(i.child2())
+        if (isLeaf()) {
+            return true
         }
 
+        if (child1()._contains(x, y, z)) return true
+        if (child2()._contains(x, y, z)) return true
+        
         return false
     }
 
