@@ -25,9 +25,9 @@ class BlockEntityCuboid(
         display.block = material.createBlockData()
 
         display.transformation = createTransformation()
-        display.interpolationDuration = 1
+        display.interpolationDuration = 2
         display.interpolationDelay = 0
-        display.teleportDuration = 1
+        display.teleportDuration = 2
     }
 
     private fun createTransformation(): Transformation {
@@ -43,6 +43,9 @@ class BlockEntityCuboid(
 
     override fun visualize() {
         cuboid.visualize()
+        display.interpolationDuration = 2
+        display.interpolationDelay = 0
+        display.teleportDuration = 2
         display.transformation = createTransformation()
         display.teleport(Location(world, pos.x, pos.y, pos.z))
     }

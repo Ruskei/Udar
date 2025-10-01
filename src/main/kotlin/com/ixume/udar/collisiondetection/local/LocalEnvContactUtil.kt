@@ -43,8 +43,8 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 //        println("ENV COLLISION CHECK")
 
         var m = 0
-        while (m < meshes.size) {
-            val mesh = meshes[m]
+        while (m < meshes.meshes.size) {
+            val mesh = meshes.meshes[m]
             val faces = mesh.faces
             val bbs = mesh.flatTree
             if (bbs == null) {
@@ -52,7 +52,6 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                 continue
             }
 
-            val faceGraph = mesh.convexFaceGraph!!
             _possibleManifolds.setup(mesh)
             _possibleManifolds.clear()
 
