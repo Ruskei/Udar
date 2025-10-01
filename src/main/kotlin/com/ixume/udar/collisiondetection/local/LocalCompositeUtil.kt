@@ -5,5 +5,5 @@ import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldArray
 
 class LocalCompositeUtil {
     val buf = A2AManifoldArray(4)
-    val envContactBuf = A2SManifoldArray(4)
+    val envContactBuf = A2SManifoldArray(8)
 }

@@ -57,7 +57,7 @@ class PhysicsWorld(
     val prevContactMap = Long2IntAVLTreeMap()
     val prevContactData = A2APrevManifoldData()
 
-    val envManifoldBuffer = A2SManifoldBuffer(4)
+    val envManifoldBuffer = A2SManifoldBuffer(8)
 
     val prevEnvContactMap = Long2IntAVLTreeMap()
     val prevEnvContactData = A2SPrevManifoldData()
@@ -191,6 +191,7 @@ class PhysicsWorld(
 
                 val math = mathPool.get()
 
+//                println("TICK")
                 val envDuration = measureNanoTime {
                     try {
                         for (body in bodiesSnapshot) {

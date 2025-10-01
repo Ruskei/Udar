@@ -230,12 +230,12 @@ class WorldMeshesManager(
 
     fun MeshPosition.genMesh(): LocalMesher.Mesh2 {
         val meshBB = AABB(
-            minX = x * MESH_SIZE.toDouble() - 0,
-            minY = y * MESH_SIZE.toDouble() - 0,
-            minZ = z * MESH_SIZE.toDouble() - 0,
-            maxX = x * MESH_SIZE.toDouble() + MESH_SIZE + 0,
-            maxY = y * MESH_SIZE.toDouble() + MESH_SIZE + 0,
-            maxZ = z * MESH_SIZE.toDouble() + MESH_SIZE + 0,
+            minX = x * MESH_SIZE.toDouble(),
+            minY = y * MESH_SIZE.toDouble(),
+            minZ = z * MESH_SIZE.toDouble(),
+            maxX = x * MESH_SIZE.toDouble() + MESH_SIZE,
+            maxY = y * MESH_SIZE.toDouble() + MESH_SIZE,
+            maxZ = z * MESH_SIZE.toDouble() + MESH_SIZE,
         )
 
         val mesh: LocalMesher.Mesh2
@@ -295,5 +295,5 @@ fun rollingVec3Checksum(sum: Long, x: Double, y: Double, z: Double): Long {
     return result
 }
 
-private const val MESH_SIZE = 16
+private const val MESH_SIZE = 32
 private const val BB_SAFETY = 4.0

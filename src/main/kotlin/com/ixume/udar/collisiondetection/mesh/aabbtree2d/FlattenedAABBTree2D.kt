@@ -960,7 +960,7 @@ class FlattenedAABBTree2D(
 
     private val visualizationQueue = IntStack()
 
-    fun visualize(world: World, isHole: Boolean) {
+    fun visualize(world: World, color: Color) {
         if (rootIdx == -1) return
 
         visualizationQueue.enqueue(rootIdx)
@@ -969,8 +969,7 @@ class FlattenedAABBTree2D(
             val node = visualizationQueue.dequeue()
 
             if (node.isLeaf()) {
-                val options =
-                    if (isHole) Particle.DustOptions(Color.BLUE, 0.25f) else Particle.DustOptions(Color.RED, 0.25f)
+                val options = Particle.DustOptions(color, 0.25f)
 
                 world.debugConnect(
                     start = withLevel(axis, node.minX(), node.minY(), level),

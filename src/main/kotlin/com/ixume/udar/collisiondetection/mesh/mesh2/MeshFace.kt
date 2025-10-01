@@ -3,7 +3,10 @@ package com.ixume.udar.collisiondetection.mesh.mesh2
 import com.ixume.udar.collisiondetection.mesh.aabbtree2d.FlattenedAABBTree2D
 import com.ixume.udar.collisiondetection.mesh.quadtree.EdgeConnection
 import com.ixume.udar.dynamicaabb.AABB
+import org.bukkit.Color
 import org.bukkit.World
+import kotlin.math.sqrt
+import kotlin.random.Random
 
 class MeshFace(
     val axis: LocalMesher.AxisD,
@@ -11,6 +14,21 @@ class MeshFace(
 
     val holes: FlattenedAABBTree2D,
 ) : Comparable<MeshFace> {
+    private val color = run {
+        var r = Random.nextDouble()
+        var g = Random.nextDouble()
+        var b = Random.nextDouble()
+        val n = sqrt(r * r + g * g + b * b)
+        r /= n
+        g /= n
+        b /= n
+        Color.fromRGB(
+            (r * 255.0).toInt().coerceIn(0, 255),
+            (g * 255.0).toInt().coerceIn(0, 255),
+            (b * 255.0).toInt().coerceIn(0, 255),
+        )
+    }
+    
     lateinit var antiHoles: FlattenedAABBTree2D
     val edgeConnections = mutableListOf<EdgeConnection>()
 
@@ -18,8 +36,8 @@ class MeshFace(
     var id: Long = -1
 
     fun visualize(world: World) {
-        holes.visualize(world, true)
-        antiHoles.visualize(world, false)
+        holes.visualize(world, color)
+//        antiHoles.visualize(world, false)
     }
 
     override fun compareTo(other: MeshFace): Int {
