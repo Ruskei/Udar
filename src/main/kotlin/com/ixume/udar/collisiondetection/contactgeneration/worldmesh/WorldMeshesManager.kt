@@ -222,7 +222,6 @@ class WorldMeshesManager(
         }
 
         val mesh = meshPos.genMesh()
-        println("genned A at (${meshPos.x} ${meshPos.y} ${meshPos.z})")
         positionedMeshes[meshPos] = mesh
 
         outMeshes.addMesh(meshPos, mesh)

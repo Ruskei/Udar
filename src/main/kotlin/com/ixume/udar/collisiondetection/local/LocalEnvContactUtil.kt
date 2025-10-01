@@ -1,6 +1,5 @@
 package com.ixume.udar.collisiondetection.local
 
-import com.google.common.math.LongMath.pow
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentContactGenerator2
@@ -18,9 +17,9 @@ import it.unimi.dsi.fastutil.ints.IntArrayList
 import org.joml.Vector3d
 
 class LocalEnvContactUtil(val math: LocalMathUtil) {
-    private val _contacts2 = A2SContactDataBuffer(4)
-    private val _possibleManifolds = EnvManifoldBuffer(4)
-    private val _validContacts2 = A2SContactDataBuffer(4)
+    private val _contacts2 = A2SContactDataBuffer(8)
+    private val _possibleManifolds = EnvManifoldBuffer(8)
+    private val _validContacts2 = A2SContactDataBuffer(8)
 
     fun collides(
         contactGen: EnvironmentContactGenerator2,
