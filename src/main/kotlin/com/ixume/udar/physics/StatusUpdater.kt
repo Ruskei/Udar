@@ -21,6 +21,7 @@ class StatusUpdater(
             obj.age++
             if (obj.age > birthTime) {
                 if (obj.startled.get()) {
+                    obj.idleTime = 0
                     obj.awake.set(true)
                     obj.startled.set(false)
                     continue

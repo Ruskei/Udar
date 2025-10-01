@@ -1,13 +1,9 @@
 package com.ixume.udar.collisiondetection.mesh.mesh2
 
+import com.ixume.udar.collisiondetection.contactgeneration.worldmesh.rollingVec3Checksum
 import com.ixume.udar.collisiondetection.mesh.quadtree.FlattenedEdgeQuadtree
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.dynamicaabb.array.FlattenedAABBTree
-import com.ixume.udar.physics.Long2IntUnionFind
-import com.ixume.udar.physics.contact.LongGraph
-import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap
-import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap
 import org.bukkit.World
 import org.joml.Vector3d
 import org.joml.Vector3i
@@ -44,17 +40,33 @@ class LocalMesher {
             floor(boundingBox.maxZ).toInt(),
         )
 
-        println("| meshStart: $meshStart")
-        println("| meshEnd: $meshEnd")
+//        println("| meshStart: $meshStart")
+//        println("| meshEnd: $meshEnd")
 //
         val flatTree = FlattenedAABBTree(0)
         _bbs.clear()
+
+        val states = mutableMapOf<Vector3i, Long>()
 
         for (x in (meshStart.x - 1)..(meshEnd.x + 1)) {
             for (y in (meshStart.y - 1)..(meshEnd.y + 1)) {
                 for (z in (meshStart.z - 1)..(meshEnd.z + 1)) {
                     val block = world.getBlockAt(x, y, z)
-                    if (block.isPassable) continue
+                    val mine =
+                        x in meshStart.x..meshEnd.x &&
+                        y in meshStart.y..meshEnd.y &&
+                        z in meshStart.z..meshEnd.z
+
+
+                    if (block.isPassable) {
+                        if (mine) {
+                            states[Vector3i(x, y, z)] = 0L // TODO: replace with nothing and instead rely on bounds
+                        }
+                        continue
+                    }
+
+                    var sum = 1L
+
                     for (boundingBox in block.collisionShape.boundingBoxes) {
                         val bb = boundingBox.clone()
                         bb.shift(block.location)
@@ -70,18 +82,36 @@ class LocalMesher {
                         )
 
                         _bbs.add(aabb)
+
+                        sum = rollingVec3Checksum(
+                            sum,
+                            x + boundingBox.minX,
+                            y + boundingBox.minY,
+                            z + boundingBox.minZ,
+                        )
+                        sum = rollingVec3Checksum(
+                            sum,
+                            x + boundingBox.maxX,
+                            y + boundingBox.maxY,
+                            z + boundingBox.maxZ,
+                        )
+                    }
+
+                    if (mine) {
+                        states[Vector3i(x, y, z)] = sum
                     }
                 }
             }
         }
 
-        println("${_bbs.size} BBs!")
+//        println("${_bbs.size} BBs!")
 
         if (_bbs.size == 0) {
             return Mesh2(
                 start = meshStart,
                 end = meshEnd,
                 flatTree = null,
+                states = mutableMapOf(),
             )
         }
 
@@ -91,9 +121,7 @@ class LocalMesher {
             createMeshFaces(AxisD.Z, meshStart, meshEnd, flatTree),
         )
 
-        val graph = LongGraph()
-
-        createMeshEdges2(meshStart, meshEnd, meshFaces, flatTree, graph)
+        createMeshEdges2(meshStart, meshEnd, meshFaces, flatTree)
 
         return Mesh2(
             start = meshStart,
@@ -104,38 +132,8 @@ class LocalMesher {
             yEdges2 = _yAxiss2,
             zEdges2 = _zAxiss2,
             flatTree = flatTree,
-            convexFaceGraph = graph,
+            states = states,
         )
-    }
-
-    private fun MeshFaces.constructUF(): Long2IntUnionFind {
-        val size = xFaces.ls.size + yFaces.ls.size + zFaces.ls.size
-        val uf = Long2IntUnionFind(size)
-        var count = 0
-
-        var x = 0
-        while (x < xFaces.ls.size) {
-            uf.insert(x.toLong())
-            count++
-            x++
-        }
-
-
-        var y = 0
-        while (y < yFaces.ls.size) {
-            uf.insert(y.toLong())
-            count++
-            y++
-        }
-
-        var z = 0
-        while (z < zFaces.ls.size) {
-            uf.insert(z.toLong())
-            count++
-            z++
-        }
-
-        return uf
     }
 
     private fun createMeshFaces(
@@ -222,7 +220,6 @@ class LocalMesher {
         meshEnd: Vector3i,
         meshFaces: MeshFaces,
         tree: FlattenedAABBTree,
-        convexFaceGraph: LongGraph,
     ) {
         val epsilon = 0
         //TODO: Dont put out of bounds points on edges
@@ -268,52 +265,52 @@ class LocalMesher {
 
             val x0aStart = _bb[BB_MIN_Y]
             val x0bStart = _bb[BB_MIN_Z]
-            _xAxiss2.insertEdge(x0aStart, x0bStart, xStart, xEnd, meshFaces, convexFaceGraph)
+            _xAxiss2.insertEdge(x0aStart, x0bStart, xStart, xEnd, meshFaces)
 
             val x1aStart = _bb[BB_MAX_Y]
             val x1bStart = _bb[BB_MIN_Z]
-            _xAxiss2.insertEdge(x1aStart, x1bStart, xStart, xEnd, meshFaces, convexFaceGraph)
+            _xAxiss2.insertEdge(x1aStart, x1bStart, xStart, xEnd, meshFaces)
 
             val x2aStart = _bb[BB_MAX_Y]
             val x2bStart = _bb[BB_MAX_Z]
-            _xAxiss2.insertEdge(x2aStart, x2bStart, xStart, xEnd, meshFaces, convexFaceGraph)
+            _xAxiss2.insertEdge(x2aStart, x2bStart, xStart, xEnd, meshFaces)
 
             val x3aStart = _bb[BB_MIN_Y]
             val x3bStart = _bb[BB_MAX_Z]
-            _xAxiss2.insertEdge(x3aStart, x3bStart, xStart, xEnd, meshFaces, convexFaceGraph)
+            _xAxiss2.insertEdge(x3aStart, x3bStart, xStart, xEnd, meshFaces)
 
             val y0aStart = _bb[BB_MIN_X]
             val y0bStart = _bb[BB_MIN_Z]
-            _yAxiss2.insertEdge(y0aStart, y0bStart, yStart, yEnd, meshFaces, convexFaceGraph)
+            _yAxiss2.insertEdge(y0aStart, y0bStart, yStart, yEnd, meshFaces)
 
             val y1aStart = _bb[BB_MAX_X]
             val y1bStart = _bb[BB_MIN_Z]
-            _yAxiss2.insertEdge(y1aStart, y1bStart, yStart, yEnd, meshFaces, convexFaceGraph)
+            _yAxiss2.insertEdge(y1aStart, y1bStart, yStart, yEnd, meshFaces)
 
             val y2aStart = _bb[BB_MAX_X]
             val y2bStart = _bb[BB_MAX_Z]
-            _yAxiss2.insertEdge(y2aStart, y2bStart, yStart, yEnd, meshFaces, convexFaceGraph)
+            _yAxiss2.insertEdge(y2aStart, y2bStart, yStart, yEnd, meshFaces)
 
             val y3aStart = _bb[BB_MIN_X]
             val y3bStart = _bb[BB_MAX_Z]
-            _yAxiss2.insertEdge(y3aStart, y3bStart, yStart, yEnd, meshFaces, convexFaceGraph)
+            _yAxiss2.insertEdge(y3aStart, y3bStart, yStart, yEnd, meshFaces)
 
 
             val z0aStart = _bb[BB_MIN_X]
             val z0bStart = _bb[BB_MIN_Y]
-            _zAxiss2.insertEdge(z0aStart, z0bStart, zStart, zEnd, meshFaces, convexFaceGraph)
+            _zAxiss2.insertEdge(z0aStart, z0bStart, zStart, zEnd, meshFaces)
 
             val z1aStart = _bb[BB_MAX_X]
             val z1bStart = _bb[BB_MIN_Y]
-            _zAxiss2.insertEdge(z1aStart, z1bStart, zStart, zEnd, meshFaces, convexFaceGraph)
+            _zAxiss2.insertEdge(z1aStart, z1bStart, zStart, zEnd, meshFaces)
 
             val z2aStart = _bb[BB_MAX_X]
             val z2bStart = _bb[BB_MAX_Y]
-            _zAxiss2.insertEdge(z2aStart, z2bStart, zStart, zEnd, meshFaces, convexFaceGraph)
+            _zAxiss2.insertEdge(z2aStart, z2bStart, zStart, zEnd, meshFaces)
 
             val z3aStart = _bb[BB_MIN_X]
             val z3bStart = _bb[BB_MAX_Y]
-            _zAxiss2.insertEdge(z3aStart, z3bStart, zStart, zEnd, meshFaces, convexFaceGraph)
+            _zAxiss2.insertEdge(z3aStart, z3bStart, zStart, zEnd, meshFaces)
         }
 
         _xAxiss2.fixUp(tree, meshFaces)
@@ -329,17 +326,18 @@ class LocalMesher {
         val xEdges2: FlattenedEdgeQuadtree? = null,
         val yEdges2: FlattenedEdgeQuadtree? = null,
         val zEdges2: FlattenedEdgeQuadtree? = null,
-        val convexFaceGraph: LongGraph? = null,
         val flatTree: FlattenedAABBTree?,
+
+        val states: Map<Vector3i, Long>, // TODO: replace with LongArray
     ) {
         fun visualize(world: World) {
 //            println("visualizing mesh")
-//            xEdges2?.visualize(world)
-//            yEdges2?.visualize(world)
-//            zEdges2?.visualize(world)
+            xEdges2?.visualize(world)
+            yEdges2?.visualize(world)
+            zEdges2?.visualize(world)
 //            flatTree?.visualize(world)
 
-            faces?.xFaces?.ls?.forEach { it.visualize(world) }
+//            faces?.xFaces?.ls?.forEach { it.visualize(world) }
 //            faces?.yFaces?.ls?.forEach { it.visualize(world) }
 //            faces?.zFaces?.ls?.forEach { it.visualize(world) }
 ////

@@ -1,6 +1,5 @@
 package com.ixume.udar.collisiondetection.mesh.quadtree
 
-import com.google.common.math.IntMath
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFaces
@@ -10,7 +9,6 @@ import com.ixume.udar.dynamicaabb.array.FlattenedAABBTree
 import com.ixume.udar.dynamicaabb.array.IntStack
 import com.ixume.udar.dynamicaabb.array.withHigher
 import com.ixume.udar.dynamicaabb.array.withLower
-import com.ixume.udar.physics.contact.LongGraph
 import com.ixume.udar.testing.debugConnect
 import it.unimi.dsi.fastutil.doubles.DoubleAVLTreeSet
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
@@ -110,8 +108,8 @@ class FlattenedEdgeQuadtree(
         )
     }
 
-    fun insertEdge(x: Double, y: Double, start: Double, end: Double, meshFaces: MeshFaces, graph: LongGraph) {
-        _insertEdge(x, y, start, end - ASYMMETRY_EPSILON, meshFaces, graph)
+    fun insertEdge(x: Double, y: Double, start: Double, end: Double, meshFaces: MeshFaces) {
+        _insertEdge(x, y, start, end - ASYMMETRY_EPSILON, meshFaces)
     }
 
     private val fixupQueue = IntStack()
@@ -429,7 +427,6 @@ class FlattenedEdgeQuadtree(
         start: Double,
         end: Double,
         meshFaces: MeshFaces,
-        graph: LongGraph,
     ): Boolean {
         edgeInsertionQueue.enqueue(rootIdx)
 
