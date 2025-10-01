@@ -204,7 +204,7 @@ open class A2SContactDataBuffer(private val numContacts: Int) {
     }
 
     fun maxX(): Float {
-        var maxX = Float.MAX_VALUE
+        var maxX = -Float.MAX_VALUE
         var i = 0
         while (i < cursor) {
             val contact = this[i]
@@ -217,7 +217,7 @@ open class A2SContactDataBuffer(private val numContacts: Int) {
     }
 
     fun maxY(): Float {
-        var maxY = Float.MAX_VALUE
+        var maxY = -Float.MAX_VALUE
         var i = 0
         while (i < cursor) {
             val contact = this[i]
@@ -230,7 +230,7 @@ open class A2SContactDataBuffer(private val numContacts: Int) {
     }
 
     fun maxZ(): Float {
-        var maxZ = Float.MAX_VALUE
+        var maxZ = -Float.MAX_VALUE
         var i = 0
         while (i < cursor) {
             val contact = this[i]

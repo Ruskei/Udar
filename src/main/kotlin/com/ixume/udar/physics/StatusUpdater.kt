@@ -3,6 +3,7 @@ package com.ixume.udar.physics
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.Udar
 import com.ixume.udar.body.active.ActiveBody
+import com.ixume.udar.body.active.Composite
 
 class StatusUpdater(
     val physicsWorld: PhysicsWorld,
@@ -20,7 +21,7 @@ class StatusUpdater(
 
             obj.age++
             if (obj.age > birthTime) {
-                if (obj.startled.get()) {
+                if (obj.startled.get() || (obj is Composite && obj.isStartled())) {
                     obj.idleTime = 0
                     obj.awake.set(true)
                     obj.startled.set(false)
@@ -42,4 +43,15 @@ class StatusUpdater(
             }
         }
     }
+}
+
+fun Composite.isStartled(): Boolean {
+    var i = 0
+    val parts = parts
+    while (i < parts.size) {
+        if (parts[i].startled.get()) return true
+        i++
+    }
+    
+    return false
 }

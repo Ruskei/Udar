@@ -49,19 +49,24 @@ class EnvManifoldBuffer(numContacts: Int) {
 //        println("ADDING FACE MANIFOLD (${face.id})")
         var existing = running.get(face.id)
         if (existing == null) {
-            existing = ManifoldNode(LongOpenHashSet(), false)
+            existing = ManifoldNode()
             running.put(face.id, existing)
-        } else {
-            existing.isEdge = false
         }
 
         val minX = buf.minX()
         val minY = buf.minY()
         val minZ = buf.minZ()
-
         val maxX = buf.maxX()
         val maxY = buf.maxY()
         val maxZ = buf.maxZ()
+        
+//        println("BB")
+//        println("| minX: $minX")
+//        println("| minY: $minY")
+//        println("| minZ: $minZ")
+//        println("| maxX: $maxX")
+//        println("| maxY: $maxY")
+//        println("| maxZ: $maxZ")
 
         _connections.clear()
 
@@ -73,21 +78,21 @@ class EnvManifoldBuffer(numContacts: Int) {
             when (conn.tree.axis) {
                 LocalMesher.AxisD.X -> {
                     if (maxX >= conn.min && minX <= conn.max) {
-//                        println("  * overlapping with ${conn.myFaceID}<->${conn.otherFaceID}, bounds: ${conn.min}<->${conn.max}!")
+//                        println("  * overlapping with ${conn.otherFaceID}, bounds: ${conn.min}<->${conn.max}!")
                         _connections.add(conn.otherFaceID)
                     }
                 }
 
                 LocalMesher.AxisD.Y -> {
                     if (maxY >= conn.min && minY <= conn.max) {
-//                        println("  * overlapping with ${conn.myFaceID}<->${conn.otherFaceID}, bounds: ${conn.min}<->${conn.max}!")
+//                        println("  * overlapping with ${conn.otherFaceID}, bounds: ${conn.min}<->${conn.max}!")
                         _connections.add(conn.otherFaceID)
                     }
                 }
 
                 LocalMesher.AxisD.Z -> {
                     if (maxZ >= conn.min && minZ <= conn.max) {
-//                        println("  * overlapping with ${conn.myFaceID}<->${conn.otherFaceID}, bounds: ${conn.min}<->${conn.max}!")
+//                        println("  * overlapping with ${conn.otherFaceID}, bounds: ${conn.min}<->${conn.max}!")
                         _connections.add(conn.otherFaceID)
                     }
                 }
@@ -103,8 +108,8 @@ class EnvManifoldBuffer(numContacts: Int) {
             val present = running.get(l)
             if (present != null) {
 //                println("  - connected face with existing $l")
-                existing.set.add(l)
-                present.set.add(face.id)
+                existing.add(l)
+                present.add(face.id)
             }
         }
 
@@ -160,7 +165,7 @@ class EnvManifoldBuffer(numContacts: Int) {
         val itr = Long2ObjectMaps.fastIterator(running)
         while (itr.hasNext()) {
             val e = itr.next()
-            e.value.set.clear()
+            e.value.clear()
         }
     }
 
@@ -172,30 +177,25 @@ class EnvManifoldBuffer(numContacts: Int) {
             val entry = idxItr.next()
             val node = running.get(entry.longKey)!!
             val idx = entry.intValue
-            if (node.isEdge) {
-//                println("  - loaded edge $idx")
+            var valid = true
+            val myDepth = buffer.maxDepth(idx)
+            val adjacentItr = node.longIterator()
+            while (adjacentItr.hasNext()) {
+                val l = adjacentItr.nextLong()
+                val adj = idxMap.get(l)
+                if (adj == -1) continue
+
+                val adjDepth = buffer.maxDepth(adj)
+                if (adjDepth < myDepth) {
+//                    println("  - failed to load face $idx, usurped by $adj")
+                    valid = false
+                    break
+                }
+            }
+
+            if (valid) {
+//                println("  - loaded face $idx")
                 out.load(buffer, idx)
-            } else {
-                var valid = true
-                val myDepth = buffer.maxDepth(idx)
-                val adjacentItr = node.set.longIterator()
-                while (adjacentItr.hasNext()) {
-                    val l = adjacentItr.nextLong()
-                    val adj = idxMap.get(l)
-                    if (adj == -1) continue
-
-                    val adjDepth = buffer.maxDepth(adj)
-                    if (adjDepth < myDepth) {
-//                        println("  - failed to load face $idx, usurped by $adj")
-                        valid = false
-                        break
-                    }
-                }
-
-                if (valid) {
-//                    println("  - loaded face $idx")
-                    out.load(buffer, idx)
-                }
             }
         }
 
@@ -209,7 +209,4 @@ class EnvManifoldBuffer(numContacts: Int) {
     }
 }
 
-class ManifoldNode(
-    val set: LongSet,
-    var isEdge: Boolean,
-)
+typealias ManifoldNode = LongOpenHashSet
