@@ -4,6 +4,8 @@ import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.Edge
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
+import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFace
+import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFaceSortedList
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.physics.contact.a2s.A2SContactDataBuffer
 import com.ixume.udar.physics.contact.a2s.EnvManifoldBuffer
@@ -26,11 +28,13 @@ class LocalMathUtil(
     fun collidePlane(
         rawManifoldIdx: Int,
         axis: LocalMesher.AxisD,
-        level: Double,
+        face: MeshFace,
+        faces: MeshFaceSortedList,
         vertices: Array<Vector3d>,
         bb: AABB,
         out: A2SContactDataBuffer,
     ): Boolean {
+        val level = face.level
         val min = when (axis) {
             LocalMesher.AxisD.X -> bb.minX
             LocalMesher.AxisD.Y -> bb.minY
@@ -64,7 +68,7 @@ class LocalMathUtil(
 //        println("| axis: $axis")
 //        println("| level: $level")
 //        println("| min..max: $min..$max")
-
+        var any = false
         if (level - min < max - level) {
             var i = 0
             while (i < vertices.size) {
@@ -72,11 +76,20 @@ class LocalMathUtil(
                 val p = axis.project(v).toFloat().toDouble() // for consistency with exclusion with holes
 
                 if (p <= level) {
+                    if (
+                        !(v.x >= faces.meshStart.x && v.x < faces.meshEnd.x &&
+                          v.y >= faces.meshStart.y && v.y < faces.meshEnd.y &&
+                          v.z >= faces.meshStart.z && v.z < faces.meshEnd.z)
+                    ) {
+                        i++
+                        continue
+                    }
+                    
                     val closest = world.prevEnvContactData.closest(
                         rawManifoldIdx,
                         v.x.toFloat(),
                         v.y.toFloat(),
-                        v.z.toFloat()
+                        v.z.toFloat(),
                     )
 
                     var normalLambda = 0f
@@ -94,6 +107,7 @@ class LocalMathUtil(
 //                    println("  | p: $p")
 //                    println("  | n: ${axis.vec}")
 
+                    any = true
                     out.loadInto(
                         pointAX = v.x.toFloat(),
                         pointAY = v.y.toFloat(),
@@ -122,6 +136,15 @@ class LocalMathUtil(
                 val p = axis.project(v).toFloat().toDouble()
 
                 if (p >= level) {
+                    if (
+                        !(v.x >= faces.meshStart.x && v.x < faces.meshEnd.x &&
+                          v.y >= faces.meshStart.y && v.y < faces.meshEnd.y &&
+                          v.z >= faces.meshStart.z && v.z < faces.meshEnd.z)
+                    ) {
+                        i++
+                        continue
+                    }
+                    
                     val closest = world.prevEnvContactData.closest(
                         rawManifoldIdx,
                         v.x.toFloat(),
@@ -145,6 +168,7 @@ class LocalMathUtil(
 //                    println("  | p: $p")
 //                    println("  | n: $negatedAxis")
 
+                    any = true
                     out.loadInto(
                         pointAX = v.x.toFloat(),
                         pointAY = v.y.toFloat(),
@@ -166,7 +190,7 @@ class LocalMathUtil(
             }
         }
 
-        return true
+        return any
     }
 
     /**
@@ -187,6 +211,7 @@ class LocalMathUtil(
 
         allowedNormals: Array<Vector3d>,
         out: EnvManifoldBuffer,
+        mesh: LocalMesher.Mesh2,
     ) {
 //        println("EDGE COLLISION TEST")
         var minBodyOverlap = Double.MAX_VALUE
@@ -420,7 +445,8 @@ class LocalMathUtil(
                 activeBody = activeBody,
                 edgeStart = edgeStart,
                 edgeEnd = edgeEnd,
-                edgeIdx = closestEdgeIdx
+                edgeIdx = closestEdgeIdx,
+                mesh = mesh,
             )
 
             val rawManifoldIdx = activeBody.physicsWorld.prevEnvContactMap.get(manifoldID)
@@ -486,7 +512,7 @@ class LocalMathUtil(
                 if (minBodyInDirOfAxis) {
                     check(abs(norm.length() - 1.0) < 1e-5)
 
-                    val manifoldID = constructA2SEdgeManifoldID(activeBody, edgeStart, edgeEnd, true)
+                    val manifoldID = constructA2SEdgeManifoldID(activeBody, edgeStart, edgeEnd, true, mesh)
                     val rawManifoldIdx = activeBody.physicsWorld.prevEnvContactMap.get(manifoldID)
 
                     val pointAX = (edgeEnd.x - minBodyAxis.x * minBodyOverlap).toFloat()
@@ -521,7 +547,7 @@ class LocalMathUtil(
                     return
                 } else {
                     check(abs(norm.length() - 1.0) < 1e-5)
-                    val manifoldID = constructA2SEdgeManifoldID(activeBody, edgeStart, edgeEnd, false)
+                    val manifoldID = constructA2SEdgeManifoldID(activeBody, edgeStart, edgeEnd, false, mesh)
                     val rawManifoldIdx = activeBody.physicsWorld.prevEnvContactMap.get(manifoldID)
 
                     val pointAX = (edgeStart.x + minBodyAxis.x * minBodyOverlap).toFloat()
@@ -559,7 +585,7 @@ class LocalMathUtil(
                 // edgeStart is max, edgeEnd is min
                 if (minBodyInDirOfAxis) {
                     check(abs(norm.length() - 1.0) < 1e-5)
-                    val manifoldID = constructA2SEdgeManifoldID(activeBody, edgeStart, edgeEnd, true)
+                    val manifoldID = constructA2SEdgeManifoldID(activeBody, edgeStart, edgeEnd, true, mesh)
                     val rawManifoldIdx = activeBody.physicsWorld.prevEnvContactMap.get(manifoldID)
 
                     val pointAX = (edgeStart.x - minBodyAxis.x * minBodyOverlap).toFloat()
@@ -594,7 +620,7 @@ class LocalMathUtil(
                     return
                 } else {
                     check(abs(norm.length() - 1.0) < 1e-5)
-                    val manifoldID = constructA2SEdgeManifoldID(activeBody, edgeStart, edgeEnd, false)
+                    val manifoldID = constructA2SEdgeManifoldID(activeBody, edgeStart, edgeEnd, false, mesh)
                     val rawManifoldIdx = activeBody.physicsWorld.prevEnvContactMap.get(manifoldID)
 
                     val pointAX = (edgeEnd.x + minBodyAxis.x * minBodyOverlap).toFloat()
@@ -637,6 +663,7 @@ class LocalMathUtil(
         edgeStart: Vector3d,
         edgeEnd: Vector3d,
         edgeIdx: Int,
+        mesh: LocalMesher.Mesh2
     ): Long {
         var result = 31L
         val prime = 31L
@@ -653,6 +680,8 @@ class LocalMathUtil(
         result = result * prime + edgeEnd.z.toRawBits()
 
         result = result * prime + edgeIdx
+        
+        result + result * prime + mesh.hashCode()
 
         return result
     }
@@ -662,6 +691,7 @@ class LocalMathUtil(
         edgeStart: Vector3d,
         edgeEnd: Vector3d,
         inDir: Boolean,
+        mesh: LocalMesher.Mesh2,
     ): Long {
         var result = 31L
         val prime = 31L
@@ -678,6 +708,8 @@ class LocalMathUtil(
         result = result * prime + edgeEnd.z.toRawBits()
 
         result = result * prime + if (inDir) 1 else 0
+
+        result + result * prime + mesh.hashCode()
 
         return result
     }

@@ -6,7 +6,7 @@ import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentContactGen
 import com.ixume.udar.collisiondetection.mesh.aabbtree2d.AABB2D
 import com.ixume.udar.collisiondetection.mesh.mesh2.EdgeMountAllowedNormals
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
-import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFace
+import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFaceSortedList
 import com.ixume.udar.collisiondetection.mesh.quadtree.FlattenedEdgeQuadtree
 import com.ixume.udar.dynamicaabb.array.FlattenedAABBTree
 import com.ixume.udar.physics.contact.a2s.A2SContactDataBuffer
@@ -43,6 +43,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 
         var m = 0
         while (m < meshes.meshes.size) {
+//            println("- MESH")
             val mesh = meshes.meshes[m]
             val faces = mesh.faces
             val bbs = mesh.flatTree
@@ -56,9 +57,9 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 
             if (faces != null) {
 //                println(" - TESTING MESH FACES")
-                collideFaces(activeBody, faces.xFaces.ls, bbs, LocalMesher.AxisD.X, math, other)
-                collideFaces(activeBody, faces.yFaces.ls, bbs, LocalMesher.AxisD.Y, math, other)
-                collideFaces(activeBody, faces.zFaces.ls, bbs, LocalMesher.AxisD.Z, math, other)
+                collideFaces(activeBody, faces.xFaces, bbs, LocalMesher.AxisD.X, math, mesh)
+                collideFaces(activeBody, faces.yFaces, bbs, LocalMesher.AxisD.Y, math, mesh)
+                collideFaces(activeBody, faces.zFaces, bbs, LocalMesher.AxisD.Z, math, mesh)
             }
 
             mesh.xEdges2?.let {
@@ -66,8 +67,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                     activeBody = activeBody,
                     tree = it,
                     math = math,
-                    other = other,
-                    out = out,
+                    mesh = mesh,
                 )
             }
 
@@ -76,8 +76,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                     activeBody = activeBody,
                     tree = it,
                     math = math,
-                    other = other,
-                    out = out,
+                    mesh = mesh,
                 )
             }
 
@@ -86,8 +85,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                     activeBody = activeBody,
                     tree = it,
                     math = math,
-                    other = other,
-                    out = out,
+                    mesh = mesh,
                 )
             }
 
@@ -106,11 +104,11 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 
     private fun collideFaces(
         activeBody: ActiveBody,
-        faces: List<MeshFace>,
+        faces: MeshFaceSortedList,
         bbs: FlattenedAABBTree,
         axis: LocalMesher.AxisD,
         math: LocalMathUtil,
-        other: Body,
+        mesh: LocalMesher.Mesh2,
     ) {
         val bb = activeBody.tightBB
         //faces are guaranteed to be inside BB
@@ -142,11 +140,11 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         var count = 0
 
         var i = 0
-        while (i < faces.size) {
+        while (i < faces.ls.size) {
             _contacts2.clear()
             _validContacts2.clear()
 
-            val face = faces[i]
+            val face = faces.ls[i]
 
             if (!face.overlaps(bb)) {
                 i++
@@ -156,7 +154,8 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
             val manifoldID = constructFaceID(
                 body = activeBody,
                 faceAxis = axis,
-                faceLevel = face.level
+                faceLevel = face.level,
+                mesh = mesh,
             )
 
             val rawManifoldIdx = activeBody.physicsWorld.prevEnvContactMap.get(manifoldID)
@@ -165,7 +164,8 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 
             val any = math.collidePlane(
                 axis = axis,
-                level = face.level,
+                face = face,
+                faces = faces,
                 vertices = vertices,
                 out = _contacts2,
                 rawManifoldIdx = rawManifoldIdx,
@@ -315,6 +315,12 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 //                println("  | ($x $y $z)")
 //                println("  | depth: ${_contacts2.depth(j)}")
 
+//                if (axis == LocalMesher.AxisD.Y) {
+//                    println("manifoldID: $manifoldID")
+//                    println(" - body: ${activeBody.uuid}")
+//                    println(" - level: ${face.level}")
+//                }
+
                 _contacts2.loadInto(j, _validContacts2)
 
                 j++
@@ -335,7 +341,12 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 //        println("  - Tested $count $axis faces!")
     }
 
-    private fun constructFaceID(body: ActiveBody, faceAxis: LocalMesher.AxisD, faceLevel: Double): Long {
+    private fun constructFaceID(
+        body: ActiveBody,
+        faceAxis: LocalMesher.AxisD,
+        faceLevel: Double,
+        mesh: LocalMesher.Mesh2,
+    ): Long {
         var result = 31L
 
         val prime = 31L
@@ -349,6 +360,8 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 
         val doubleBits = faceLevel.toRawBits()
         result = result * prime + doubleBits
+
+        result = result * prime + mesh.hashCode()
 
         return result
     }
@@ -384,8 +397,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         activeBody: ActiveBody,
         tree: FlattenedEdgeQuadtree,
         math: LocalMathUtil,
-        other: Body,
-        out: A2SManifoldCollection,
+        mesh: LocalMesher.Mesh2,
     ): Boolean {
         /*
         get all edges that we could possibly be colliding with; we could have a valid collision with each of these edges (not using discrete curvature graph rn)
@@ -471,6 +483,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                     allowedNormals = _allowedNormals,
                     edges = activeBody.edges,
                     out = _possibleManifolds,
+                    mesh = mesh,
                 )
 
                 i++

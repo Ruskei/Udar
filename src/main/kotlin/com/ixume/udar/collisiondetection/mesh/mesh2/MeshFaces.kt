@@ -1,7 +1,6 @@
 package com.ixume.udar.collisiondetection.mesh.mesh2
 
 import com.google.common.math.IntMath
-import com.google.common.math.LongMath
 
 class MeshFaces(
     val xFaces: MeshFaceSortedList,
