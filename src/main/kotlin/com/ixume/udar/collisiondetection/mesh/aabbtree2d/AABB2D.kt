@@ -9,43 +9,10 @@ import org.joml.Vector3d
 import java.lang.Double.max
 import java.lang.Double.min
 
-class AABB2D(
-    val data: DoubleArray,
-    var node: AABBNode2D? = null,
-) {
-    var inDir: Boolean = false
-
-    val volume: Double
-        get() {
-            return (data[MAX_A] - data[MIN_A]) * (data[MAX_B] - data[MIN_B])
-        }
-
-    fun setUnion(a: AABB2D, b: AABB2D) {
-        data[MIN_A] = min(a.data[MIN_A], b.data[MIN_A])
-        data[MIN_B] = min(a.data[MIN_B], b.data[MIN_B])
-        data[MAX_A] = max(a.data[MAX_A], b.data[MAX_A])
-        data[MAX_B] = max(a.data[MAX_B], b.data[MAX_B])
-    }
-
-    fun refit(b: AABB2D) {
-        data[MIN_A] = min(data[MIN_A], b.data[MIN_A])
-        data[MIN_B] = min(data[MIN_B], b.data[MIN_B])
-        data[MAX_A] = max(data[MAX_A], b.data[MAX_A])
-        data[MAX_B] = max(data[MAX_B], b.data[MAX_B])
-    }
-
+@JvmInline
+value class AABB2D(val data: DoubleArray) {
     fun overlaps(other: AABB2D): Boolean {
         return overlaps(other.data[MIN_A], other.data[MIN_B], other.data[MAX_A], other.data[MAX_B])
-    }
-
-    fun calcOverlap(other: AABB2D): AABB2D {
-        val arr = DoubleArray(4)
-        arr[MIN_A] = max(data[MIN_A], other.data[MIN_A])
-        arr[MIN_B] = max(data[MIN_B], other.data[MIN_B])
-        arr[MAX_A] = min(data[MAX_A], other.data[MAX_A])
-        arr[MAX_B] = min(data[MAX_B], other.data[MAX_B])
-
-        return AABB2D(arr)
     }
 
     fun overlaps(minX: Double, minY: Double, maxX: Double, maxY: Double): Boolean {
@@ -79,14 +46,6 @@ class AABB2D(
 
     fun maxB(): Double {
         return data[MAX_B]
-    }
-
-    fun updateTree(tree: AABBTree2D) {
-        node?.let {
-            tree.remove(it)
-        }
-
-        tree.insert(this)
     }
 
     fun visualize(world: World, depth: Int, level: Double, axis: LocalMesher.AxisD, isHole: Boolean) {
@@ -123,25 +82,7 @@ class AABB2D(
         internal const val MIN_B = 1
         internal const val MAX_A = 2
         internal const val MAX_B = 3
-
-        fun union(a: AABB2D, b: AABB2D): AABB2D {
-            val arr = DoubleArray(6)
-            arr[MIN_A] = min(a.data[MIN_A], b.data[MIN_A])
-            arr[MIN_B] = min(a.data[MIN_B], b.data[MIN_B])
-            arr[MAX_A] = max(a.data[MAX_A], b.data[MAX_A])
-            arr[MAX_B] = max(a.data[MAX_B], b.data[MAX_B])
-            return AABB2D(data = arr)
-        }
-
-        fun unifiedCost(a: AABB2D, b: AABB2D): Double {
-            val minX = min(a.data[MIN_A], b.data[MIN_A])
-            val minY = min(a.data[MIN_B], b.data[MIN_B])
-            val maxX = max(a.data[MAX_A], b.data[MAX_A])
-            val maxY = max(a.data[MAX_B], b.data[MAX_B])
-
-            return (maxX - minX) * (maxY - minY)
-        }
-
+        
         fun withLevel(axis: LocalMesher.AxisD, a: Double, b: Double, level: Double): Vector3d {
             return when (axis) {
                 LocalMesher.AxisD.X -> Vector3d(level, a, b)

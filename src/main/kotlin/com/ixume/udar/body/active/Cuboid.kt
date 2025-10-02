@@ -7,7 +7,6 @@ import com.ixume.udar.collisiondetection.capability.GJKCapable
 import com.ixume.udar.collisiondetection.capability.SDFCapable
 import com.ixume.udar.collisiondetection.contactgeneration.CuboidSATContactGenerator
 import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentContactGenerator2
-import com.ixume.udar.collisiondetection.contactgeneration.worldmesh.WorldMeshesManager
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldCollection
@@ -57,7 +56,8 @@ class Cuboid(
     }
 
     override fun globalToLocal(vec: Vector3d): Vector3d {
-        return Vector3d(vec).sub(pos).rotate(Quaterniond(q).conjugate()).mul(1.0 / scale.x, 1.0 / scale.y, 1.0 / scale.z)
+        return Vector3d(vec).sub(pos).rotate(Quaterniond(q).conjugate())
+            .mul(1.0 / scale.x, 1.0 / scale.y, 1.0 / scale.z)
     }
 
     private val rawVertices: List<Vector3d> = listOf(
@@ -199,7 +199,7 @@ class Cuboid(
     init {
         updateVertices()
         updateII()
-        
+
         if (!isChild) {
             physicsWorld.worldMeshesManager.envContactGenerators += envContactGen
         }
