@@ -4,7 +4,6 @@ import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.Composite
 import com.ixume.udar.collisiondetection.contactgeneration.worldmesh.WorldMeshesManager
-import com.ixume.udar.collisiondetection.mesh.Mesh
 import com.ixume.udar.collisiondetection.pool.MathPool
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.dynamicaabb.FlattenedBodyAABBTree
@@ -67,8 +66,6 @@ class PhysicsWorld(
         prevEnvContactMap.defaultReturnValue(-1)
         prevContactMap.defaultReturnValue(-1)
     }
-
-    val meshes: MutableList<Mesh> = mutableListOf()
 
     val environmentBody = EnvironmentBody(this)
 
@@ -160,7 +157,6 @@ class PhysicsWorld(
                 debugData.reset()
                 manifoldBuffer.clear()
                 envManifoldBuffer.clear()
-                meshes.clear()
 
                 val bodiesSnapshot = activeBodies.activeBodies()
 
