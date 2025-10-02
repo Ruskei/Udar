@@ -6,7 +6,6 @@ import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldCollection
-import org.joml.Vector3i
 import java.util.concurrent.atomic.AtomicReference
 
 class EnvironmentContactGenerator2(
@@ -18,7 +17,7 @@ class EnvironmentContactGenerator2(
         return 0
     }
 
-    val meshes = AtomicReference(Meshes())
+    val meshes = Meshes()
 
     override fun collides(other: EnvironmentBody, math: LocalMathUtil, out: A2SManifoldCollection): Boolean {
         return math.envContactUtil.collides(this, activeBody, other, out)

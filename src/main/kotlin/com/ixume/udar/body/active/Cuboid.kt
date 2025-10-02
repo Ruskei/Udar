@@ -7,6 +7,7 @@ import com.ixume.udar.collisiondetection.capability.GJKCapable
 import com.ixume.udar.collisiondetection.capability.SDFCapable
 import com.ixume.udar.collisiondetection.contactgeneration.CuboidSATContactGenerator
 import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentContactGenerator2
+import com.ixume.udar.collisiondetection.contactgeneration.worldmesh.WorldMeshesManager
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldCollection
@@ -42,6 +43,7 @@ class Cuboid(
     override val physicsWorld: PhysicsWorld = world.physicsWorld!!
     override val id: Long = physicsWorld.createID()
 
+    override val dead: AtomicBoolean = AtomicBoolean(false)
     override var isChild: Boolean = false
     override var age: Int = 0
     override val awake = AtomicBoolean(true)
@@ -55,7 +57,7 @@ class Cuboid(
     }
 
     override fun globalToLocal(vec: Vector3d): Vector3d {
-        return Vector3d(vec).sub(pos).rotate(Quaterniond(q).conjugate()).div(scale)
+        return Vector3d(vec).sub(pos).rotate(Quaterniond(q).conjugate()).mul(1.0 / scale.x, 1.0 / scale.y, 1.0 / scale.z)
     }
 
     private val rawVertices: List<Vector3d> = listOf(
@@ -197,9 +199,14 @@ class Cuboid(
     init {
         updateVertices()
         updateII()
+        
+        if (!isChild) {
+            physicsWorld.worldMeshesManager.envContactGenerators += envContactGen
+        }
     }
 
     override fun onKill() {
+        physicsWorld.worldMeshesManager.envContactGenerators -= envContactGen
         debugDisplay?.remove()
     }
 
@@ -207,9 +214,6 @@ class Cuboid(
 
     override val prevQ = Quaterniond(q)
     private val prevP = Vector3d(pos)
-
-    private val _quat = Quaterniond()
-    private val _quat2 = Quaterniond()
 
     override fun step() {
         prevQ.set(q)

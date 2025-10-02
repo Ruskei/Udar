@@ -3,15 +3,13 @@ package com.ixume.udar.collisiondetection.contactgeneration.worldmesh
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.Udar
 import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentContactGenerator2
-import com.ixume.udar.collisiondetection.contactgeneration.Meshes
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.dynamicaabb.AABB
 import org.bukkit.Bukkit
 import org.bukkit.World
 import org.bukkit.scheduler.BukkitTask
-import org.joml.Vector3i
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.CopyOnWriteArraySet
 import kotlin.math.floor
 import kotlin.system.measureNanoTime
 import kotlin.time.DurationUnit
@@ -30,160 +28,110 @@ class WorldMeshesManager(
 
     private val mesher = LocalMesher()
     private val positionedMeshes = ConcurrentHashMap<MeshPosition, LocalMesher.Mesh2>()
-    private val envContactGenerators = ConcurrentHashMap.newKeySet<EnvironmentContactGenerator2>()
-    //TODO: fix mem leak
+    val envContactGenerators = CopyOnWriteArraySet<EnvironmentContactGenerator2>()
 
-    private val queue = ConcurrentLinkedQueue<MeshRequest>()
     private var syncTask: BukkitTask? = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, ::tick, 1, 1)
-
-    fun request(prevBB: AABB?, currentBB: AABB, envContactGenerator: EnvironmentContactGenerator2) {
-        envContactGenerators.add(envContactGenerator)
-        /*
-        go through every possible mesh position that the requested bb could occupy and add a request for that
-
-        1d situation:
-
-        grid:
-          *-----*-----*-----*-----*
-        requested:
-             *----------*
-
-        we only need to modify mesh of contact generator if its current meshes are not equal to new meshes
-        if no generation is needed, do nothing; however if even 1 mesh needs to be generated, we put in a request for the whole thing
-        
-        if toGen is not empty
-            add request
-        else
-            if bounds of current bb == old bb
-                do nothing
-            else
-                modify contact gen immediately
-        end
-            
-         */
-
-        val toGen = mutableListOf<MeshPosition>()
-
-        val meshes = Meshes()
-
-        if (prevBB != null) {
-//            val prevMinX = floor((prevBB.minX - BB_SAFETY) / MESH_SIZE).toInt()
-//            val prevMinY = floor((prevBB.minY - BB_SAFETY) / MESH_SIZE).toInt()
-//            val prevMinZ = floor((prevBB.minZ - BB_SAFETY) / MESH_SIZE).toInt()
-//
-//            val prevMaxX = floor((prevBB.maxX + BB_SAFETY) / MESH_SIZE).toInt()
-//            val prevMaxY = floor((prevBB.maxY + BB_SAFETY) / MESH_SIZE).toInt()
-//            val prevMaxZ = floor((prevBB.maxZ + BB_SAFETY) / MESH_SIZE).toInt()
-//
-            val currentMinX = floor((currentBB.minX - BB_SAFETY) / MESH_SIZE).toInt()
-            val currentMinY = floor((currentBB.minY - BB_SAFETY) / MESH_SIZE).toInt()
-            val currentMinZ = floor((currentBB.minZ - BB_SAFETY) / MESH_SIZE).toInt()
-            val currentMaxX = floor((currentBB.maxX + BB_SAFETY) / MESH_SIZE).toInt()
-            val currentMaxY = floor((currentBB.maxY + BB_SAFETY) / MESH_SIZE).toInt()
-            val currentMaxZ = floor((currentBB.maxZ + BB_SAFETY) / MESH_SIZE).toInt()
-
-//            // check if current is either equal to or contained
-//            val isStillValid = prevMinX >= currentMinX && prevMinY >= currentMinY && prevMinZ >= currentMinZ &&
-//                               prevMaxX <= currentMaxX && prevMaxY <= currentMaxY && prevMaxZ <= currentMaxZ
-//
-//            if (isStillValid)
-
-            for (x in currentMinX..currentMaxX) {
-                for (y in currentMinY..currentMaxY) {
-                    for (z in currentMinZ..currentMaxZ) {
-                        val meshPos = MeshPosition(x, y, z, world)
-
-                        val mesh = positionedMeshes[meshPos]
-
-                        if (mesh == null) {
-                            toGen += meshPos
-                        } else {
-                            // we need to regenerate mesh if any of the blocks around the body have changed; for this we can simply keep a map of hashes of blockstate
-                            // if a difference is found here, then we order it for regeneration
-                            meshes.addMesh(meshPos, mesh)
-                        }
-                    }
-                }
-            }
-        }
-
-        if (toGen.isEmpty()) {
-            envContactGenerator.meshes.set(meshes)
-        } else {
-            queue += MeshRequest(
-                meshes = meshes,
-                toGen = toGen,
-                envContactGenerator = envContactGenerator,
-            )
-        }
-    }
 
     private fun tick() {
         val t = measureNanoTime {
 //            positionedMeshes.forEach { it.value.visualize(world) }
-
-            var rq: MeshRequest?
-            while (queue.poll().also { rq = it } != null) {
-                rq ?: return
-
-                for (tg in rq.toGen) {
-                    genAndAdd2Meshes(tg, rq.meshes)
-                }
-
-                rq.envContactGenerator.meshes.set(rq.meshes)
-            }
-
-            val mpsToUpdate = mutableMapOf<MeshPosition, MutableList<EnvironmentContactGenerator2>>()
+            val mpsToGen = mutableMapOf<MeshPosition, MutableSet<EnvironmentContactGenerator2>>()
             for (gen in envContactGenerators) {
-                val currState = mutableMapOf<Vector3i, Long>()
                 val bb = gen.activeBody.tightBB
-                for (x in (floor(bb.minX).toInt() - 2)..(floor(bb.maxX).toInt() + 2)) {
-                    for (y in (floor(bb.minY).toInt() - 2)..(floor(bb.maxY).toInt() + 2)) {
-                        for (z in (floor(bb.minZ).toInt() - 2)..(floor(bb.maxZ).toInt() + 2)) {
-                            var sum = 1L
 
-                            val block = world.getBlockAt(x, y, z)
-                            if (block.isPassable) {
-                                currState[Vector3i(x, y, z)] = 0L
-                                continue
-                            }
+                val minX = floor(bb.minX).toInt()
+                val minY = floor(bb.minY).toInt()
+                val minZ = floor(bb.minZ).toInt()
 
-                            for (boundingBox in block.collisionShape.boundingBoxes) {
-                                sum = rollingVec3Checksum(
-                                    sum,
-                                    x + boundingBox.minX,
-                                    y + boundingBox.minY,
-                                    z + boundingBox.minZ,
-                                )
-                                sum = rollingVec3Checksum(
-                                    sum,
-                                    x + boundingBox.maxX,
-                                    y + boundingBox.maxY,
-                                    z + boundingBox.maxZ,
-                                )
-                            }
-
-                            currState[Vector3i(x, y, z)] = sum
-                        }
-                    }
-                }
+                val maxX = (floor(bb.maxX).toInt() + 1)
+                val maxY = (floor(bb.maxY).toInt() + 1)
+                val maxZ = (floor(bb.maxZ).toInt() + 1)
 
                 var diff = false
-                for ((key, state) in currState) {
-                    for (x in floor((key.x.toDouble() - 1) / MESH_SIZE).toInt()..floor((key.x.toDouble() + 1) / MESH_SIZE).toInt()) {
-                        for (y in floor((key.y.toDouble() - 1) / MESH_SIZE).toInt()..floor((key.y.toDouble() + 1) / MESH_SIZE).toInt()) {
-                            for (z in floor((key.z.toDouble() - 1) / MESH_SIZE).toInt()..floor((key.z.toDouble() + 1) / MESH_SIZE).toInt()) {
-                                val mp =  MeshPosition(x, y, z, world)
-                                val sum = (positionedMeshes[mp] ?: continue).states[key]
-                                if (sum != null && sum != state) {
-//                                    println("DIFF!")
-                                    diff = true
-                                    mpsToUpdate.getOrPut(mp) { ArrayList() } += gen
+
+                for (x in minX..maxX) {
+                    for (y in minY..maxY) {
+                        for (z in minZ..maxZ) {
+                            var sum = 1L
+                            var calculatedSum = false
+
+                            val block = world.getBlockAt(x, y, z)
+                            val isPassable = block.isPassable
+
+                            forEachMeshPosAt(x, y, z) {
+                                val mesh = positionedMeshes[it]
+                                if (mesh == null) {
+                                    mpsToGen.getOrPut(it) { HashSet() } += gen
+                                } else {
+                                    val state = mesh.stateAt(x, y, z)
+                                    if (isPassable && state != 0L) {
+                                        // is now air
+                                        diff = true
+                                        mpsToGen.getOrPut(it) { HashSet() } += gen
+                                    } else if (isPassable) {
+                                        // is air and was air
+                                        if (!gen.meshes.map.containsKey(it)) {
+                                            gen.meshes.addMesh(it, mesh)
+                                        }
+
+                                        return@forEachMeshPosAt
+                                    }
+
+                                    if (state == 0L) {
+                                        // was air
+                                        diff = true
+                                        mpsToGen.getOrPut(it) { HashSet() } += gen
+                                        return@forEachMeshPosAt
+                                    }
+
+                                    if (!calculatedSum) {
+                                        for (boundingBox in block.collisionShape.boundingBoxes) {
+                                            sum = rollingVec3Checksum(
+                                                sum,
+                                                x + boundingBox.minX,
+                                                y + boundingBox.minY,
+                                                z + boundingBox.minZ,
+                                            )
+                                            sum = rollingVec3Checksum(
+                                                sum,
+                                                x + boundingBox.maxX,
+                                                y + boundingBox.maxY,
+                                                z + boundingBox.maxZ,
+                                            )
+                                        }
+
+                                        calculatedSum = true
+                                    }
+
+                                    if (sum != state) { // diff block
+                                        diff = true
+                                        mpsToGen.getOrPut(it) { HashSet() } += gen
+                                        return@forEachMeshPosAt
+                                    }
+
+                                    // everything is the same and mesh exists, so do nothing if it's already contained in map, otherwise, add it
+                                    if (!gen.meshes.map.containsKey(it)) {
+                                        gen.meshes.addMesh(it, mesh)
+                                    }
                                 }
                             }
                         }
                     }
+                }
 
+                // get everything nearby
+                forEachOverlappingMeshPos(
+                    minX - BB_SAFETY, minX - BB_SAFETY, minX - BB_SAFETY,
+                    maxX + BB_SAFETY, maxX + BB_SAFETY, maxX + BB_SAFETY,
+                ) {
+                    val mesh = positionedMeshes[it]
+                    if (mesh == null) {
+                        mpsToGen.getOrPut(it) { HashSet() } += gen
+                    } else {
+                        if (!gen.meshes.map.containsKey(it)) {
+                            gen.meshes.addMesh(it, mesh)
+                        }
+                    }
                 }
 
                 if (diff) {
@@ -192,41 +140,54 @@ class WorldMeshesManager(
             }
 
             var updated = 0
-            for ((mp, gens) in mpsToUpdate) {
+            for ((mp, gens) in mpsToGen) {
                 updated++
                 val mesh = mp.genMesh()
                 positionedMeshes[mp] = mesh
                 for (g in gens) {
-                    g.meshes.updateAndGet {
-                        val c = it.clone()
-                        c.addMesh(mp, mesh)
-                        c
-                    }
+                    g.meshes.addMesh(mp, mesh)
                 }
             }
 //
 //            println("Updated $updated meshes!")
         }
 
-        val d = t.toDuration(DurationUnit.NANOSECONDS)
+//        val d = t.toDuration(DurationUnit.NANOSECONDS)
 //        println("Mesh manager tick took $d")
     }
 
-    private fun genAndAdd2Meshes(
-        meshPos: MeshPosition,
-        outMeshes: Meshes,
-    ): LocalMesher.Mesh2? {
-        val existingMesh = positionedMeshes[meshPos]
-        if (existingMesh != null) {
-            outMeshes.addMesh(meshPos, existingMesh)
-            return null
+    private inline fun forEachMeshPosAt(x: Int, y: Int, z: Int, action: (MeshPosition) -> Unit) {
+        for (meshX in floor((x.toDouble() - 1) / MESH_SIZE).toInt()..floor((x.toDouble() + 1) / MESH_SIZE).toInt()) {
+            for (meshY in floor((y.toDouble() - 1) / MESH_SIZE).toInt()..floor((y.toDouble() + 1) / MESH_SIZE).toInt()) {
+                for (meshZ in floor((z.toDouble() - 1) / MESH_SIZE).toInt()..floor((z.toDouble() + 1) / MESH_SIZE).toInt()) {
+                    if (
+                        x in (meshX * MESH_SIZE)..(meshX * MESH_SIZE + MESH_SIZE) &&
+                        y in (meshY * MESH_SIZE)..(meshY * MESH_SIZE + MESH_SIZE) &&
+                        z in (meshZ * MESH_SIZE)..(meshZ * MESH_SIZE + MESH_SIZE)
+                    ) {
+                        action(MeshPosition(meshX, meshY, meshZ, world))
+                    }
+                }
+            }
         }
+    }
 
-        val mesh = meshPos.genMesh()
-        positionedMeshes[meshPos] = mesh
-
-        outMeshes.addMesh(meshPos, mesh)
-        return mesh
+    private inline fun forEachOverlappingMeshPos(
+        minX: Int,
+        minY: Int,
+        minZ: Int,
+        maxX: Int,
+        maxY: Int,
+        maxZ: Int,
+        action: (MeshPosition) -> Unit,
+    ) {
+        for (meshX in floor(minX.toDouble() / MESH_SIZE).toInt()..floor(maxX.toDouble() / MESH_SIZE).toInt()) {
+            for (meshY in floor(minY.toDouble() / MESH_SIZE).toInt()..floor(maxY.toDouble() / MESH_SIZE).toInt()) {
+                for (meshZ in floor(minZ.toDouble() / MESH_SIZE).toInt()..floor(maxZ.toDouble() / MESH_SIZE).toInt()) {
+                    action(MeshPosition(meshX, meshY, meshZ, world))
+                }
+            }
+        }
     }
 
     fun MeshPosition.genMesh(): LocalMesher.Mesh2 {
@@ -248,8 +209,8 @@ class WorldMeshesManager(
             )
         }
 
-//        println("Generated mesh in ${t / 1_000_000.0}ms!")
-
+        println("Generated mesh in ${t.toDuration(DurationUnit.NANOSECONDS)}!")
+        println("| at: ${x * MESH_SIZE.toDouble()} ${y * MESH_SIZE.toDouble()} ${z * MESH_SIZE.toDouble()}")
         return mesh
     }
 
@@ -260,16 +221,11 @@ class WorldMeshesManager(
     }
 }
 
-private class MeshRequest(
-    val meshes: Meshes,
-    val toGen: List<MeshPosition>,
-    val envContactGenerator: EnvironmentContactGenerator2,
-)
-
 /**
  * In mesh coordinates; real position is origin * MESH_SIZE
  */
-class MeshPosition(
+@JvmRecord
+data class MeshPosition(
     val x: Int,
     val y: Int,
     val z: Int,
@@ -297,4 +253,4 @@ fun rollingVec3Checksum(sum: Long, x: Double, y: Double, z: Double): Long {
 }
 
 private const val MESH_SIZE = 32
-private const val BB_SAFETY = 4.0
+private const val BB_SAFETY = 8

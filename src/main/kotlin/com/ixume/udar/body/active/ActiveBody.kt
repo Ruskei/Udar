@@ -50,6 +50,7 @@ interface ActiveBody : A2ACollidable, A2SCollidable, Body, Projectable {
     fun visualize() {}
 
     fun onKill()
+    val dead: AtomicBoolean
 
     override fun project(axis: Vector3d): Vector2d {
         var min = Double.MAX_VALUE
