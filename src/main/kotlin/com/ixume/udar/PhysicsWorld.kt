@@ -121,11 +121,13 @@ class PhysicsWorld(
 
     fun removeBody(body: ActiveBody) {
         body.onKill()
+        body.dead.set(true)
         bodiesToRemove += body
     }
 
     fun removeBodies(bodies: Collection<ActiveBody>) {
         for (body in bodies) {
+            body.dead.set(true)
             body.onKill()
         }
 

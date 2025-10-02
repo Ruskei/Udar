@@ -40,6 +40,7 @@ class CompositeImpl(
     override val physicsWorld: PhysicsWorld = world.physicsWorld!!
     override val id: Long = physicsWorld.createID()
 
+    override val dead: AtomicBoolean = AtomicBoolean()
     override var isChild: Boolean = false
     override var age: Int = 0
     override val awake = AtomicBoolean(true)

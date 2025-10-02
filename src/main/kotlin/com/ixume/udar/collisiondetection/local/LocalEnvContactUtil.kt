@@ -27,24 +27,16 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         other: Body,
         out: A2SManifoldCollection,
     ): Boolean {
-        val bb = activeBody.tightBB
-
-        activeBody.physicsWorld.worldMeshesManager.request(
-            prevBB = contactGen.prevBB,
-            currentBB = bb,
-            envContactGenerator = contactGen,
-        )
-
         setupBodyAxiss(activeBody)
 
-        val meshes = contactGen.meshes.get()
+        val meshes = contactGen.meshes.getMeshes()
 
 //        println("ENV COLLISION CHECK")
 
         var m = 0
-        while (m < meshes.meshes.size) {
+        while (m < meshes.size) {
 //            println("- MESH")
-            val mesh = meshes.meshes[m]
+            val mesh = meshes[m]
             val faces = mesh.faces
             val bbs = mesh.flatTree
             if (bbs == null) {
@@ -421,17 +413,17 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         val axis = tree.axis
 
         if (!setupCrossAxiss(axis.vec)) return false
-
-        val aItr = _outA.iterator()
-        val bItr = _outB.iterator()
-        val dataItr = _outData.iterator()
+        
+        val s = _outA.size
+        
+        var idx = 0
 
         var collided = false
 
-        while (aItr.hasNext()) {
-            val a = aItr.nextDouble()
-            val b = bItr.nextDouble()
-            val data = dataItr.nextInt()
+        while (idx < s) {
+            val a = _outA.getDouble(idx)
+            val b = _outB.getDouble(idx)
+            val data = _outData.getInt(idx)
 
             _edgeStart.setComponent(axis.aOffset, a)
             _edgeStart.setComponent(axis.bOffset, b)
@@ -442,7 +434,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
             val pts = tree.points[data]
             val mounts = tree.pointMounts[data]
 
-            val itr = pts.iterator()
+            val itr = pts.doubleIterator()
             var i = 0
             while (itr.hasNext()) {
                 val d1 = itr.nextDouble()
@@ -478,6 +470,8 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 
                 i++
             }
+            
+            idx++
         }
 
         return collided

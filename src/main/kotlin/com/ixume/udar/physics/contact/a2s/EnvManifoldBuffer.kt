@@ -162,11 +162,12 @@ class EnvManifoldBuffer(numContacts: Int) {
         buffer.clear()
         idxMap.clear()
         edgeManifolds.clear()
-        val itr = Long2ObjectMaps.fastIterator(running)
-        while (itr.hasNext()) {
-            val e = itr.next()
-            e.value.clear()
-        }
+        running.clear() // TODO: change this to a memory-churn-free method
+//        val itr = Long2ObjectMaps.fastIterator(running)
+//        while (itr.hasNext()) {
+//            val e = itr.next()
+//            e.value.clear()
+//        }
     }
 
     fun post(out: A2SManifoldCollection) {

@@ -46,7 +46,11 @@ class LocalMesher {
         val flatTree = FlattenedAABBTree(0)
         _bbs.clear()
 
-        val states = mutableMapOf<Vector3i, Long>()
+        val width = meshEnd.x - meshStart.x + 1
+        val height = meshEnd.y - meshStart.y + 1
+        val length = meshEnd.z - meshStart.z + 1
+
+        val state = LongArray(width * height * length)
 
         for (x in (meshStart.x - 1)..(meshEnd.x + 1)) {
             for (y in (meshStart.y - 1)..(meshEnd.y + 1)) {
@@ -58,12 +62,7 @@ class LocalMesher {
                         z in meshStart.z..meshEnd.z
 
 
-                    if (block.isPassable) {
-                        if (mine) {
-                            states[Vector3i(x, y, z)] = 0L // TODO: replace with nothing and instead rely on bounds
-                        }
-                        continue
-                    }
+                    if (block.isPassable) continue
 
                     var sum = 1L
 
@@ -98,7 +97,7 @@ class LocalMesher {
                     }
 
                     if (mine) {
-                        states[Vector3i(x, y, z)] = sum
+                        state[(z - meshStart.z) + (y - meshStart.y) * length + (x - meshStart.x) * length * height] = sum
                     }
                 }
             }
@@ -111,7 +110,7 @@ class LocalMesher {
                 start = meshStart,
                 end = meshEnd,
                 flatTree = null,
-                states = mutableMapOf(),
+                state = state,
             )
         }
 
@@ -132,7 +131,7 @@ class LocalMesher {
             yEdges2 = _yAxiss2,
             zEdges2 = _zAxiss2,
             flatTree = flatTree,
-            states = states,
+            state = state,
         )
     }
 
@@ -328,8 +327,11 @@ class LocalMesher {
         val zEdges2: FlattenedEdgeQuadtree? = null,
         val flatTree: FlattenedAABBTree?,
 
-        val states: Map<Vector3i, Long>, // TODO: replace with LongArray
+        val state: LongArray,
     ) {
+        val height = end.y - start.y + 1
+        val length = end.z - start.z + 1
+
         fun visualize(world: World) {
 //            println("visualizing mesh")
             xEdges2?.visualize(world)
@@ -344,6 +346,10 @@ class LocalMesher {
 //            xEdges?.visualize(world)
 //            yEdges?.visualize(world)
 //            zEdges?.visualize(world)
+        }
+
+        fun stateAt(x: Int, y: Int, z: Int): Long {
+            return state[(z - start.z) + (y - start.y) * length + (x - start.x) * height * length]
         }
     }
 
