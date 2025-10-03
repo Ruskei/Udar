@@ -144,7 +144,7 @@ class LocalMathUtil(
                         i++
                         continue
                     }
-
+//
                     val closest = world.prevEnvContactData.closest(
                         rawManifoldIdx,
                         v.x.toFloat(),

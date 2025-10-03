@@ -8,7 +8,6 @@ import com.ixume.udar.dynamicaabb.AABB
 import org.bukkit.Bukkit
 import org.bukkit.World
 import org.bukkit.scheduler.BukkitTask
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
 import kotlin.math.floor
 import kotlin.system.measureNanoTime
@@ -27,16 +26,18 @@ class WorldMeshesManager(
     val world = physicsWorld.world
 
     private val mesher = LocalMesher()
-    private val positionedMeshes = ConcurrentHashMap<MeshPosition, LocalMesher.Mesh2>()
+    private val positionedMeshes = HashMap<MeshPosition, LocalMesher.Mesh2>()
     val envContactGenerators = CopyOnWriteArraySet<EnvironmentContactGenerator2>()
 
     private var syncTask: BukkitTask? = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, ::tick, 1, 1)
 
     private fun tick() {
+//        println("TICK")
         val t = measureNanoTime {
 //            positionedMeshes.forEach { it.value.visualize(world) }
             val mpsToGen = mutableMapOf<MeshPosition, MutableSet<EnvironmentContactGenerator2>>()
             for (gen in envContactGenerators) {
+//                println(" * ${gen.activeBody.idx}")
                 val bb = gen.activeBody.tightBB
 
                 val minX = floor(bb.minX).toInt()
@@ -58,61 +59,100 @@ class WorldMeshesManager(
                             val block = world.getBlockAt(x, y, z)
                             val isPassable = block.isPassable
 
-                            forEachMeshPosAt(x, y, z) {
-                                val mesh = positionedMeshes[it]
-                                if (mesh == null) {
-                                    mpsToGen.getOrPut(it) { HashSet() } += gen
-                                } else {
-                                    val state = mesh.stateAt(x, y, z)
-                                    if (isPassable && state != 0L) {
-                                        // is now air
-                                        diff = true
-                                        mpsToGen.getOrPut(it) { HashSet() } += gen
-                                    } else if (isPassable) {
-                                        // is air and was air
-                                        if (!gen.meshes.map.containsKey(it)) {
-                                            gen.meshes.addMesh(it, mesh)
+                            for ((mp, mesh) in gen.meshes.map) {
+                                if (!(
+                                            x in (mp.x * MESH_SIZE)..(mp.x * MESH_SIZE + MESH_SIZE) &&
+                                            y in (mp.y * MESH_SIZE)..(mp.y * MESH_SIZE + MESH_SIZE) &&
+                                            z in (mp.z * MESH_SIZE)..(mp.z * MESH_SIZE + MESH_SIZE))
+                                ) {
+                                    continue
+                                }
+
+
+                                val state = mesh.stateAt(x, y, z)
+                                if (isPassable && state != 0L) {
+                                    // is now air
+                                    diff = true
+//                                    println("Diff at ($x $y $z), mp: (${mp.x} ${mp.y} ${mp.z})")
+                                    val existingMesh = positionedMeshes[mp]
+                                    if (existingMesh != null && existingMesh.stateAt(x, y, z) != 0L) {
+                                        mpsToGen.getOrPut(mp) { HashSet() } += gen
+                                    } else if (existingMesh != null) {
+                                        // update object's mesh to match positionedMeshes
+                                        gen.meshes.addMesh(mp, existingMesh)
+                                    }
+
+                                    continue
+                                } else if (isPassable) {
+                                    // is air and was air
+                                    continue
+                                }
+
+                                if (state == 0L) {
+                                    // was air
+                                    diff = true
+//                                    println("Diff at ($x $y $z), mp: (${mp.x} ${mp.y} ${mp.z})")
+                                    val existingMesh = positionedMeshes[mp]
+                                    if (existingMesh != null) {
+                                        if (!calculatedSum) {
+                                            for (boundingBox in block.collisionShape.boundingBoxes) {
+                                                sum = rollingVec3Checksum(
+                                                    sum,
+                                                    x + boundingBox.minX,
+                                                    y + boundingBox.minY,
+                                                    z + boundingBox.minZ,
+                                                )
+                                                sum = rollingVec3Checksum(
+                                                    sum,
+                                                    x + boundingBox.maxX,
+                                                    y + boundingBox.maxY,
+                                                    z + boundingBox.maxZ,
+                                                )
+                                            }
+
+                                            calculatedSum = true
                                         }
 
-                                        return@forEachMeshPosAt
-                                    }
-
-                                    if (state == 0L) {
-                                        // was air
-                                        diff = true
-                                        mpsToGen.getOrPut(it) { HashSet() } += gen
-                                        return@forEachMeshPosAt
-                                    }
-
-                                    if (!calculatedSum) {
-                                        for (boundingBox in block.collisionShape.boundingBoxes) {
-                                            sum = rollingVec3Checksum(
-                                                sum,
-                                                x + boundingBox.minX,
-                                                y + boundingBox.minY,
-                                                z + boundingBox.minZ,
-                                            )
-                                            sum = rollingVec3Checksum(
-                                                sum,
-                                                x + boundingBox.maxX,
-                                                y + boundingBox.maxY,
-                                                z + boundingBox.maxZ,
-                                            )
+                                        if (existingMesh.stateAt(x, y, z) == sum) {
+                                            gen.meshes.addMesh(mp, existingMesh)
+                                        } else {
+                                            mpsToGen.getOrPut(mp) { HashSet() } += gen
                                         }
-
-                                        calculatedSum = true
                                     }
 
-                                    if (sum != state) { // diff block
-                                        diff = true
-                                        mpsToGen.getOrPut(it) { HashSet() } += gen
-                                        return@forEachMeshPosAt
+                                    continue
+                                }
+
+                                if (!calculatedSum) {
+                                    for (boundingBox in block.collisionShape.boundingBoxes) {
+                                        sum = rollingVec3Checksum(
+                                            sum,
+                                            x + boundingBox.minX,
+                                            y + boundingBox.minY,
+                                            z + boundingBox.minZ,
+                                        )
+                                        sum = rollingVec3Checksum(
+                                            sum,
+                                            x + boundingBox.maxX,
+                                            y + boundingBox.maxY,
+                                            z + boundingBox.maxZ,
+                                        )
                                     }
 
-                                    // everything is the same and mesh exists, so do nothing if it's already contained in map, otherwise, add it
-                                    if (!gen.meshes.map.containsKey(it)) {
-                                        gen.meshes.addMesh(it, mesh)
+                                    calculatedSum = true
+                                }
+
+                                if (sum != state) { // diff block
+                                    diff = true
+//                                    println("Diff at ($x $y $z), mp: (${mp.x} ${mp.y} ${mp.z})")
+                                    val existingMesh = positionedMeshes[mp]
+                                    if (existingMesh != null && existingMesh.stateAt(x, y, z) != sum) {
+                                        mpsToGen.getOrPut(mp) { HashSet() } += gen
+                                    } else if (existingMesh != null) {
+                                        // update object's mesh to match positionedMeshes
+                                        gen.meshes.addMesh(mp, existingMesh)
                                     }
+                                    continue
                                 }
                             }
                         }
@@ -121,17 +161,37 @@ class WorldMeshesManager(
 
                 // get everything nearby
                 forEachOverlappingMeshPos(
-                    minX - BB_SAFETY, minX - BB_SAFETY, minX - BB_SAFETY,
-                    maxX + BB_SAFETY, maxX + BB_SAFETY, maxX + BB_SAFETY,
+                    minX - BB_SAFETY, minY - BB_SAFETY, minZ - BB_SAFETY,
+                    maxX + BB_SAFETY, maxY + BB_SAFETY, maxZ + BB_SAFETY,
                 ) {
+//                    println(" | $it")
                     val mesh = positionedMeshes[it]
                     if (mesh == null) {
+//                        println("${gen.activeBody.idx} genned (${it.x} ${it.y} ${it.z})")
                         mpsToGen.getOrPut(it) { HashSet() } += gen
                     } else {
                         if (!gen.meshes.map.containsKey(it)) {
+//                            println("${gen.activeBody.idx} needed (${it.x} ${it.y} ${it.z})")
                             gen.meshes.addMesh(it, mesh)
                         }
                     }
+                }
+
+                val toRemove = mutableListOf<MeshPosition>()
+                for (mp in gen.meshes.map.keys) {
+                    if (!mp.isRelevant(
+                            minX - BB_SAFETY, minY - BB_SAFETY, minZ - BB_SAFETY,
+                            maxX + BB_SAFETY, maxY + BB_SAFETY, maxZ + BB_SAFETY,
+                        )
+                    ) {
+                        toRemove += mp
+                    }
+                }
+
+                var i = 0
+                while (i < toRemove.size) {
+                    gen.meshes.removeMesh(toRemove[i])
+                    i++
                 }
 
                 if (diff) {
@@ -151,25 +211,9 @@ class WorldMeshesManager(
 //
 //            println("Updated $updated meshes!")
         }
-
+//
 //        val d = t.toDuration(DurationUnit.NANOSECONDS)
 //        println("Mesh manager tick took $d")
-    }
-
-    private inline fun forEachMeshPosAt(x: Int, y: Int, z: Int, action: (MeshPosition) -> Unit) {
-        for (meshX in floor((x.toDouble() - 1) / MESH_SIZE).toInt()..floor((x.toDouble() + 1) / MESH_SIZE).toInt()) {
-            for (meshY in floor((y.toDouble() - 1) / MESH_SIZE).toInt()..floor((y.toDouble() + 1) / MESH_SIZE).toInt()) {
-                for (meshZ in floor((z.toDouble() - 1) / MESH_SIZE).toInt()..floor((z.toDouble() + 1) / MESH_SIZE).toInt()) {
-                    if (
-                        x in (meshX * MESH_SIZE)..(meshX * MESH_SIZE + MESH_SIZE) &&
-                        y in (meshY * MESH_SIZE)..(meshY * MESH_SIZE + MESH_SIZE) &&
-                        z in (meshZ * MESH_SIZE)..(meshZ * MESH_SIZE + MESH_SIZE)
-                    ) {
-                        action(MeshPosition(meshX, meshY, meshZ, world))
-                    }
-                }
-            }
-        }
     }
 
     private inline fun forEachOverlappingMeshPos(
@@ -231,6 +275,19 @@ data class MeshPosition(
     val z: Int,
     val world: World,
 ) {
+    fun isRelevant(
+        minX: Int,
+        minY: Int,
+        minZ: Int,
+        maxX: Int,
+        maxY: Int,
+        maxZ: Int,
+    ): Boolean {
+        return x in floor(minX.toDouble() / MESH_SIZE).toInt()..floor(maxX.toDouble() / MESH_SIZE).toInt() &&
+               y in floor(minY.toDouble() / MESH_SIZE).toInt()..floor(maxY.toDouble() / MESH_SIZE).toInt() &&
+               z in floor(minZ.toDouble() / MESH_SIZE).toInt()..floor(maxZ.toDouble() / MESH_SIZE).toInt()
+    }
+
     override fun equals(other: Any?): Boolean {
         return other != null && other is MeshPosition && other.x == x && other.y == y && other.z == z
     }

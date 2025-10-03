@@ -6,7 +6,7 @@ import org.bukkit.Particle
 import org.bukkit.World
 import org.joml.Vector3d
 
-open class AABB(
+data class AABB(
     var minX: Double,
     var minY: Double,
     var minZ: Double,
@@ -36,15 +36,6 @@ open class AABB(
         return x >= minX && x <= maxX &&
                y >= minY && y <= maxY &&
                z >= minZ && z <= maxZ
-    }
-
-    fun writeTo(other: AABB) {
-        other.minX = minX
-        other.minY = minY
-        other.minZ = minZ
-        other.maxX = maxX
-        other.maxY = maxY
-        other.maxZ = maxZ
     }
 
     override fun toString(): String {
@@ -119,7 +110,7 @@ open class AABB(
     }
 
     companion object {
-        const val FAT_MARGIN = 0.1
+        const val FAT_MARGIN = 0.2
         private val colors = listOf(
             Color.WHITE,
             Color.SILVER,

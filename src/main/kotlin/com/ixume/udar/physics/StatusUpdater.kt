@@ -10,7 +10,6 @@ class StatusUpdater(
 ) {
     fun updateBodies(snapshot: List<ActiveBody>) {
         val config = Udar.CONFIG
-        val timeStep = config.timeStep
         val birthTime = config.birthTime
         val linear = config.sleepLinearVelocity
         val angular = config.sleepAngularVelocity
