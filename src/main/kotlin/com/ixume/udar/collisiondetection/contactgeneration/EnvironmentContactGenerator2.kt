@@ -11,8 +11,6 @@ import java.util.concurrent.atomic.AtomicReference
 class EnvironmentContactGenerator2(
     val activeBody: ActiveBody,
 ) : A2SCollidable {
-    val prevBB: AABB = AABB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-
     override fun capableCollision(other: EnvironmentBody): Int {
         return 0
     }
@@ -23,11 +21,17 @@ class EnvironmentContactGenerator2(
         return math.envContactUtil.collides(this, activeBody, other, out)
     }
 
-    fun tick() {
-        activeBody.tightBB.writeTo(prevBB)
-    }
+    fun tick() { }
 
     fun startle() {
         activeBody.startled.set(true)
+    }
+
+    override fun equals(other: Any?): Boolean {
+        return other != null && other is EnvironmentContactGenerator2 && other.activeBody.id == activeBody.id
+    }
+
+    override fun hashCode(): Int {
+        return activeBody.id.hashCode()
     }
 }

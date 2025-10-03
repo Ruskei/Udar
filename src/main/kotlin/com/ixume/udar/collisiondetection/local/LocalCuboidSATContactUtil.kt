@@ -1,6 +1,5 @@
 package com.ixume.udar.collisiondetection.local
 
-import com.google.common.math.LongMath.pow
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.Edge
@@ -502,7 +501,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
 
             var collided = false
 
-            val manifoldID = constructA2AManifoldID(activeBody, other, refIdx, incidentIdx)
+            val manifoldID = constructA2AFaceManifoldID(activeBody, other, refIdx, incidentIdx)
             val rawManifoldIdx = activeBody.physicsWorld.prevContactMap.get(manifoldID)
 
             var p = 0
@@ -576,18 +575,40 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
         firstIdx: Int,
         secondIdx: Int,
     ): Long { // this "hashing" is probably garbage i'm ngl
-        return (pow(first.uuid.leastSignificantBits xor first.uuid.leastSignificantBits, firstIdx) xor
-                pow(second.uuid.leastSignificantBits xor second.uuid.leastSignificantBits, secondIdx)).inv()
+        var result = 31L
+        val prime = 31L
+
+        result = result * prime + first.uuid.mostSignificantBits
+        result = result * prime + first.uuid.leastSignificantBits
+
+        result = result * prime + second.uuid.mostSignificantBits
+        result = result * prime + second.uuid.leastSignificantBits
+
+        result = result * prime + firstIdx
+        result = result * prime + secondIdx
+
+        return result
     }
 
-    private fun constructA2AManifoldID(
+    private fun constructA2AFaceManifoldID(
         first: ActiveBody,
         second: ActiveBody,
         firstIdx: Int,
         secondIdx: Int,
     ): Long { // this "hashing" is probably garbage i'm ngl
-        return pow(first.uuid.leastSignificantBits xor first.uuid.leastSignificantBits, firstIdx) xor
-                pow(second.uuid.leastSignificantBits xor second.uuid.leastSignificantBits, secondIdx)
+        var result = 31L
+        val prime = 31L
+
+        result = result * prime + first.uuid.mostSignificantBits
+        result = result * prime + first.uuid.leastSignificantBits
+
+        result = result * prime + second.uuid.mostSignificantBits
+        result = result * prime + second.uuid.leastSignificantBits
+
+        result = result * prime + firstIdx
+        result = result * prime + secondIdx
+
+        return result.inv()
     }
 
     private val _lineDir = Vector3d()

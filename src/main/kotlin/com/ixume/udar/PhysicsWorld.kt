@@ -225,9 +225,9 @@ class PhysicsWorld(
 
                 for (body in bodiesSnapshot) {
                     if (!body.isChild && body.awake.get() && body.hasGravity) body.velocity.add(
-                        Vector3d(Udar.CONFIG.gravity).mul(
-                            Udar.CONFIG.timeStep
-                        )
+                        Udar.CONFIG.gravity.x * Udar.CONFIG.timeStep,
+                        Udar.CONFIG.gravity.y * Udar.CONFIG.timeStep,
+                        Udar.CONFIG.gravity.z * Udar.CONFIG.timeStep,
                     )
                 }
 
@@ -238,6 +238,10 @@ class PhysicsWorld(
                 val stepDuration = measureNanoTime {
                     for (body in bodiesSnapshot) {
                         if (body.isChild) continue
+                        if (body.pos.y < -64) {
+                            removeBody(body)
+                            continue
+                        }
 
                         if (body.awake.get()) {
                             body.step()

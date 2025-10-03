@@ -143,7 +143,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                 continue
             }
 
-            val manifoldID = constructFaceID(
+            val manifoldID = constructA2SFaceManifoldID(
                 body = activeBody,
                 faceAxis = axis,
                 faceLevel = face.level,
@@ -323,7 +323,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 //        println("  - Tested $count $axis faces!")
     }
 
-    private fun constructFaceID(
+    private fun constructA2SFaceManifoldID(
         body: ActiveBody,
         faceAxis: LocalMesher.AxisD,
         faceLevel: Double,

@@ -20,4 +20,12 @@ class Meshes {
 
         meshes += mesh
     }
+
+    fun removeMesh(pos: MeshPosition) {
+        val mesh = map[pos]
+        if (mesh != null) {
+            meshes -= mesh
+            map.remove(pos)
+        }
+    }
 }

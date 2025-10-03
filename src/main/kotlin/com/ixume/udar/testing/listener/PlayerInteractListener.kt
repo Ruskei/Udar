@@ -6,6 +6,8 @@ import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.physicsWorld
 import com.ixume.udar.testing.debugConnect
+import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.event.ClickEvent
 import org.bukkit.*
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -102,6 +104,39 @@ object PlayerInteractListener : Listener {
                 } ?: return
 
                 physicsWorld.removeBody(body)
+            } else if (type == Material.DEAD_BUSH) {
+                e.isCancelled = true
+
+                val physicsWorld = e.player.world.physicsWorld ?: return
+                val start = e.player.eyeLocation.toVector().toVector3d()
+                val dir = e.player.location.direction.toVector3d().mul(20.0)
+                val end = Vector3d(start).add(dir)
+
+                val allIntersections = mutableListOf<Triple<ActiveBody, Vector3d, Vector3d>>()
+                val snapshot = physicsWorld.bodiesSnapshot()
+                for (body in snapshot) {
+                    if (body.isChild) continue
+
+                    allIntersections += body.intersect(start, end).map { Triple(body, it.first, it.second) }
+                }
+
+                val (body, _, _) = allIntersections.minByOrNull { (_, inter, _) ->
+                    inter.distanceSquared(
+                        start
+                    )
+                } ?: return
+
+                e.player.sendMessage(
+                    Component.text("idx: ${body.idx}, min: ")
+                        .append(
+                            Component.text("(${body.tightBB.minX} ${body.tightBB.minY} ${body.tightBB.minZ})")
+                                .clickEvent(ClickEvent.runCommand("/tp ${body.tightBB.minX} ${body.tightBB.minY} ${body.tightBB.minZ}"))
+                        ).append(Component.text(", max: "))
+                        .append(
+                            Component.text("(${body.tightBB.maxX} ${body.tightBB.maxY} ${body.tightBB.maxZ})")
+                                .clickEvent(ClickEvent.runCommand("/tp ${body.tightBB.maxX} ${body.tightBB.maxY} ${body.tightBB.maxZ}"))
+                        )
+                )
             }
         } else if (e.action == Action.LEFT_CLICK_BLOCK) {
             if (type == Material.DIAMOND_SWORD) {
