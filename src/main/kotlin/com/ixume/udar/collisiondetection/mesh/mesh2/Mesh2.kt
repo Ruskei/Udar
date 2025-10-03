@@ -97,7 +97,8 @@ class LocalMesher {
                     }
 
                     if (mine) {
-                        state[(z - meshStart.z) + (y - meshStart.y) * length + (x - meshStart.x) * length * height] = sum
+                        state[(z - meshStart.z) + (y - meshStart.y) * length + (x - meshStart.x) * length * height] =
+                            sum
                     }
                 }
             }
@@ -350,6 +351,20 @@ class LocalMesher {
 
         fun stateAt(x: Int, y: Int, z: Int): Long {
             return state[(z - start.z) + (y - start.y) * length + (x - start.x) * height * length]
+        }
+
+        fun relevant(
+            minX: Double,
+            minY: Double,
+            minZ: Double,
+
+            maxX: Double,
+            maxY: Double,
+            maxZ: Double,
+        ): Boolean {
+            return maxX >= start.x && minX <= end.x + 1 &&
+                   maxY >= start.y && minY <= end.y + 1 &&
+                   maxZ >= start.z && minZ <= end.z + 1
         }
     }
 

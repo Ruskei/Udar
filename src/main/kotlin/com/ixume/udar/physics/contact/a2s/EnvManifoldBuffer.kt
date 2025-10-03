@@ -23,8 +23,8 @@ class EnvManifoldBuffer(numContacts: Int) {
     private lateinit var xEdges: FlattenedEdgeQuadtree
     private lateinit var yEdges: FlattenedEdgeQuadtree
     private lateinit var zEdges: FlattenedEdgeQuadtree
-    val running = Long2ObjectOpenHashMap<ManifoldNode>()
-    val idxMap = Long2IntOpenHashMap()
+    val running = Long2ObjectArrayMap<ManifoldNode>()
+    val idxMap = Long2IntArrayMap()
     val edgeManifolds = IntArrayList()
 
     fun setup(mesh: LocalMesher.Mesh2) {

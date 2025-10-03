@@ -298,6 +298,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                 b1 = otherEdge.end,
                 outA = _cA,
                 outB = _cB,
+                bestDist = Double.MAX_VALUE
             )
 
             val manifoldID = constructA2AEdgeManifoldID(activeBody, other, myEdgeIdx, otherEdgeIdx)

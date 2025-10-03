@@ -33,10 +33,23 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 
 //        println("ENV COLLISION CHECK")
 
+        val minX = activeBody.tightBB.minX - 1.0
+        val minY = activeBody.tightBB.minY - 1.0
+        val minZ = activeBody.tightBB.minZ - 1.0
+
+        val maxX = activeBody.tightBB.maxX + 1.0
+        val maxY = activeBody.tightBB.maxY + 1.0
+        val maxZ = activeBody.tightBB.maxZ + 1.0
+
         var m = 0
         while (m < meshes.size) {
 //            println("- MESH")
             val mesh = meshes[m]
+            if (!mesh.relevant(minX, minY, minZ, maxX, maxY, maxZ)) {
+                m++
+                continue
+            }
+
             val faces = mesh.faces
             val bbs = mesh.flatTree
             if (bbs == null) {
@@ -102,6 +115,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         math: LocalMathUtil,
         mesh: LocalMesher.Mesh2,
     ) {
+//        println("COLLIDING $axis FACES")
         val bb = activeBody.tightBB
         //faces are guaranteed to be inside BB
         when (axis) {
@@ -131,17 +145,9 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 
         var count = 0
 
-        var i = 0
-        while (i < faces.ls.size) {
+        faces.forEachOverlapping(bb) { face ->
             _contacts2.clear()
             _validContacts2.clear()
-
-            val face = faces.ls[i]
-
-            if (!face.overlaps(bb)) {
-                i++
-                continue
-            }
 
             val manifoldID = constructA2SFaceManifoldID(
                 body = activeBody,
@@ -165,8 +171,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
             )
 
             if (!any) {
-                i++
-                continue
+                return@forEachOverlapping
             }
 
             _overlappingHoles.clear()
@@ -181,8 +186,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
             )
 
             if (_overlappingHoles.isEmpty()) {
-                i++
-                continue
+                return@forEachOverlapping
             }
 
             _overlappingAntiHoles.clear()
@@ -316,8 +320,6 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                     face = face,
                 )
             }
-
-            i++
         }
 
 //        println("  - Tested $count $axis faces!")
@@ -413,9 +415,9 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         val axis = tree.axis
 
         if (!setupCrossAxiss(axis.vec)) return false
-        
+
         val s = _outA.size
-        
+
         var idx = 0
 
         var collided = false
@@ -470,7 +472,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 
                 i++
             }
-            
+
             idx++
         }
 
