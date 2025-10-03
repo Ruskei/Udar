@@ -410,24 +410,34 @@ class LocalMathUtil(
 
                 val depth = -min(edge.start.dot(norm), edge.end.dot(norm))
 
-                val dist = closestPointsBetweenSegments(
-                    a0 = edge.start,
-                    a1 = edge.end,
-                    b0 = edgeStart,
-                    b1 = edgeEnd,
-                    outA = _outCA,
-                    outB = _outCB,
-                )
 
 //                val depth = _delta.set(_outCB).sub(_outCA).dot(norm)
 //                println("  | depth: $depth")
 
                 if (depth > maxEdgeDepth + sameDepthEpsilon) {
+                    val dist = closestPointsBetweenSegments(
+                        a0 = edge.start,
+                        a1 = edge.end,
+                        b0 = edgeStart,
+                        b1 = edgeEnd,
+                        outA = _outCA,
+                        outB = _outCB,
+                        bestDist = Double.MAX_VALUE,
+                    )
                     maxEdgeDepth = depth
                     minEdgeDistance = dist
                     closestEdgeIdx = l
                     closestA.set(_outCA)
                 } else if (depth >= maxEdgeDepth - sameDepthEpsilon) {
+                    val dist = closestPointsBetweenSegments(
+                        a0 = edge.start,
+                        a1 = edge.end,
+                        b0 = edgeStart,
+                        b1 = edgeEnd,
+                        outA = _outCA,
+                        outB = _outCB,
+                        bestDist = minEdgeDistance,
+                    )
                     // same depth, so compare distances
                     if (dist < minEdgeDistance) {
                         minEdgeDistance = dist
@@ -764,6 +774,7 @@ class LocalMathUtil(
         b1: Vector3d,
         outA: Vector3d,
         outB: Vector3d,
+        bestDist: Double,
     ): Double {
 //        println("CLOSEST POINTS BETWEEN SEGMENTS")
         val epsilon = 1e-10
@@ -791,6 +802,7 @@ class LocalMathUtil(
         //otherwise check vertex-vertex
         //check line-line
         val llD = closestPointsBetweenLines(a0, _an, b0, _bn, _onLLA, _onLLB)
+        if (llD > bestDist) return Double.MAX_VALUE
 //        println("LL RESULTS")
 //        println("| onLLA: $_onLLA")
 //        println("| onLLB: $_onLLB")

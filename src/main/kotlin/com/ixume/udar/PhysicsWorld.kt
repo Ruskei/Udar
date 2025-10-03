@@ -239,7 +239,10 @@ class PhysicsWorld(
                     for (body in bodiesSnapshot) {
                         if (body.isChild) continue
                         if (body.pos.y < -64) {
-                            removeBody(body)
+                            Bukkit.getScheduler().runTask(Udar.INSTANCE, Runnable {
+                                removeBody(body)
+                            })
+
                             continue
                         }
 

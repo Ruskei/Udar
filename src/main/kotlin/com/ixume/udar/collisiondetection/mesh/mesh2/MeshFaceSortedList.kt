@@ -10,7 +10,7 @@ class MeshFaceSortedList(
     val meshStart: Vector3i,
     val meshEnd: Vector3i,
 ) {
-    val ls = mutableListOf<MeshFace>() // TODO: CHANGE TO BINARY HEAP!
+    val ls = mutableListOf<MeshFace>()
 
     fun placeFaceAt(level: Double): MeshFace? {
         if (level <= meshStart.get(axis.levelOffset) - 1.0 || level >= meshEnd.get(axis.levelOffset) + 2.0) return null
@@ -44,28 +44,6 @@ class MeshFaceSortedList(
         return face
     }
 
-    fun getFaceAt(level: Double): MeshFace? {
-        var low = 0
-        var high = ls.size - 1
-
-        while (low <= high) {
-            val mid = (low + high) ushr 1
-            val midFace = ls[mid]
-
-            if (abs(midFace.level - level) < FACE_EPSILON) {
-                return midFace
-            }
-
-            if (midFace.level < level) {
-                low = mid + 1
-            } else {
-                high = mid - 1
-            }
-        }
-
-        return null
-    }
-
     fun getFaceIdxAt(level: Double): Int {
         var low = 0
         var high = ls.size - 1
@@ -88,46 +66,44 @@ class MeshFaceSortedList(
         return -1
     }
 
-    fun facesIn(bb: AABB, out: MutableList<MeshFace>): List<MeshFace> {
-        when (axis) {
-            LocalMesher.AxisD.X -> {
-                var i = 0
-                while (i < ls.size) {
-                    val f = ls[i]
-                    if (f.level >= bb.minX && f.level <= bb.maxX) {
-                        out += f
-                    }
+    inline fun forEachOverlapping(bb: AABB, action: (MeshFace) -> Unit) {
+        // find smallest (smallest level that fits in bb), then iterate until no longer fits
+        val levelMin = when (axis) {
+            LocalMesher.AxisD.X -> bb.minX
+            LocalMesher.AxisD.Y -> bb.minY
+            LocalMesher.AxisD.Z -> bb.minZ
+        }
 
-                    i++
-                }
-            }
+        val levelMax = when (axis) {
+            LocalMesher.AxisD.X -> bb.maxX
+            LocalMesher.AxisD.Y -> bb.maxY
+            LocalMesher.AxisD.Z -> bb.maxZ
+        }
 
-            LocalMesher.AxisD.Y -> {
-                var i = 0
-                while (i < ls.size) {
-                    val f = ls[i]
-                    if (f.level >= bb.minY && f.level <= bb.maxY) {
-                        out += f
-                    }
+        var low = 0
+        var high = ls.size - 1
 
-                    i++
-                }
-            }
+        while (low <= high) {
+            val mid = (low + high) ushr 1
+            val midFace = ls[mid]
 
-            LocalMesher.AxisD.Z -> {
-                var i = 0
-                while (i < ls.size) {
-                    val f = ls[i]
-                    if (f.level >= bb.minZ && f.level <= bb.maxZ) {
-                        out += f
-                    }
-
-                    i++
-                }
+            if (midFace.level < levelMin) {
+                low = mid + 1
+            } else {
+                high = mid - 1
             }
         }
 
-        return out
+        // low == index of min face...
+        var i = low
+        while (i < ls.size) {
+            val face = ls[i]
+            if (face.level > levelMax) return
+
+            action(face)
+
+            i++
+        }
     }
 
     private fun constructAntiHoles() {
