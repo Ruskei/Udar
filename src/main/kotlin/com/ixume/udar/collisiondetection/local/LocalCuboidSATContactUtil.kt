@@ -4,6 +4,7 @@ import com.ixume.udar.body.Body
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.Edge
 import com.ixume.udar.body.active.Face
+import com.ixume.udar.collisiondetection.ManifoldIDGenerator
 import com.ixume.udar.physics.contact.a2a.A2AContactDataBuffer
 import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldCollection
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
@@ -301,7 +302,13 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                 bestDist = Double.MAX_VALUE
             )
 
-            val manifoldID = constructA2AEdgeManifoldID(activeBody, other, myEdgeIdx, otherEdgeIdx)
+            val manifoldID = ManifoldIDGenerator.constructA2AEdgeManifoldID(
+                first = activeBody,
+                second = other,
+                firstIdx = myEdgeIdx,
+                secondIdx = otherEdgeIdx
+            )
+
             val rawManifoldIdx = activeBody.physicsWorld.prevContactMap.get(manifoldID)
 
             check(activeBody.physicsWorld.prevContactData.numContacts(rawManifoldIdx, 1) == 1) {
@@ -502,7 +509,13 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
 
             var collided = false
 
-            val manifoldID = constructA2AFaceManifoldID(activeBody, other, refIdx, incidentIdx)
+            val manifoldID = ManifoldIDGenerator.constructA2AFaceManifoldID(
+                first = activeBody,
+                second = other,
+                firstIdx = refIdx,
+                secondIdx = incidentIdx,
+            )
+           
             val rawManifoldIdx = activeBody.physicsWorld.prevContactMap.get(manifoldID)
 
             var p = 0
@@ -568,48 +581,6 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
 
             return collided
         }
-    }
-
-    private fun constructA2AEdgeManifoldID(
-        first: ActiveBody,
-        second: ActiveBody,
-        firstIdx: Int,
-        secondIdx: Int,
-    ): Long { // this "hashing" is probably garbage i'm ngl
-        var result = 31L
-        val prime = 31L
-
-        result = result * prime + first.uuid.mostSignificantBits
-        result = result * prime + first.uuid.leastSignificantBits
-
-        result = result * prime + second.uuid.mostSignificantBits
-        result = result * prime + second.uuid.leastSignificantBits
-
-        result = result * prime + firstIdx
-        result = result * prime + secondIdx
-
-        return result
-    }
-
-    private fun constructA2AFaceManifoldID(
-        first: ActiveBody,
-        second: ActiveBody,
-        firstIdx: Int,
-        secondIdx: Int,
-    ): Long { // this "hashing" is probably garbage i'm ngl
-        var result = 31L
-        val prime = 31L
-
-        result = result * prime + first.uuid.mostSignificantBits
-        result = result * prime + first.uuid.leastSignificantBits
-
-        result = result * prime + second.uuid.mostSignificantBits
-        result = result * prime + second.uuid.leastSignificantBits
-
-        result = result * prime + firstIdx
-        result = result * prime + secondIdx
-
-        return result.inv()
     }
 
     private val _lineDir = Vector3d()

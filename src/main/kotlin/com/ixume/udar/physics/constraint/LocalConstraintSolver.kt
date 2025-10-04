@@ -2,16 +2,12 @@ package com.ixume.udar.physics.constraint
 
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.Udar
-import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldBuffer
+import com.ixume.udar.collisiondetection.ManifoldIDGenerator
 import com.ixume.udar.physics.contact.a2a.A2APrevContactDataBuffer
-import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldBuffer
+import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldBuffer
 import com.ixume.udar.physics.contact.a2s.A2SPrevContactDataBuffer
-import org.joml.Matrix3d
-import org.joml.Matrix3f
-import org.joml.Quaterniond
-import org.joml.Quaternionf
-import org.joml.Vector3d
-import org.joml.Vector3f
+import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldBuffer
+import org.joml.*
 import java.lang.Math.fma
 import java.nio.FloatBuffer
 import kotlin.math.abs
@@ -803,6 +799,7 @@ class LocalConstraintSolver(
             val manifoldID = manifolds.manifoldID(j)
 
             if (physicsWorld.prevContactMap.containsKey(manifoldID)) {
+                println("A2A ID COLLISION! $manifoldID")
                 j++
                 continue
             }
@@ -843,6 +840,15 @@ class LocalConstraintSolver(
             val numContacts = envManifolds.numContacts(k)
             val manifoldID = envManifolds.manifoldID(k)
             if (physicsWorld.prevEnvContactMap.containsKey(manifoldID)) {
+                val type = ManifoldIDGenerator.A2SManifoldType.entries[(manifoldID ushr 32).toInt() and 0b11]
+                println("A2S ID COLLISION: $manifoldID!")
+                println("| body.uuid.hash: ${manifoldID and 0xFFFFFFFF}")
+                println("| meshl6: ${(manifoldID ushr 34).toInt() and 0b111111}")
+                println("| type: $type")
+                if (type == ManifoldIDGenerator.A2SManifoldType.FACE_EDGE) {
+                    println("| meshEdgeIdx: ${(manifoldID ushr 42) and 0b111111}")
+                }
+
                 k++
                 continue
             }

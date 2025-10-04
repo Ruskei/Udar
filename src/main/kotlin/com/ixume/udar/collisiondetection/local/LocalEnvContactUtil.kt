@@ -2,6 +2,7 @@ package com.ixume.udar.collisiondetection.local
 
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.active.ActiveBody
+import com.ixume.udar.collisiondetection.ManifoldIDGenerator
 import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentContactGenerator2
 import com.ixume.udar.collisiondetection.mesh.aabbtree2d.AABB2D
 import com.ixume.udar.collisiondetection.mesh.mesh2.EdgeMountAllowedNormals
@@ -14,6 +15,8 @@ import com.ixume.udar.physics.contact.a2s.EnvManifoldBuffer
 import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldCollection
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
 import it.unimi.dsi.fastutil.ints.IntArrayList
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet
 import org.joml.Vector3d
 
 class LocalEnvContactUtil(val math: LocalMathUtil) {
@@ -31,7 +34,9 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 
         val meshes = contactGen.meshes.getMeshes()
 
-//        println("ENV COLLISION CHECK")
+//        println("ENV COLLISION CHECK ${activeBody.uuid.hashCode().toLong() and 0xFFFFFFFF}")
+        seenFaceIDs.clear()
+        math.seenEdgeIDs.clear()
 
         val minX = activeBody.tightBB.minX - 1.0
         val minY = activeBody.tightBB.minY - 1.0
@@ -49,6 +54,11 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                 m++
                 continue
             }
+
+//            println(" * MESH")
+//            println(" | part: ${mesh.hashCode().toLong() and 0b111111}")
+//            println(" | full: ${mesh.hashCode().toLong()}")
+//            println(" | start: ${mesh.start}")
 
             val faces = mesh.faces
             val bbs = mesh.flatTree
@@ -149,11 +159,13 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
             _contacts2.clear()
             _validContacts2.clear()
 
-            val manifoldID = constructA2SFaceManifoldID(
-                body = activeBody,
+            val manifoldID = ManifoldIDGenerator.constructA2SFaceManifoldID(
+                activeBody = activeBody,
                 faceAxis = axis,
                 faceLevel = face.level,
                 mesh = mesh,
+                math = math,
+                envContactUtil = this,
             )
 
             val rawManifoldIdx = activeBody.physicsWorld.prevEnvContactMap.get(manifoldID)
@@ -325,30 +337,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 //        println("  - Tested $count $axis faces!")
     }
 
-    private fun constructA2SFaceManifoldID(
-        body: ActiveBody,
-        faceAxis: LocalMesher.AxisD,
-        faceLevel: Double,
-        mesh: LocalMesher.Mesh2,
-    ): Long {
-        var result = 31L
-
-        val prime = 31L
-
-        val mostSigBits = body.uuid.mostSignificantBits
-        val leastSigBits = body.uuid.leastSignificantBits
-        result = result * prime + mostSigBits
-        result = result * prime + leastSigBits
-
-        result = result * prime + faceAxis.ordinal
-
-        val doubleBits = faceLevel.toRawBits()
-        result = result * prime + doubleBits
-
-        result = result * prime + mesh.hashCode()
-
-        return result
-    }
+    val seenFaceIDs = LongOpenHashSet()
 
     private val _bodyAxiss = Array(3) { Vector3d() }
     private val _crossAxiss = Array(3) { Vector3d() }
@@ -425,6 +414,7 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         while (idx < s) {
             val a = _outA.getDouble(idx)
             val b = _outB.getDouble(idx)
+            val e = _outEdges.getInt(idx)
             val data = _outData.getInt(idx)
 
             _edgeStart.setComponent(axis.aOffset, a)
@@ -468,6 +458,10 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                     edges = activeBody.edges,
                     out = _possibleManifolds,
                     mesh = mesh,
+                    envContactUtil = this,
+                    edgeAxis = tree.axis,
+                    meshEdgeIdx = e,
+                    meshEdgePointIdx = i,
                 )
 
                 i++

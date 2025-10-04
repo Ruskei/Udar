@@ -3,12 +3,14 @@ package com.ixume.udar.collisiondetection.local
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.Edge
+import com.ixume.udar.collisiondetection.ManifoldIDGenerator
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFace
 import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFaceSortedList
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.physics.contact.a2s.A2SContactDataBuffer
 import com.ixume.udar.physics.contact.a2s.EnvManifoldBuffer
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet
 import org.joml.Vector3d
 import org.joml.Vector3f
 import kotlin.math.abs
@@ -201,6 +203,9 @@ class LocalMathUtil(
 
         edgeStart: Vector3d,
         edgeEnd: Vector3d,
+        edgeAxis: LocalMesher.AxisD,
+        meshEdgeIdx: Int,
+        meshEdgePointIdx: Int,
 
         bodyAxiss: Array<Vector3d>,
 
@@ -212,6 +217,7 @@ class LocalMathUtil(
         allowedNormals: Array<Vector3d>,
         out: EnvManifoldBuffer,
         mesh: LocalMesher.Mesh2,
+        envContactUtil: LocalEnvContactUtil,
     ) {
 //        println("EDGE COLLISION TEST")
         var minBodyOverlap = Double.MAX_VALUE
@@ -451,12 +457,14 @@ class LocalMathUtil(
 
             check(maxEdgeDepth != Double.MAX_VALUE)
 
-            val manifoldID = constructA2SEdgeManifoldID(
+            val manifoldID = ManifoldIDGenerator.constructA2SEdgeManifoldID(
                 activeBody = activeBody,
-                edgeStart = edgeStart,
-                edgeEnd = edgeEnd,
-                edgeIdx = closestEdgeIdx,
+                edgeAxis = edgeAxis,
+                meshEdgeIdx = meshEdgeIdx,
+                meshEdgePointIdx = meshEdgePointIdx,
+                bodyEdgeIdx = closestEdgeIdx,
                 mesh = mesh,
+                envContactUtil = envContactUtil,
             )
 
             val rawManifoldIdx = activeBody.physicsWorld.prevEnvContactMap.get(manifoldID)
@@ -522,7 +530,15 @@ class LocalMathUtil(
                 if (minBodyInDirOfAxis) {
                     check(abs(norm.length() - 1.0) < 1e-5)
 
-                    val manifoldID = constructA2SEdgeManifoldID(activeBody, edgeStart, edgeEnd, true, mesh)
+                    val manifoldID = ManifoldIDGenerator.constructA2SEdgeManifoldID(
+                        activeBody = activeBody,
+                        edgeAxis = edgeAxis,
+                        meshEdgeIdx = meshEdgeIdx,
+                        meshEdgePointIdx = meshEdgePointIdx,
+                        mesh = mesh,
+                        envContactUtil = envContactUtil,
+                    )
+
                     val rawManifoldIdx = activeBody.physicsWorld.prevEnvContactMap.get(manifoldID)
 
                     val pointAX = (edgeEnd.x - minBodyAxis.x * minBodyOverlap).toFloat()
@@ -557,7 +573,15 @@ class LocalMathUtil(
                     return
                 } else {
                     check(abs(norm.length() - 1.0) < 1e-5)
-                    val manifoldID = constructA2SEdgeManifoldID(activeBody, edgeStart, edgeEnd, false, mesh)
+                    val manifoldID = ManifoldIDGenerator.constructA2SEdgeManifoldID(
+                        activeBody = activeBody,
+                        edgeAxis = edgeAxis,
+                        meshEdgeIdx = meshEdgeIdx,
+                        meshEdgePointIdx = meshEdgePointIdx,
+                        mesh = mesh,
+                        envContactUtil = envContactUtil,
+                    )
+
                     val rawManifoldIdx = activeBody.physicsWorld.prevEnvContactMap.get(manifoldID)
 
                     val pointAX = (edgeStart.x + minBodyAxis.x * minBodyOverlap).toFloat()
@@ -595,7 +619,14 @@ class LocalMathUtil(
                 // edgeStart is max, edgeEnd is min
                 if (minBodyInDirOfAxis) {
                     check(abs(norm.length() - 1.0) < 1e-5)
-                    val manifoldID = constructA2SEdgeManifoldID(activeBody, edgeStart, edgeEnd, true, mesh)
+                    val manifoldID = ManifoldIDGenerator.constructA2SEdgeManifoldID(
+                        activeBody = activeBody,
+                        edgeAxis = edgeAxis,
+                        meshEdgeIdx = meshEdgeIdx,
+                        meshEdgePointIdx = meshEdgePointIdx,
+                        mesh = mesh,
+                        envContactUtil = envContactUtil,
+                    )
                     val rawManifoldIdx = activeBody.physicsWorld.prevEnvContactMap.get(manifoldID)
 
                     val pointAX = (edgeStart.x - minBodyAxis.x * minBodyOverlap).toFloat()
@@ -630,7 +661,15 @@ class LocalMathUtil(
                     return
                 } else {
                     check(abs(norm.length() - 1.0) < 1e-5)
-                    val manifoldID = constructA2SEdgeManifoldID(activeBody, edgeStart, edgeEnd, false, mesh)
+                    val manifoldID = ManifoldIDGenerator.constructA2SEdgeManifoldID(
+                        activeBody = activeBody,
+                        edgeAxis = edgeAxis,
+                        meshEdgeIdx = meshEdgeIdx,
+                        meshEdgePointIdx = meshEdgePointIdx,
+                        mesh = mesh,
+                        envContactUtil = envContactUtil,
+                    )
+
                     val rawManifoldIdx = activeBody.physicsWorld.prevEnvContactMap.get(manifoldID)
 
                     val pointAX = (edgeEnd.x + minBodyAxis.x * minBodyOverlap).toFloat()
@@ -668,61 +707,7 @@ class LocalMathUtil(
         }
     }
 
-    private fun constructA2SEdgeManifoldID(
-        activeBody: ActiveBody,
-        edgeStart: Vector3d,
-        edgeEnd: Vector3d,
-        edgeIdx: Int,
-        mesh: LocalMesher.Mesh2,
-    ): Long {
-        var result = 31L
-        val prime = 31L
-
-        result = result * prime + activeBody.uuid.mostSignificantBits
-        result = result * prime + activeBody.uuid.leastSignificantBits
-
-        result = result * prime + edgeStart.x.toRawBits()
-        result = result * prime + edgeStart.y.toRawBits()
-        result = result * prime + edgeStart.z.toRawBits()
-
-        result = result * prime + edgeEnd.x.toRawBits()
-        result = result * prime + edgeEnd.y.toRawBits()
-        result = result * prime + edgeEnd.z.toRawBits()
-
-        result = result * prime + edgeIdx
-
-        result + result * prime + mesh.hashCode()
-
-        return result
-    }
-
-    private fun constructA2SEdgeManifoldID(
-        activeBody: ActiveBody,
-        edgeStart: Vector3d,
-        edgeEnd: Vector3d,
-        inDir: Boolean,
-        mesh: LocalMesher.Mesh2,
-    ): Long {
-        var result = 31L
-        val prime = 31L
-
-        result = result * prime + activeBody.uuid.mostSignificantBits
-        result = result * prime + activeBody.uuid.leastSignificantBits
-
-        result = result * prime + edgeStart.x.toRawBits()
-        result = result * prime + edgeStart.y.toRawBits()
-        result = result * prime + edgeStart.z.toRawBits()
-
-        result = result * prime + edgeEnd.x.toRawBits()
-        result = result * prime + edgeEnd.y.toRawBits()
-        result = result * prime + edgeEnd.z.toRawBits()
-
-        result = result * prime + if (inDir) 1 else 0
-
-        result + result * prime + mesh.hashCode()
-
-        return result
-    }
+    val seenEdgeIDs = LongOpenHashSet()
 
     inline fun checkOverlap(
         a: Double,
