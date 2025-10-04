@@ -10,7 +10,6 @@ import com.ixume.udar.dynamicaabb.array.IntStack
 import com.ixume.udar.dynamicaabb.array.withHigher
 import com.ixume.udar.dynamicaabb.array.withLower
 import com.ixume.udar.testing.debugConnect
-import it.unimi.dsi.fastutil.doubles.DoubleAVLTreeSet
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
 import it.unimi.dsi.fastutil.ints.IntArrayList
 import org.bukkit.Color
@@ -78,10 +77,7 @@ class FlattenedEdgeQuadtree(
     val levelMin: Double,
     val levelMax: Double,
 ) {
-    val _points = mutableListOf<DoubleArrayList>()
-
-    val points = mutableListOf<DoubleAVLTreeSet>()
-    val pointMounts = mutableListOf<IntArrayList>()
+    val edgeData = mutableListOf<EdgeData>()
 
     private var nodeFreeIdx = Node(-1) // head of node free linked list
     private var edgeFreeIdx = Edge(-1) // head of edge free linked list
@@ -134,9 +130,10 @@ class FlattenedEdgeQuadtree(
 
                     val edge = node.edge(i)
                     val dataIdx = edge.dataIdx()
-                    val _pts = edge._points(dataIdx)
+                    val ea = edge.data(dataIdx)
+                    val _pts = ea._points
                     _pts.sort()
-                    val edgePts = edge.points(dataIdx)
+                    val edgePts = ea.points
 
                     val s = _pts.size
                     check(s % 2 == 0)
@@ -198,6 +195,7 @@ class FlattenedEdgeQuadtree(
 
                     if (pts.isEmpty) {
                         i++
+                        ea.finalizePoints()
                         continue
                     }
 
@@ -205,7 +203,7 @@ class FlattenedEdgeQuadtree(
                     check(ptMounts.isNotEmpty())
                     check(ptMounts.size * 2 == pts.size)
 
-                    val edgeMounts = edge.mounts(dataIdx)
+                    val edgeMounts = ea.pointMounts
 
                     var currentStart = pts.getDouble(0)
                     var latestEnd: Double = pts.getDouble(1)
@@ -236,6 +234,7 @@ class FlattenedEdgeQuadtree(
 
                     edgePts.add(currentStart)
                     edgePts.add(latestEnd)
+                    ea.finalizePoints()
                     edgeMounts.add(currentEdgeMount)
 
                     check(edgePts.size % 2 == 0)
@@ -735,7 +734,8 @@ class FlattenedEdgeQuadtree(
     }
 
     private fun Node.child2(c: Node) {
-        nodeArr[this.idx * NODE_DATA_SIZE + C2_OFFSET] = nodeArr[this.idx * NODE_DATA_SIZE + C2_OFFSET].withHigher(c.idx)
+        nodeArr[this.idx * NODE_DATA_SIZE + C2_OFFSET] =
+            nodeArr[this.idx * NODE_DATA_SIZE + C2_OFFSET].withHigher(c.idx)
     }
 
     private fun Node.child3(): Node {
@@ -751,7 +751,8 @@ class FlattenedEdgeQuadtree(
     }
 
     private fun Node.child4(c: Node) {
-        nodeArr[this.idx * NODE_DATA_SIZE + C4_OFFSET] = nodeArr[this.idx * NODE_DATA_SIZE + C4_OFFSET].withHigher(c.idx)
+        nodeArr[this.idx * NODE_DATA_SIZE + C4_OFFSET] =
+            nodeArr[this.idx * NODE_DATA_SIZE + C4_OFFSET].withHigher(c.idx)
     }
 
     /**
@@ -819,22 +820,14 @@ class FlattenedEdgeQuadtree(
      * `this` is index of edge in edgeArray
      */
     private fun Edge.xor(start: Double, end: Double, dataIdx: Int) {
-        val _pts = _points(dataIdx)
+        val _pts = data(dataIdx)._points
 
         _pts.add(start)
         _pts.add(end)
     }
 
-    private fun Edge._points(dataIdx: Int): DoubleArrayList {
-        return _points[dataIdx]
-    }
-
-    private fun Edge.points(dataIdx: Int): DoubleAVLTreeSet {
-        return points[dataIdx]
-    }
-
-    private fun Edge.mounts(dataIdx: Int): IntArrayList {
-        return pointMounts[dataIdx]
+    private fun Edge.data(dataIdx: Int): EdgeData {
+        return edgeData[dataIdx]
     }
 
     /**
@@ -1088,14 +1081,9 @@ class FlattenedEdgeQuadtree(
      * Ensures that data arrays can hold a new element and returns the index for this new element
      */
     private fun newDataIdx(): Int {
-        check(_points.size == points.size)
-        check(_points.size == pointMounts.size)
+        val idx = edgeData.size
 
-        val idx = _points.size
-
-        _points += DoubleArrayList()
-        points += DoubleAVLTreeSet()
-        pointMounts += IntArrayList()
+        edgeData += EdgeData()
 
         return idx
     }
@@ -1109,10 +1097,7 @@ class FlattenedEdgeQuadtree(
 
         rootIdx = Node(-1)
 
-        _points.clear()
-
-        points.clear()
-        pointMounts.clear()
+        edgeData.clear()
     }
 
     fun visualize(world: World) {
@@ -1130,11 +1115,12 @@ class FlattenedEdgeQuadtree(
                 val n = i.numPoints()
                 while (j < n) {
                     val e = i.edge(j)
+                    val ea = e.data(e.dataIdx())
 
                     val a = e.a()
                     val b = e.b()
 
-                    val pts = e.points(e.dataIdx())
+                    val pts = ea.points
 
                     _varr1[axis.aOffset] = a
                     _varr1[axis.bOffset] = b

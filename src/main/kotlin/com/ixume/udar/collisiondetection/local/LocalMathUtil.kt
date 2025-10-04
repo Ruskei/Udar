@@ -707,8 +707,6 @@ class LocalMathUtil(
         }
     }
 
-    val seenEdgeIDs = LongOpenHashSet()
-
     inline fun checkOverlap(
         a: Double,
         b: Double,

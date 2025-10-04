@@ -15,8 +15,6 @@ import com.ixume.udar.physics.contact.a2s.EnvManifoldBuffer
 import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldCollection
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList
 import it.unimi.dsi.fastutil.ints.IntArrayList
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet
 import org.joml.Vector3d
 
 class LocalEnvContactUtil(val math: LocalMathUtil) {
@@ -35,9 +33,6 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         val meshes = contactGen.meshes.getMeshes()
 
 //        println("ENV COLLISION CHECK ${activeBody.uuid.hashCode().toLong() and 0xFFFFFFFF}")
-        seenFaceIDs.clear()
-        math.seenEdgeIDs.clear()
-
         val minX = activeBody.tightBB.minX - 1.0
         val minY = activeBody.tightBB.minY - 1.0
         val minZ = activeBody.tightBB.minZ - 1.0
@@ -337,8 +332,6 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 //        println("  - Tested $count $axis faces!")
     }
 
-    val seenFaceIDs = LongOpenHashSet()
-
     private val _bodyAxiss = Array(3) { Vector3d() }
     private val _crossAxiss = Array(3) { Vector3d() }
 
@@ -375,6 +368,18 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         /*
         get all edges that we could possibly be colliding with; we could have a valid collision with each of these edges (not using discrete curvature graph rn)
          */
+
+        val minLevel = when (tree.axis) {
+            LocalMesher.AxisD.X -> activeBody.tightBB.minX
+            LocalMesher.AxisD.Y -> activeBody.tightBB.minY
+            LocalMesher.AxisD.Z -> activeBody.tightBB.minZ
+        }
+
+        val maxLevel = when (tree.axis) {
+            LocalMesher.AxisD.X -> activeBody.tightBB.maxX
+            LocalMesher.AxisD.Y -> activeBody.tightBB.maxY
+            LocalMesher.AxisD.Z -> activeBody.tightBB.maxZ
+        }
 
         _outA.clear()
         _outB.clear()
@@ -423,16 +428,22 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
             _edgeEnd.setComponent(axis.aOffset, a)
             _edgeEnd.setComponent(axis.bOffset, b)
 
-            val pts = tree.points[data]
-            val mounts = tree.pointMounts[data]
+            val edgeData = tree.edgeData[data]
 
-            val itr = pts.doubleIterator()
+            val pts = edgeData.finalizedPoints
+            val mounts = edgeData.pointMounts
+
             var i = 0
-            while (itr.hasNext()) {
-                val d1 = itr.nextDouble()
-                val d2 = itr.nextDouble()
+            while (i < pts.size) {
+                val d1 = pts[i]
+                val d2 = pts[i + 1]
 
-                val mount = mounts.getInt(i)
+                if (d1 > maxLevel || d2 < minLevel) {
+                    i += 2
+                    continue
+                }
+
+                val mount = mounts.getInt(i / 2)
 
                 _allowedNormals[0].setComponent(axis.levelOffset, 0.0)
                 _allowedNormals[0].setComponent(axis.aOffset, EdgeMountAllowedNormals.allowedNormals[mount][0].x)
@@ -461,10 +472,10 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                     envContactUtil = this,
                     edgeAxis = tree.axis,
                     meshEdgeIdx = e,
-                    meshEdgePointIdx = i,
+                    meshEdgePointIdx = i / 2,
                 )
 
-                i++
+                i += 2
             }
 
             idx++
