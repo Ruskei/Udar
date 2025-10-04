@@ -141,11 +141,15 @@ class PhysicsWorld(
         bodiesToRemove += bodies
     }
 
+    private var rollingSubtickTime = 1_000_000 // ns
+
     private fun tick() {
         PlayerInteractListener.tick(world)
         if (Udar.CONFIG.debug.bbs) {
             bodyAABBTree.visualize(world)
         }
+
+        val tickStartTime = System.nanoTime()
 
         time++
         repeat((0.05 / Udar.CONFIG.timeStep).roundToInt()) {
@@ -157,7 +161,7 @@ class PhysicsWorld(
             if (doTick) {
                 if (!busy.compareAndSet(false, true)) return@repeat
 
-                val startTime = System.nanoTime()
+                val subtickStartTime = System.nanoTime()
 
                 processToAdd()
                 processToRemove()
@@ -267,7 +271,7 @@ class PhysicsWorld(
                     frozen.set(true)
                 }
 
-                val duration = (System.nanoTime() - startTime).toDouble()
+                val duration = (System.nanoTime() - subtickStartTime).toDouble()
                 rollingAverage += duration / dataInterval.toDouble()
 
                 val narrowDuration = (endNarrowTime - startNarrowTime).toDouble()
@@ -285,6 +289,7 @@ class PhysicsWorld(
                 if (physicsTime % dataInterval == 0) {
                     if (Udar.CONFIG.debug.timings) {
                         println("Subtick takes ${rollingAverage.toDuration(DurationUnit.NANOSECONDS)} on average")
+                        println("  - Rolling: ${rollingSubtickTime.toDuration(DurationUnit.NANOSECONDS)}")
                         println("  - Broadphase takes ${rollingBroadAverage.toDuration(DurationUnit.NANOSECONDS)} (${rollingBroadAverage / rollingAverage * 100.0}%) on average")
                         println("  - Narrowphase takes ${rollingNarrowAverage.toDuration(DurationUnit.NANOSECONDS)} (${rollingNarrowAverage / rollingAverage * 100.0}%) on average")
                         println("  - Env takes ${rollingEnvAverage.toDuration(DurationUnit.NANOSECONDS)} (${rollingEnvAverage / rollingAverage * 100.0}%) on average")
@@ -298,6 +303,16 @@ class PhysicsWorld(
                     rollingParallelContactAverage = 0.0
                     rollingEnvAverage = 0.0
                     rollingStepAverage = 0.0
+                }
+
+                val current = System.nanoTime()
+                val subtickDur = current - subtickStartTime
+                rollingSubtickTime =
+                    ((rollingSubtickTime * SUBTICK_DUR_ROLLOVER) + (subtickDur * (1.0 - SUBTICK_DUR_ROLLOVER))).toInt()
+
+                if (current - tickStartTime + rollingSubtickTime > MAX_TIME_PER_TICK) {
+                    busy.set(false)
+                    return@tick
                 }
 
                 busy.set(false)
@@ -490,3 +505,6 @@ class PhysicsWorld(
         worldMeshesManager.kill()
     }
 }
+
+private const val SUBTICK_DUR_ROLLOVER = 0.5
+private const val MAX_TIME_PER_TICK = 48_000_000
