@@ -1,5 +1,6 @@
 package com.ixume.udar.collisiondetection.mesh.mesh2
 
+import com.ixume.udar.collisiondetection.contactgeneration.worldmesh.MESH_SIZE
 import com.ixume.udar.collisiondetection.contactgeneration.worldmesh.rollingVec3Checksum
 import com.ixume.udar.collisiondetection.mesh.quadtree.FlattenedEdgeQuadtree
 import com.ixume.udar.dynamicaabb.AABB
@@ -330,6 +331,7 @@ class LocalMesher {
 
         val state: LongArray,
     ) {
+        val mp = Vector3i(start).div(MESH_SIZE)
         val height = end.y - start.y + 1
         val length = end.z - start.z + 1
 
@@ -365,6 +367,45 @@ class LocalMesher {
             return maxX >= start.x && minX <= end.x + 1 &&
                    maxY >= start.y && minY <= end.y + 1 &&
                    maxZ >= start.z && minZ <= end.z + 1
+        }
+
+        fun minLevel(axis: AxisD): Int {
+            return when (axis) {
+                AxisD.X -> start.x
+                AxisD.Y -> start.y
+                AxisD.Z -> start.z
+            }
+        }
+
+        fun minA(axis: AxisD): Int {
+            return when (axis) {
+                AxisD.X -> start.y
+                AxisD.Y -> start.x
+                AxisD.Z -> start.x
+            }
+        }
+
+        fun minB(axis: AxisD): Int {
+            return when (axis) {
+                AxisD.X -> start.z
+                AxisD.Y -> start.z
+                AxisD.Z -> start.y
+            }
+        }
+
+        override fun equals(other: Any?): Boolean {
+            return other != null && other is Mesh2 && other.start == start
+        }
+
+        override fun hashCode(): Int {
+            val p1 = 60727
+            val p2 = 63907
+            val p3 = 90803
+
+            return (mp.x and 0b11)
+                .or((mp.y and 0b11) shl 2)
+                .or((mp.z and 0b11) shl 4)
+                .or(((mp.x * p1) xor (mp.y * p2) xor (mp.z * p3)) and (0b111111.inv()))
         }
     }
 

@@ -309,5 +309,5 @@ fun rollingVec3Checksum(sum: Long, x: Double, y: Double, z: Double): Long {
     return result
 }
 
-private const val MESH_SIZE = 32
+const val MESH_SIZE = 32
 private const val BB_SAFETY = 8

@@ -83,10 +83,10 @@ class FlattenedEdgeQuadtree(
     val points = mutableListOf<DoubleAVLTreeSet>()
     val pointMounts = mutableListOf<IntArrayList>()
 
-    private var nodeFreeIdx = -1 // head of node free linked list
-    private var edgeFreeIdx = -1 // head of edge free linked list
+    private var nodeFreeIdx = Node(-1) // head of node free linked list
+    private var edgeFreeIdx = Edge(-1) // head of edge free linked list
 
-    private var rootIdx = -1
+    private var rootIdx = Node(-1)
 
     private var nodeArr = DoubleArray(0)
     private var edgeArr = DoubleArray(0)
@@ -101,10 +101,10 @@ class FlattenedEdgeQuadtree(
             maxA = maxA,
             maxB = maxB,
 
-            c1 = -1,
-            c2 = -1,
-            c3 = -1,
-            c4 = -1,
+            c1 = Node(-1),
+            c2 = Node(-1),
+            c3 = Node(-1),
+            c4 = Node(-1),
         )
     }
 
@@ -117,12 +117,12 @@ class FlattenedEdgeQuadtree(
     private val _vec3Mounts = DoubleArray(12)
 
     fun fixUp(tree: FlattenedAABBTree, faces: MeshFaces) {
-        if (rootIdx == -1) return
+        if (rootIdx.idx == -1) return
 
-        fixupQueue.enqueue(rootIdx)
+        fixupQueue.enqueue(rootIdx.idx)
 
         while (fixupQueue.hasNext()) {
-            val node = fixupQueue.dequeue()
+            val node = Node(fixupQueue.dequeue())
 
             if (node.isLeaf()) {
                 var i = 0
@@ -287,10 +287,10 @@ class FlattenedEdgeQuadtree(
                     i++
                 }
             } else {
-                fixupQueue.enqueue(node.child1())
-                fixupQueue.enqueue(node.child2())
-                fixupQueue.enqueue(node.child3())
-                fixupQueue.enqueue(node.child4())
+                fixupQueue.enqueue(node.child1().idx)
+                fixupQueue.enqueue(node.child2().idx)
+                fixupQueue.enqueue(node.child3().idx)
+                fixupQueue.enqueue(node.child4().idx)
             }
         }
     }
@@ -310,12 +310,12 @@ class FlattenedEdgeQuadtree(
 
         math: LocalMathUtil,
     ) {
-        if (rootIdx == -1) return
+        if (rootIdx.idx == -1) return
 
         rootIdx._overlaps(minX, minY, minZ, maxX, maxY, maxZ, outA, outB, outEdges, outData, math)
     }
 
-    private fun Int._overlaps(
+    private fun Node._overlaps(
         minX: Double,
         minY: Double,
         minZ: Double,
@@ -342,12 +342,12 @@ class FlattenedEdgeQuadtree(
                         val a = e.a()
                         val b = e.b()
 
-                        if (a >= minY && a <= maxY &&
-                            b >= minZ && b <= maxZ
+                        if (a >= minY && a < maxY &&
+                            b >= minZ && b < maxZ
                         ) {
                             outA.add(a)
                             outB.add(b)
-                            outEdges.add(e)
+                            outEdges.add(e.idx)
                             outData.add(e.dataIdx())
                         }
 
@@ -369,12 +369,12 @@ class FlattenedEdgeQuadtree(
                         val a = e.a()
                         val b = e.b()
 
-                        if (a >= minX && a <= maxX &&
-                            b >= minZ && b <= maxZ
+                        if (a >= minX && a < maxX &&
+                            b >= minZ && b < maxZ
                         ) {
                             outA.add(a)
                             outB.add(b)
-                            outEdges.add(e)
+                            outEdges.add(e.idx)
                             outData.add(e.dataIdx())
                         }
 
@@ -396,12 +396,12 @@ class FlattenedEdgeQuadtree(
                         val a = e.a()
                         val b = e.b()
 
-                        if (a >= minX && a <= maxX &&
-                            b >= minY && b <= maxY
+                        if (a >= minX && a < maxX &&
+                            b >= minY && b < maxY
                         ) {
                             outA.add(a)
                             outB.add(b)
-                            outEdges.add(e)
+                            outEdges.add(e.idx)
                             outData.add(e.dataIdx())
                         }
 
@@ -428,10 +428,10 @@ class FlattenedEdgeQuadtree(
         end: Double,
         meshFaces: MeshFaces,
     ): Boolean {
-        edgeInsertionQueue.enqueue(rootIdx)
+        edgeInsertionQueue.enqueue(rootIdx.idx)
 
         while (edgeInsertionQueue.hasNext()) {
-            val node = edgeInsertionQueue.dequeue()
+            val node = Node(edgeInsertionQueue.dequeue())
 
             if (!node.contains(a, b)) continue
 
@@ -509,16 +509,16 @@ class FlattenedEdgeQuadtree(
                 node.subdivide()
             }
 
-            edgeInsertionQueue.enqueue(node.child1())
-            edgeInsertionQueue.enqueue(node.child2())
-            edgeInsertionQueue.enqueue(node.child3())
-            edgeInsertionQueue.enqueue(node.child4())
+            edgeInsertionQueue.enqueue(node.child1().idx)
+            edgeInsertionQueue.enqueue(node.child2().idx)
+            edgeInsertionQueue.enqueue(node.child3().idx)
+            edgeInsertionQueue.enqueue(node.child4().idx)
         }
 
         return false
     }
 
-    private fun Int.subdivide() {
+    private fun Node.subdivide() {
         val n1 = newNode(
             isLeaf = true,
             numPoints = 0,
@@ -528,10 +528,10 @@ class FlattenedEdgeQuadtree(
             maxA = centerA(),
             maxB = maxB(),
 
-            c1 = -1,
-            c2 = -1,
-            c3 = -1,
-            c4 = -1,
+            c1 = Node(-1),
+            c2 = Node(-1),
+            c3 = Node(-1),
+            c4 = Node(-1),
         )
 
         val n2 = newNode(
@@ -543,10 +543,10 @@ class FlattenedEdgeQuadtree(
             maxA = centerA(),
             maxB = centerB(),
 
-            c1 = -1,
-            c2 = -1,
-            c3 = -1,
-            c4 = -1,
+            c1 = Node(-1),
+            c2 = Node(-1),
+            c3 = Node(-1),
+            c4 = Node(-1),
         )
 
         val n3 = newNode(
@@ -558,10 +558,10 @@ class FlattenedEdgeQuadtree(
             maxA = maxA(),
             maxB = centerB(),
 
-            c1 = -1,
-            c2 = -1,
-            c3 = -1,
-            c4 = -1,
+            c1 = Node(-1),
+            c2 = Node(-1),
+            c3 = Node(-1),
+            c4 = Node(-1),
         )
 
         val n4 = newNode(
@@ -573,10 +573,10 @@ class FlattenedEdgeQuadtree(
             maxA = maxA(),
             maxB = maxB(),
 
-            c1 = -1,
-            c2 = -1,
-            c3 = -1,
-            c4 = -1,
+            c1 = Node(-1),
+            c2 = Node(-1),
+            c3 = Node(-1),
+            c4 = Node(-1),
         )
 
         val n = numPoints()
@@ -601,7 +601,7 @@ class FlattenedEdgeQuadtree(
         child4(n4)
     }
 
-    private fun Int.insertFormedEdge(edge: Int): Boolean {
+    private fun Node.insertFormedEdge(edge: Edge): Boolean {
         val ea = edge.a()
         val eb = edge.b()
 
@@ -631,209 +631,209 @@ class FlattenedEdgeQuadtree(
      * @param end End in node index, exclusive
      * @return Head of linked list
      */
-    private fun setNodeArrFree(start: Int, end: Int): Int {
-        if (end <= start) return -1
+    private fun setNodeArrFree(start: Int, end: Int): Node {
+        if (end <= start) return Node(-1)
 
         var i = start
         while (i < end - 1) {
-            i.nextFreeNode(i + 1)
-            i.freeNode()
+            Node(i).nextFreeNode(Node(i + 1))
+            Node(i).freeNode()
 
             i++
         }
 
         if (end - 1 >= 0) {
-            (end - 1).nextFreeNode(-1)
-            (end - 1).freeNode()
+            Node(end - 1).nextFreeNode(Node(-1))
+            Node(end - 1).freeNode()
         }
 
-        return start
+        return Node(start)
     }
 
-    private fun setEdgeArrFree(start: Int, end: Int): Int {
-        if (end <= start) return -1
+    private fun setEdgeArrFree(start: Int, end: Int): Edge {
+        if (end <= start) return Edge(-1)
 
         var i = start
         while (i < end - 1) {
-            i.nextFreeEdge(i + 1)
-            i.freeEdge()
+            Edge(i).nextFreeEdge(Edge(i + 1))
+            Edge(i).freeEdge()
 
             i++
         }
 
         if (end - 1 >= 0) {
-            (end - 1).nextFreeEdge(-1)
-            (end - 1).freeEdge()
+            Edge(end - 1).nextFreeEdge(Edge(-1))
+            Edge(end - 1).freeEdge()
         }
 
-        return start
+        return Edge(start)
     }
 
     /**
      * Only meant to be used on free nodes
      * @return The index of the next free node; -1 if full
      */
-    private fun Int.nextFreeNode(): Int {
-        return nodeArr[this * NODE_DATA_SIZE + NEXT_FREE_IDX_OFFSET].toRawBits().toInt()
+    private fun Node.nextFreeNode(): Node {
+        return Node(nodeArr[this.idx * NODE_DATA_SIZE + NEXT_FREE_IDX_OFFSET].toRawBits().toInt())
     }
 
-    private fun Int.nextFreeNode(next: Int) {
-        nodeArr[this * NODE_DATA_SIZE + NEXT_FREE_IDX_OFFSET] = Double.fromBits(next.toLong())
+    private fun Node.nextFreeNode(next: Node) {
+        nodeArr[this.idx * NODE_DATA_SIZE + NEXT_FREE_IDX_OFFSET] = Double.fromBits(next.idx.toLong())
     }
 
-    private fun Int.freeNode() {
-        nodeArr[this * NODE_DATA_SIZE + STATUS_OFFSET] =
-            nodeArr[this * NODE_DATA_SIZE + STATUS_OFFSET].withHigher(NODE_UNUSED_STATUS)
+    private fun Node.freeNode() {
+        nodeArr[this.idx * NODE_DATA_SIZE + STATUS_OFFSET] =
+            nodeArr[this.idx * NODE_DATA_SIZE + STATUS_OFFSET].withHigher(NODE_UNUSED_STATUS)
     }
 
-    private fun Int.nextFreeEdge(): Int {
-        return edgeArr[this * EDGE_DATA_SIZE + NEXT_FREE_IDX_OFFSET].toRawBits().toInt()
+    private fun Edge.nextFreeEdge(): Edge {
+        return Edge(edgeArr[this.idx * EDGE_DATA_SIZE + NEXT_FREE_IDX_OFFSET].toRawBits().toInt())
     }
 
-    private fun Int.nextFreeEdge(next: Int) {
-        edgeArr[this * EDGE_DATA_SIZE + NEXT_FREE_IDX_OFFSET] = Double.fromBits(next.toLong())
+    private fun Edge.nextFreeEdge(next: Edge) {
+        edgeArr[this.idx * EDGE_DATA_SIZE + NEXT_FREE_IDX_OFFSET] = Double.fromBits(next.idx.toLong())
     }
 
-    private fun Int.freeEdge() {
-        edgeArr[this * EDGE_DATA_SIZE + STATUS_OFFSET] =
-            edgeArr[this * EDGE_DATA_SIZE + STATUS_OFFSET].withHigher(NODE_UNUSED_STATUS)
+    private fun Edge.freeEdge() {
+        edgeArr[this.idx * EDGE_DATA_SIZE + STATUS_OFFSET] =
+            edgeArr[this.idx * EDGE_DATA_SIZE + STATUS_OFFSET].withHigher(NODE_UNUSED_STATUS)
     }
 
-    private fun Int.isLeaf(): Boolean {
-        return nodeArr[this * NODE_DATA_SIZE + IS_LEAF_OFFSET].toRawBits().toInt() == 1
+    private fun Node.isLeaf(): Boolean {
+        return nodeArr[this.idx * NODE_DATA_SIZE + IS_LEAF_OFFSET].toRawBits().toInt() == 1
     }
 
-    private fun Int.numPoints(n: Int) {
-        nodeArr[this * NODE_DATA_SIZE + NUM_POINTS_OFFSET] =
-            nodeArr[this * NODE_DATA_SIZE + NUM_POINTS_OFFSET].withHigher(n)
+    private fun Node.numPoints(n: Int) {
+        nodeArr[this.idx * NODE_DATA_SIZE + NUM_POINTS_OFFSET] =
+            nodeArr[this.idx * NODE_DATA_SIZE + NUM_POINTS_OFFSET].withHigher(n)
     }
 
-    private fun Int.numPoints(): Int {
-        return (nodeArr[this * NODE_DATA_SIZE + NUM_POINTS_OFFSET].toRawBits() ushr 32).toInt()
+    private fun Node.numPoints(): Int {
+        return (nodeArr[this.idx * NODE_DATA_SIZE + NUM_POINTS_OFFSET].toRawBits() ushr 32).toInt()
     }
 
-    private fun Int.setLeaf(l: Boolean) {
+    private fun Node.setLeaf(l: Boolean) {
         if (l) {
-            nodeArr[this * NODE_DATA_SIZE + IS_LEAF_OFFSET] =
-                nodeArr[this * NODE_DATA_SIZE + IS_LEAF_OFFSET].withLower(1)
+            nodeArr[this.idx * NODE_DATA_SIZE + IS_LEAF_OFFSET] =
+                nodeArr[this.idx * NODE_DATA_SIZE + IS_LEAF_OFFSET].withLower(1)
         } else {
-            nodeArr[this * NODE_DATA_SIZE + IS_LEAF_OFFSET] =
-                nodeArr[this * NODE_DATA_SIZE + IS_LEAF_OFFSET].withLower(0)
+            nodeArr[this.idx * NODE_DATA_SIZE + IS_LEAF_OFFSET] =
+                nodeArr[this.idx * NODE_DATA_SIZE + IS_LEAF_OFFSET].withLower(0)
         }
     }
 
-    private fun Int.child1(): Int {
-        return nodeArr[this * NODE_DATA_SIZE + C1_OFFSET].toRawBits().toInt()
+    private fun Node.child1(): Node {
+        return Node(nodeArr[this.idx * NODE_DATA_SIZE + C1_OFFSET].toRawBits().toInt())
     }
 
-    private fun Int.child1(c: Int) {
-        nodeArr[this * NODE_DATA_SIZE + C1_OFFSET] = nodeArr[this * NODE_DATA_SIZE + C1_OFFSET].withLower(c)
+    private fun Node.child1(c: Node) {
+        nodeArr[this.idx * NODE_DATA_SIZE + C1_OFFSET] = nodeArr[this.idx * NODE_DATA_SIZE + C1_OFFSET].withLower(c.idx)
     }
 
-    private fun Int.child2(): Int {
-        return (nodeArr[this * NODE_DATA_SIZE + C2_OFFSET].toRawBits() ushr 32).toInt()
+    private fun Node.child2(): Node {
+        return Node((nodeArr[this.idx * NODE_DATA_SIZE + C2_OFFSET].toRawBits() ushr 32).toInt())
     }
 
-    private fun Int.child2(c: Int) {
-        nodeArr[this * NODE_DATA_SIZE + C2_OFFSET] = nodeArr[this * NODE_DATA_SIZE + C2_OFFSET].withHigher(c)
+    private fun Node.child2(c: Node) {
+        nodeArr[this.idx * NODE_DATA_SIZE + C2_OFFSET] = nodeArr[this.idx * NODE_DATA_SIZE + C2_OFFSET].withHigher(c.idx)
     }
 
-    private fun Int.child3(): Int {
-        return nodeArr[this * NODE_DATA_SIZE + C3_OFFSET].toRawBits().toInt()
+    private fun Node.child3(): Node {
+        return Node(nodeArr[this.idx * NODE_DATA_SIZE + C3_OFFSET].toRawBits().toInt())
     }
 
-    private fun Int.child3(c: Int) {
-        nodeArr[this * NODE_DATA_SIZE + C3_OFFSET] = nodeArr[this * NODE_DATA_SIZE + C3_OFFSET].withLower(c)
+    private fun Node.child3(c: Node) {
+        nodeArr[this.idx * NODE_DATA_SIZE + C3_OFFSET] = nodeArr[this.idx * NODE_DATA_SIZE + C3_OFFSET].withLower(c.idx)
     }
 
-    private fun Int.child4(): Int {
-        return (nodeArr[this * NODE_DATA_SIZE + C4_OFFSET].toRawBits() ushr 32).toInt()
+    private fun Node.child4(): Node {
+        return Node((nodeArr[this.idx * NODE_DATA_SIZE + C4_OFFSET].toRawBits() ushr 32).toInt())
     }
 
-    private fun Int.child4(c: Int) {
-        nodeArr[this * NODE_DATA_SIZE + C4_OFFSET] = nodeArr[this * NODE_DATA_SIZE + C4_OFFSET].withHigher(c)
+    private fun Node.child4(c: Node) {
+        nodeArr[this.idx * NODE_DATA_SIZE + C4_OFFSET] = nodeArr[this.idx * NODE_DATA_SIZE + C4_OFFSET].withHigher(c.idx)
     }
 
     /**
      * Called on a node index
      * @return index of edge in edge array
      */
-    private fun Int.edge(idx: Int): Int {
-        return nodeArr[this * NODE_DATA_SIZE + EDGES_OFFSET + idx].toRawBits().toInt()
+    private fun Node.edge(idx: Int): Edge {
+        return Edge(nodeArr[this.idx * NODE_DATA_SIZE + EDGES_OFFSET + idx].toRawBits().toInt())
     }
 
-    private fun Int.edge(idx: Int, v: Int) {
-        nodeArr[this * NODE_DATA_SIZE + EDGES_OFFSET + idx] = Double.fromBits(v.toLong())
+    private fun Node.edge(idx: Int, v: Edge) {
+        nodeArr[this.idx * NODE_DATA_SIZE + EDGES_OFFSET + idx] = Double.fromBits(v.idx.toLong())
     }
 
-    private fun Int.f1(): Int {
-        return edgeArr[this * EDGE_DATA_SIZE + F1_OFFSET].toRawBits().toInt()
+    private fun Edge.f1(): Int {
+        return edgeArr[this.idx * EDGE_DATA_SIZE + F1_OFFSET].toRawBits().toInt()
     }
 
-    private fun Int.f1(i: Int) {
-        edgeArr[this * EDGE_DATA_SIZE + F1_OFFSET].withLower(i)
+    private fun Edge.f1(i: Int) {
+        edgeArr[this.idx * EDGE_DATA_SIZE + F1_OFFSET].withLower(i)
     }
 
-    private fun Int.f2(): Int {
-        return (edgeArr[this * EDGE_DATA_SIZE + F2_OFFSET].toRawBits() ushr 32).toInt()
+    private fun Edge.f2(): Int {
+        return (edgeArr[this.idx * EDGE_DATA_SIZE + F2_OFFSET].toRawBits() ushr 32).toInt()
     }
 
-    private fun Int.f2(i: Int) {
-        edgeArr[this * EDGE_DATA_SIZE + F2_OFFSET].withHigher(i)
+    private fun Edge.f2(i: Int) {
+        edgeArr[this.idx * EDGE_DATA_SIZE + F2_OFFSET].withHigher(i)
     }
 
-    private fun Int.a(): Double {
-        return edgeArr[this * EDGE_DATA_SIZE + A_OFFSET]
+    private fun Edge.a(): Double {
+        return edgeArr[this.idx * EDGE_DATA_SIZE + A_OFFSET]
     }
 
-    private fun Int.a(d: Double) {
-        edgeArr[this * EDGE_DATA_SIZE + A_OFFSET] = d
+    private fun Edge.a(d: Double) {
+        edgeArr[this.idx * EDGE_DATA_SIZE + A_OFFSET] = d
     }
 
-    private fun Int.b(): Double {
-        return edgeArr[this * EDGE_DATA_SIZE + B_OFFSET]
+    private fun Edge.b(): Double {
+        return edgeArr[this.idx * EDGE_DATA_SIZE + B_OFFSET]
     }
 
-    private fun Int.b(d: Double) {
-        edgeArr[this * EDGE_DATA_SIZE + B_OFFSET] = d
+    private fun Edge.b(d: Double) {
+        edgeArr[this.idx * EDGE_DATA_SIZE + B_OFFSET] = d
     }
 
-    private fun Int.dataIdx(): Int {
-        return edgeArr[this * EDGE_DATA_SIZE + DATA_IDX_OFFSET].toRawBits().toInt()
+    private fun Edge.dataIdx(): Int {
+        return edgeArr[this.idx * EDGE_DATA_SIZE + DATA_IDX_OFFSET].toRawBits().toInt()
     }
 
-    private fun Int.dataIdx(i: Int) {
-        edgeArr[this * EDGE_DATA_SIZE + DATA_IDX_OFFSET] = Double.fromBits(i.toLong())
+    private fun Edge.dataIdx(i: Int) {
+        edgeArr[this.idx * EDGE_DATA_SIZE + DATA_IDX_OFFSET] = Double.fromBits(i.toLong())
     }
 
-    private fun Int.dataAxis(): LocalMesher.AxisD {
-        return axiss[(edgeArr[this * EDGE_DATA_SIZE + AXIS_OFFSET].toRawBits() ushr 32).toInt()]
+    private fun Edge.dataAxis(): LocalMesher.AxisD {
+        return axiss[(edgeArr[this.idx * EDGE_DATA_SIZE + AXIS_OFFSET].toRawBits() ushr 32).toInt()]
     }
 
-    private fun Int.dataAxis(axis: LocalMesher.AxisD) {
-        edgeArr[this * EDGE_DATA_SIZE + AXIS_OFFSET] =
-            edgeArr[this * EDGE_DATA_SIZE + AXIS_OFFSET].withHigher(axis.levelOffset)
+    private fun Edge.dataAxis(axis: LocalMesher.AxisD) {
+        edgeArr[this.idx * EDGE_DATA_SIZE + AXIS_OFFSET] =
+            edgeArr[this.idx * EDGE_DATA_SIZE + AXIS_OFFSET].withHigher(axis.levelOffset)
     }
 
     /**
      * `this` is index of edge in edgeArray
      */
-    private fun Int.xor(start: Double, end: Double, dataIdx: Int) {
+    private fun Edge.xor(start: Double, end: Double, dataIdx: Int) {
         val _pts = _points(dataIdx)
 
         _pts.add(start)
         _pts.add(end)
     }
 
-    private fun Int._points(dataIdx: Int): DoubleArrayList {
+    private fun Edge._points(dataIdx: Int): DoubleArrayList {
         return _points[dataIdx]
     }
 
-    private fun Int.points(dataIdx: Int): DoubleAVLTreeSet {
+    private fun Edge.points(dataIdx: Int): DoubleAVLTreeSet {
         return points[dataIdx]
     }
 
-    private fun Int.mounts(dataIdx: Int): IntArrayList {
+    private fun Edge.mounts(dataIdx: Int): IntArrayList {
         return pointMounts[dataIdx]
     }
 
@@ -849,15 +849,15 @@ class FlattenedEdgeQuadtree(
         maxA: Double,
         maxB: Double,
 
-        c1: Int,
-        c2: Int,
-        c3: Int,
-        c4: Int,
-    ): Int {
+        c1: Node,
+        c2: Node,
+        c3: Node,
+        c4: Node,
+    ): Node {
         val currFreeIdx = nodeFreeIdx
-        if (currFreeIdx == -1) {
+        if (currFreeIdx.idx == -1) {
             val f = growNodeArrTo((nodeArr.size / NODE_DATA_SIZE) + 1)
-            check(f != -1)
+            check(f.idx != -1)
             nodeFreeIdx = f.nextFreeNode()
 
             f.resetNode(
@@ -880,7 +880,7 @@ class FlattenedEdgeQuadtree(
 
         nodeFreeIdx = nodeFreeIdx.nextFreeNode()
 
-        if (nodeFreeIdx == -1) {
+        if (nodeFreeIdx.idx == -1) {
             nodeFreeIdx = growNodeArrTo((nodeArr.size / NODE_DATA_SIZE) + 1)
         }
 
@@ -911,11 +911,11 @@ class FlattenedEdgeQuadtree(
 
         axis: LocalMesher.AxisD,
         idx: Int,
-    ): Int {
+    ): Edge {
         val currFreeIdx = edgeFreeIdx
-        if (currFreeIdx == -1) {
+        if (currFreeIdx.idx == -1) {
             val f = growEdgeArrTo((edgeArr.size / EDGE_DATA_SIZE) + 1)
-            check(f != -1)
+            check(f.idx != -1)
             edgeFreeIdx = f.nextFreeEdge()
 
             f.resetEdge(
@@ -934,7 +934,7 @@ class FlattenedEdgeQuadtree(
 
         edgeFreeIdx = edgeFreeIdx.nextFreeEdge()
 
-        if (edgeFreeIdx == -1) {
+        if (edgeFreeIdx.idx == -1) {
             edgeFreeIdx = growEdgeArrTo((edgeArr.size / EDGE_DATA_SIZE) + 1)
         }
 
@@ -952,7 +952,7 @@ class FlattenedEdgeQuadtree(
         return currFreeIdx
     }
 
-    private fun Int.resetNode(
+    private fun Node.resetNode(
         isLeaf: Boolean,
         numPoints: Int,
 
@@ -961,10 +961,10 @@ class FlattenedEdgeQuadtree(
         maxA: Double,
         maxB: Double,
 
-        c1: Int,
-        c2: Int,
-        c3: Int,
-        c4: Int,
+        c1: Node,
+        c2: Node,
+        c3: Node,
+        c4: Node,
     ) {
         setLeaf(isLeaf)
         numPoints(numPoints)
@@ -980,7 +980,7 @@ class FlattenedEdgeQuadtree(
         child4(c4)
     }
 
-    private fun Int.resetEdge(
+    private fun Edge.resetEdge(
         f1: Int,
         f2: Int,
 
@@ -1005,7 +1005,7 @@ class FlattenedEdgeQuadtree(
      * @param size Size in nodes
      * @return Head of newly created list, or current free index of nothing new was needed
      */
-    private fun growNodeArrTo(size: Int): Int {
+    private fun growNodeArrTo(size: Int): Node {
         if (nodeArr.size >= size * NODE_DATA_SIZE) return nodeFreeIdx
 
         val prevSize = nodeArr.size
@@ -1014,10 +1014,10 @@ class FlattenedEdgeQuadtree(
         nodeArr = nodeArr.copyOf(newSize)
 
         setNodeArrFree(prevSize / NODE_DATA_SIZE, newSize / NODE_DATA_SIZE)
-        return prevSize / NODE_DATA_SIZE
+        return Node(prevSize / NODE_DATA_SIZE)
     }
 
-    private fun growEdgeArrTo(size: Int): Int {
+    private fun growEdgeArrTo(size: Int): Edge {
         if (edgeArr.size >= size * EDGE_DATA_SIZE) return edgeFreeIdx
 
         val prevSize = edgeArr.size
@@ -1026,61 +1026,61 @@ class FlattenedEdgeQuadtree(
         edgeArr = edgeArr.copyOf(newSize)
 
         setEdgeArrFree(prevSize / EDGE_DATA_SIZE, newSize / EDGE_DATA_SIZE)
-        return prevSize / EDGE_DATA_SIZE
+        return Edge(prevSize / EDGE_DATA_SIZE)
     }
 
-    private fun Int.contains(a: Double, b: Double): Boolean {
+    private fun Node.contains(a: Double, b: Double): Boolean {
         return a >= minA() && a < maxA() &&
                b >= minB() && b < maxB()
     }
 
-    private fun Int.overlaps(
+    private fun Node.overlaps(
         minA: Double,
         minB: Double,
         maxA: Double,
         maxB: Double,
     ): Boolean {
-        return maxA() >= minA && minA() <= maxA &&
-               maxB() >= minB && minB() <= maxB
+        return maxA() >= minA && minA() < maxA &&
+               maxB() >= minB && minB() < maxB
     }
 
-    private fun Int.minA(): Double {
-        return nodeArr[this * NODE_DATA_SIZE + BOUNDS_MIN_A_OFFSET]
+    private fun Node.minA(): Double {
+        return nodeArr[this.idx * NODE_DATA_SIZE + BOUNDS_MIN_A_OFFSET]
     }
 
-    private fun Int.minA(d: Double) {
-        nodeArr[this * NODE_DATA_SIZE + BOUNDS_MIN_A_OFFSET] = d
+    private fun Node.minA(d: Double) {
+        nodeArr[this.idx * NODE_DATA_SIZE + BOUNDS_MIN_A_OFFSET] = d
     }
 
-    private fun Int.minB(): Double {
-        return nodeArr[this * NODE_DATA_SIZE + BOUNDS_MIN_B_OFFSET]
+    private fun Node.minB(): Double {
+        return nodeArr[this.idx * NODE_DATA_SIZE + BOUNDS_MIN_B_OFFSET]
     }
 
-    private fun Int.minB(d: Double) {
-        nodeArr[this * NODE_DATA_SIZE + BOUNDS_MIN_B_OFFSET] = d
+    private fun Node.minB(d: Double) {
+        nodeArr[this.idx * NODE_DATA_SIZE + BOUNDS_MIN_B_OFFSET] = d
     }
 
-    private fun Int.maxA(): Double {
-        return nodeArr[this * NODE_DATA_SIZE + BOUNDS_MAX_A_OFFSET]
+    private fun Node.maxA(): Double {
+        return nodeArr[this.idx * NODE_DATA_SIZE + BOUNDS_MAX_A_OFFSET]
     }
 
-    private fun Int.maxA(d: Double) {
-        nodeArr[this * NODE_DATA_SIZE + BOUNDS_MAX_A_OFFSET] = d
+    private fun Node.maxA(d: Double) {
+        nodeArr[this.idx * NODE_DATA_SIZE + BOUNDS_MAX_A_OFFSET] = d
     }
 
-    private fun Int.maxB(): Double {
-        return nodeArr[this * NODE_DATA_SIZE + BOUNDS_MAX_B_OFFSET]
+    private fun Node.maxB(): Double {
+        return nodeArr[this.idx * NODE_DATA_SIZE + BOUNDS_MAX_B_OFFSET]
     }
 
-    private fun Int.maxB(d: Double) {
-        nodeArr[this * NODE_DATA_SIZE + BOUNDS_MAX_B_OFFSET] = d
+    private fun Node.maxB(d: Double) {
+        nodeArr[this.idx * NODE_DATA_SIZE + BOUNDS_MAX_B_OFFSET] = d
     }
 
-    private fun Int.centerA(): Double {
+    private fun Node.centerA(): Double {
         return minA() * 0.5 + maxA() * 0.5
     }
 
-    private fun Int.centerB(): Double {
+    private fun Node.centerB(): Double {
         return minB() * 0.5 + maxB() * 0.5
     }
 
@@ -1107,7 +1107,7 @@ class FlattenedEdgeQuadtree(
         nodeFreeIdx = setNodeArrFree(0, nodeArr.size / NODE_DATA_SIZE)
         edgeFreeIdx = setEdgeArrFree(0, edgeArr.size / EDGE_DATA_SIZE)
 
-        rootIdx = -1
+        rootIdx = Node(-1)
 
         _points.clear()
 
@@ -1118,12 +1118,12 @@ class FlattenedEdgeQuadtree(
     fun visualize(world: World) {
         val q = IntStack()
 
-        if (rootIdx == -1) return
+        if (rootIdx.idx == -1) return
 
-        q.enqueue(rootIdx)
+        q.enqueue(rootIdx.idx)
 
         while (q.hasNext()) {
-            val i = q.dequeue()
+            val i = Node(q.dequeue())
 
             if (i.isLeaf()) {
                 var j = 0
@@ -1163,10 +1163,10 @@ class FlattenedEdgeQuadtree(
                     j++
                 }
             } else {
-                q.enqueue(i.child1())
-                q.enqueue(i.child2())
-                q.enqueue(i.child3())
-                q.enqueue(i.child4())
+                q.enqueue(i.child1().idx)
+                q.enqueue(i.child2().idx)
+                q.enqueue(i.child3().idx)
+                q.enqueue(i.child4().idx)
             }
         }
     }
@@ -1215,3 +1215,9 @@ const val ABOVE_ASYMMETRY_EPSILON = 2f * ASYMMETRY_EPSILON
 private const val X_PRIME = 65282653
 private const val Y_PRIME = 49021097
 private const val Z_PRIME = 20262443
+
+@JvmInline
+private value class Node(val idx: Int)
+
+@JvmInline
+private value class Edge(val idx: Int)
