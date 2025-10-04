@@ -32,6 +32,8 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.roundToInt
 import kotlin.system.measureNanoTime
+import kotlin.time.DurationUnit
+import kotlin.time.toDuration
 
 class PhysicsWorld(
     val world: World,
@@ -82,13 +84,21 @@ class PhysicsWorld(
 
     val worldMeshesManager = WorldMeshesManager(this)
 
-    private val simTask = Bukkit.getScheduler().runTaskTimerAsynchronously(Udar.INSTANCE, Runnable { tick() }, 1, 1)
+    private val simTask = Bukkit.getScheduler().runTaskTimerAsynchronously(Udar.INSTANCE, Runnable {
+        val t = measureNanoTime {
+            tick()
+        }
+
+        if (Udar.CONFIG.debug.timings) {
+            println("Tick took ${t.toDuration(DurationUnit.NANOSECONDS)}!")
+        }
+    }, 1, 1)
     private val entityTask = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { entityUpdater.tick() }, 2, 2)
 
     private val busy = AtomicBoolean(false)
 
-    private val NARROWPHASE_PROCESSORS = 1//Runtime.getRuntime().availableProcessors()
-    private val ENV_PROCESSORS = 1
+    private val NARROWPHASE_PROCESSORS = 8//Runtime.getRuntime().availableProcessors()
+    private val ENV_PROCESSORS = 8
     val mathPool = MathPool(this, NARROWPHASE_PROCESSORS)
     private val executor = Executors.newFixedThreadPool(NARROWPHASE_PROCESSORS)
     private val narrowPhaseCallables = Array(NARROWPHASE_PROCESSORS) { NarrowPhaseCallable(this) }
@@ -274,12 +284,12 @@ class PhysicsWorld(
 
                 if (physicsTime % dataInterval == 0) {
                     if (Udar.CONFIG.debug.timings) {
-                        println("Total takes ${rollingAverage / 1_000.0}us on average")
-                        println("  - Broadphase takes ${rollingBroadAverage / 1_000.0}us (${rollingBroadAverage / rollingAverage * 100.0}%) on average")
-                        println("  - Narrowphase takes ${rollingNarrowAverage / 1_000.0}us (${rollingNarrowAverage / rollingAverage * 100.0}%) on average")
-                        println("  - Env takes ${rollingEnvAverage / 1_000.0}us (${rollingEnvAverage / rollingAverage * 100.0}%) on average")
-                        println("  - Parallel Constraint takes ${rollingParallelContactAverage / 1_000.0}us (${rollingParallelContactAverage / rollingAverage * 100.0}%) on average")
-                        println("  - Step takes ${rollingStepAverage / 1_000.0}us (${rollingStepAverage / rollingAverage * 100.0}%) on average")
+                        println("Subtick takes ${rollingAverage.toDuration(DurationUnit.NANOSECONDS)} on average")
+                        println("  - Broadphase takes ${rollingBroadAverage.toDuration(DurationUnit.NANOSECONDS)} (${rollingBroadAverage / rollingAverage * 100.0}%) on average")
+                        println("  - Narrowphase takes ${rollingNarrowAverage.toDuration(DurationUnit.NANOSECONDS)} (${rollingNarrowAverage / rollingAverage * 100.0}%) on average")
+                        println("  - Env takes ${rollingEnvAverage.toDuration(DurationUnit.NANOSECONDS)} (${rollingEnvAverage / rollingAverage * 100.0}%) on average")
+                        println("  - Parallel Constraint takes ${rollingParallelContactAverage.toDuration(DurationUnit.NANOSECONDS)} (${rollingParallelContactAverage / rollingAverage * 100.0}%) on average")
+                        println("  - Step takes ${rollingStepAverage.toDuration(DurationUnit.NANOSECONDS)} (${rollingStepAverage / rollingAverage * 100.0}%) on average")
                         println("ACCOUNTED FOR ${(rollingNarrowAverage + rollingBroadAverage + rollingParallelContactAverage + rollingEnvAverage + rollingStepAverage) / rollingAverage * 100.0}%")
                     }
                     rollingAverage = 0.0
