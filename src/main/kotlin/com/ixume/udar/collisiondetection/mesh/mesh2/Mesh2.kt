@@ -377,22 +377,6 @@ class LocalMesher {
             }
         }
 
-        fun minA(axis: AxisD): Int {
-            return when (axis) {
-                AxisD.X -> start.y
-                AxisD.Y -> start.x
-                AxisD.Z -> start.x
-            }
-        }
-
-        fun minB(axis: AxisD): Int {
-            return when (axis) {
-                AxisD.X -> start.z
-                AxisD.Y -> start.z
-                AxisD.Z -> start.y
-            }
-        }
-
         override fun equals(other: Any?): Boolean {
             return other != null && other is Mesh2 && other.start == start
         }
