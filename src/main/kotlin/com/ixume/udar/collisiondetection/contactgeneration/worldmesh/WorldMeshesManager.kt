@@ -5,10 +5,15 @@ import com.ixume.udar.Udar
 import com.ixume.udar.collisiondetection.contactgeneration.EnvironmentContactGenerator2
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 import com.ixume.udar.dynamicaabb.AABB
+import net.minecraft.core.BlockPos
+import net.minecraft.server.level.ServerLevel
+import net.minecraft.world.level.block.state.BlockState
 import org.bukkit.Bukkit
 import org.bukkit.World
+import org.bukkit.craftbukkit.CraftWorld
 import org.bukkit.scheduler.BukkitTask
 import java.util.concurrent.CopyOnWriteArraySet
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.floor
 import kotlin.system.measureNanoTime
 import kotlin.time.DurationUnit
@@ -29,9 +34,17 @@ class WorldMeshesManager(
     private val positionedMeshes = HashMap<MeshPosition, LocalMesher.Mesh2>()
     val envContactGenerators = CopyOnWriteArraySet<EnvironmentContactGenerator2>()
 
-    private var syncTask: BukkitTask? = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, ::tick, 1, 1)
+    private var syncTask: BukkitTask? = Bukkit.getScheduler().runTaskTimerAsynchronously(Udar.INSTANCE, ::tick, 1, 1)
+
+    private val busy = AtomicBoolean(false)
+    private val _bp = BlockPos(0, 0, 0).mutable()
 
     private fun tick() {
+        if (!busy.compareAndSet(false, true)) {
+            return
+        }
+
+        val nmsWorld = (world as CraftWorld).handle
 //        println("TICK")
         val t = measureNanoTime {
 //            positionedMeshes.forEach { it.value.visualize(world) }
@@ -56,8 +69,9 @@ class WorldMeshesManager(
                             var sum = 1L
                             var calculatedSum = false
 
-                            val block = world.getBlockAt(x, y, z)
-                            val isPassable = block.isPassable
+                            _bp.set(x, y, z)
+                            val nmsBlock = nmsWorld.fastBlockAt(_bp)
+                            val isPassable = !nmsBlock.block.hasCollision
 
                             for ((mp, mesh) in gen.meshes.map) {
                                 if (!(
@@ -95,20 +109,24 @@ class WorldMeshesManager(
                                     val existingMesh = positionedMeshes[mp]
                                     if (existingMesh != null) {
                                         if (!calculatedSum) {
-                                            for (boundingBox in block.collisionShape.boundingBoxes) {
-                                                sum = rollingVec3Checksum(
-                                                    sum,
-                                                    x + boundingBox.minX,
-                                                    y + boundingBox.minY,
-                                                    z + boundingBox.minZ,
-                                                )
-                                                sum = rollingVec3Checksum(
-                                                    sum,
-                                                    x + boundingBox.maxX,
-                                                    y + boundingBox.maxY,
-                                                    z + boundingBox.maxZ,
-                                                )
-                                            }
+                                            nmsBlock.getCollisionShape(
+                                                nmsWorld,
+                                                _bp,
+                                            )
+                                                .forAllBoxes { minX, minY, minZ, maxX, maxY, maxZ ->
+                                                    sum = rollingVec3Checksum(
+                                                        sum,
+                                                        x + minX,
+                                                        y + minY,
+                                                        z + minZ,
+                                                    )
+                                                    sum = rollingVec3Checksum(
+                                                        sum,
+                                                        x + maxX,
+                                                        y + maxY,
+                                                        z + maxZ,
+                                                    )
+                                                }
 
                                             calculatedSum = true
                                         }
@@ -124,18 +142,22 @@ class WorldMeshesManager(
                                 }
 
                                 if (!calculatedSum) {
-                                    for (boundingBox in block.collisionShape.boundingBoxes) {
+
+                                    nmsBlock.getCollisionShape(
+                                        nmsWorld,
+                                        _bp,
+                                    ).forAllBoxes { minX, minY, minZ, maxX, maxY, maxZ ->
                                         sum = rollingVec3Checksum(
                                             sum,
-                                            x + boundingBox.minX,
-                                            y + boundingBox.minY,
-                                            z + boundingBox.minZ,
+                                            x + minX,
+                                            y + minY,
+                                            z + minZ,
                                         )
                                         sum = rollingVec3Checksum(
                                             sum,
-                                            x + boundingBox.maxX,
-                                            y + boundingBox.maxY,
-                                            z + boundingBox.maxZ,
+                                            x + maxX,
+                                            y + maxY,
+                                            z + maxZ,
                                         )
                                     }
 
@@ -214,6 +236,7 @@ class WorldMeshesManager(
 //
 //        val d = t.toDuration(DurationUnit.NANOSECONDS)
 //        println("Mesh manager tick took $d")
+        busy.set(false)
     }
 
     private inline fun forEachOverlappingMeshPos(
@@ -311,3 +334,28 @@ fun rollingVec3Checksum(sum: Long, x: Double, y: Double, z: Double): Long {
 
 const val MESH_SIZE = 32
 private const val BB_SAFETY = 8
+/*
+    public BlockState getBlock(Location location) {
+        Preconditions.checkNotNull(location);
+
+        int x = location.getBlockX();
+        int y = location.getBlockY();
+        int z = location.getBlockZ();
+        final ServerLevel handle = getServerLevel(location.getWorld());
+        LevelChunk chunk = handle.getChunk(x >> 4, z >> 4);
+        final BlockPos blockPos = new BlockPos(x, y, z);
+        final net.minecraft.world.level.block.state.BlockState blockData = chunk.getBlockState(blockPos);
+        BlockState state = adapt(blockData);
+        if (state == null) {
+            org.bukkit.block.Block bukkitBlock = location.getBlock();
+            state = BukkitAdapter.adapt(bukkitBlock.getBlockData());
+        }
+        return state;
+    }
+
+ */
+
+fun ServerLevel.fastBlockAt(bp: BlockPos): BlockState {
+    val chunk = getChunk(bp.x shr 4, bp.z shr 4)
+    return chunk.getBlockState(bp)
+}

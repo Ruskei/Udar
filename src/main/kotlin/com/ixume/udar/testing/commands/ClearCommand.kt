@@ -23,7 +23,8 @@ object ClearCommand : Command {
         args: Array<out String>?,
     ): Boolean {
         if (sender is Player) {
-            PhysicsWorldsManager.getPhysicsWorld(sender.world)?.clear()
+            val world = PhysicsWorldsManager.getPhysicsWorld(sender.world)
+            world?.clear()
         } else {
             for (world in Bukkit.getWorlds()) {
                 PhysicsWorldsManager.getPhysicsWorld(world)?.clear()
