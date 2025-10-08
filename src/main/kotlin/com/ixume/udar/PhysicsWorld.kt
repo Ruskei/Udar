@@ -12,6 +12,7 @@ import com.ixume.udar.dynamicaabb.FlattenedBodyAABBTree
 import com.ixume.udar.physics.EntityUpdater
 import com.ixume.udar.physics.StatusUpdater
 import com.ixume.udar.physics.constraint.ConstraintSolverManager
+import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldArray
 import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldBuffer
 import com.ixume.udar.physics.contact.a2a.manifold.A2APrevManifoldData
 import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldBuffer
@@ -52,7 +53,7 @@ class PhysicsWorld(
 
     var numPossibleContacts = 0
 
-    val manifoldBuffer = A2AManifoldBuffer(4)
+    val manifoldBuffer = A2AManifoldArray(4)
 
     val prevContactMap = Long2IntOpenHashMap()
     val prevContactData = A2APrevManifoldData()

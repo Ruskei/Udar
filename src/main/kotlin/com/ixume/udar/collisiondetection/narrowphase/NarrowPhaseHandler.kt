@@ -15,7 +15,7 @@ class NarrowPhaseHandler(
     private val callables = Array(processors) { NarrowPhaseCallable(physicsWorld) }
     val _groupedBroadCollisions =
         Array<Int2ObjectOpenHashMap<IntArrayList>>(processors) { Int2ObjectOpenHashMap() }
-    
+
     fun process(pairs: Array<Int2ObjectOpenHashMap<IntArrayList>>) {
         check(pairs.size == processors)
 
@@ -34,8 +34,14 @@ class NarrowPhaseHandler(
         }
 
         latch.await()
+
+        for (callable in callables) {
+            for (i in 0..<callable.buf.size()) {
+                physicsWorld.manifoldBuffer.load(callable.buf, i)
+            }
+        }
     }
-    
+
     fun shutdown() {
         executor.shutdown()
     }

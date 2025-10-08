@@ -3,11 +3,14 @@ package com.ixume.udar.physics.contact.a2a.manifold
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.physics.contact.a2a.A2AContactDataBuffer
+import org.joml.Matrix3f
 import kotlin.math.max
 
 class A2AManifoldArray(val maxContactNum: Int) : A2AManifoldCollection {
     override var arr = FloatArray(0)
     private var cursor = 0
+
+    var numContacts = 0
 
     private val manifoldDataSize = MANIFOLD_PREFIX_SIZE + maxContactNum * CONTACT_DATA_SIZE
 
@@ -26,6 +29,7 @@ class A2AManifoldArray(val maxContactNum: Int) : A2AManifoldCollection {
         if (buf.size() == 0) return
         val idx = cursor * manifoldDataSize
         cursor++
+        numContacts += buf.cursor
 
         grow(idx + manifoldDataSize)
 
@@ -87,6 +91,8 @@ class A2AManifoldArray(val maxContactNum: Int) : A2AManifoldCollection {
         val idx = cursor * manifoldDataSize
         cursor++
         grow(idx + manifoldDataSize)
+        
+        numContacts++
 
         val norm = math._n.set(normX, normY, normZ)
         val t1 = math._t1v.set(1f).orthogonalizeUnit(norm)
@@ -159,6 +165,7 @@ class A2AManifoldArray(val maxContactNum: Int) : A2AManifoldCollection {
     override fun load(other: A2AManifoldCollection, otherManifoldIdx: Int) {
         val idx = cursor * manifoldDataSize
         cursor++
+        numContacts += other.numContacts(otherManifoldIdx)
         grow(idx + manifoldDataSize)
 
         System.arraycopy(other.arr, otherManifoldIdx * manifoldDataSize, arr, idx, manifoldDataSize)
@@ -166,6 +173,7 @@ class A2AManifoldArray(val maxContactNum: Int) : A2AManifoldCollection {
 
     fun clear() {
         cursor = 0
+        numContacts = 0
     }
 
     fun isEmpty(): Boolean {
@@ -212,6 +220,214 @@ class A2AManifoldArray(val maxContactNum: Int) : A2AManifoldCollection {
         arr[idx + BODY_B_INVERSE_INERTIA_ZX_OFFSET] = second.inverseInertia.m20.toFloat()
         arr[idx + BODY_B_INVERSE_INERTIA_ZY_OFFSET] = second.inverseInertia.m21.toFloat()
         arr[idx + BODY_B_INVERSE_INERTIA_ZZ_OFFSET] = second.inverseInertia.m22.toFloat()
+    }
+
+    fun manifoldID(manifoldIdx: Int): Long {
+        val baseIdx = manifoldIdx * manifoldDataSize
+        val low = arr[baseIdx + MANIFOLD_ID_OFFSET].toRawBits().toLong()
+        val high = arr[baseIdx + MANIFOLD_ID_OFFSET + 1].toRawBits().toLong()
+        return (high shl 32) or (low and 0xFFFFFFFFL)
+    }
+
+    fun setContactID(manifoldIdx: Int, contactID: Long) {
+        val baseIdx = manifoldIdx * manifoldDataSize
+        arr[baseIdx + MANIFOLD_ID_OFFSET] = Float.fromBits(contactID.toInt())
+        arr[baseIdx + MANIFOLD_ID_OFFSET + 1] = Float.fromBits((contactID ushr 32).toInt())
+    }
+
+    fun bodyAIdx(manifoldIdx: Int): Int {
+        return arr[manifoldIdx * manifoldDataSize + BODY_A_IDX_OFFSET].toRawBits()
+    }
+
+    fun setBodyAIdx(manifoldIdx: Int, value: Int) {
+        arr[manifoldIdx * manifoldDataSize + BODY_A_IDX_OFFSET] = Float.fromBits(value)
+    }
+
+    fun bodyAX(manifoldIdx: Int): Float {
+        return arr[manifoldIdx * manifoldDataSize + BODY_A_POS_X_OFFSET]
+    }
+
+    fun bodyAY(manifoldIdx: Int): Float {
+        return arr[manifoldIdx * manifoldDataSize + BODY_A_POS_Y_OFFSET]
+    }
+
+    fun bodyAZ(manifoldIdx: Int): Float {
+        return arr[manifoldIdx * manifoldDataSize + BODY_A_POS_Z_OFFSET]
+    }
+
+    fun bodyAIM(manifoldIdx: Int): Float {
+        return arr[manifoldIdx * manifoldDataSize + BODY_A_INVERSE_MASS_OFFSET]
+    }
+
+    fun bodyAII(manifoldIdx: Int, out: Matrix3f): Matrix3f {
+        val baseIdx = manifoldIdx * manifoldDataSize
+        return out.set(
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_XX_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_XY_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_XZ_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_YX_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_YY_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_YZ_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_ZX_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_ZY_OFFSET],
+            arr[baseIdx + BODY_A_INVERSE_INERTIA_ZZ_OFFSET]
+        )
+    }
+
+    fun bodyBIdx(manifoldIdx: Int): Int {
+        return arr[manifoldIdx * manifoldDataSize + BODY_B_IDX_OFFSET].toRawBits()
+    }
+
+    fun setBodyBIdx(manifoldIdx: Int, value: Int) {
+        arr[manifoldIdx * manifoldDataSize + BODY_B_IDX_OFFSET] = Float.fromBits(value)
+    }
+
+    fun bodyBX(manifoldIdx: Int): Float {
+        return arr[manifoldIdx * manifoldDataSize + BODY_B_POS_X_OFFSET]
+    }
+
+    fun bodyBY(manifoldIdx: Int): Float {
+        return arr[manifoldIdx * manifoldDataSize + BODY_B_POS_Y_OFFSET]
+    }
+
+    fun bodyBZ(manifoldIdx: Int): Float {
+        return arr[manifoldIdx * manifoldDataSize + BODY_B_POS_Z_OFFSET]
+    }
+
+    fun bodyBIM(manifoldIdx: Int): Float {
+        return arr[manifoldIdx * manifoldDataSize + BODY_B_INVERSE_MASS_OFFSET]
+    }
+
+    fun bodyBII(manifoldIdx: Int, out: Matrix3f): Matrix3f {
+        val baseIdx = manifoldIdx * manifoldDataSize
+        return out.set(
+            arr[baseIdx + BODY_B_INVERSE_INERTIA_XX_OFFSET],
+            arr[baseIdx + BODY_B_INVERSE_INERTIA_XY_OFFSET],
+            arr[baseIdx + BODY_B_INVERSE_INERTIA_XZ_OFFSET],
+            arr[baseIdx + BODY_B_INVERSE_INERTIA_YX_OFFSET],
+            arr[baseIdx + BODY_B_INVERSE_INERTIA_YY_OFFSET],
+            arr[baseIdx + BODY_B_INVERSE_INERTIA_YZ_OFFSET],
+            arr[baseIdx + BODY_B_INVERSE_INERTIA_ZX_OFFSET],
+            arr[baseIdx + BODY_B_INVERSE_INERTIA_ZY_OFFSET],
+            arr[baseIdx + BODY_B_INVERSE_INERTIA_ZZ_OFFSET]
+        )
+    }
+
+    fun pointAX(manifoldIdx: Int, contactIdx: Int): Float {
+        val baseIdx = manifoldIdx * manifoldDataSize + CONTACTS_OFFSET + contactIdx * CONTACT_DATA_SIZE
+        return arr[baseIdx + POINT_A_X_OFFSET]
+    }
+
+    fun pointAY(manifoldIdx: Int, contactIdx: Int): Float {
+        val baseIdx = manifoldIdx * manifoldDataSize + CONTACTS_OFFSET + contactIdx * CONTACT_DATA_SIZE
+        return arr[baseIdx + POINT_A_Y_OFFSET]
+    }
+
+    fun pointAZ(manifoldIdx: Int, contactIdx: Int): Float {
+        val baseIdx = manifoldIdx * manifoldDataSize + CONTACTS_OFFSET + contactIdx * CONTACT_DATA_SIZE
+        return arr[baseIdx + POINT_A_Z_OFFSET]
+    }
+
+    fun pointBX(manifoldIdx: Int, contactIdx: Int): Float {
+        val baseIdx = manifoldIdx * manifoldDataSize + CONTACTS_OFFSET + contactIdx * CONTACT_DATA_SIZE
+        return arr[baseIdx + POINT_B_X_OFFSET]
+    }
+
+    fun pointBY(manifoldIdx: Int, contactIdx: Int): Float {
+        val baseIdx = manifoldIdx * manifoldDataSize + CONTACTS_OFFSET + contactIdx * CONTACT_DATA_SIZE
+        return arr[baseIdx + POINT_B_Y_OFFSET]
+    }
+
+    fun pointBZ(manifoldIdx: Int, contactIdx: Int): Float {
+        val baseIdx = manifoldIdx * manifoldDataSize + CONTACTS_OFFSET + contactIdx * CONTACT_DATA_SIZE
+        return arr[baseIdx + POINT_B_Z_OFFSET]
+    }
+
+    // Normal vector accessors
+    fun normX(manifoldIdx: Int, contactIdx: Int): Float {
+        val baseIdx = manifoldIdx * manifoldDataSize + CONTACTS_OFFSET + contactIdx * CONTACT_DATA_SIZE
+        return arr[baseIdx + NORM_X_OFFSET]
+    }
+
+    fun normY(manifoldIdx: Int, contactIdx: Int): Float {
+        val baseIdx = manifoldIdx * manifoldDataSize + CONTACTS_OFFSET + contactIdx * CONTACT_DATA_SIZE
+        return arr[baseIdx + NORM_Y_OFFSET]
+    }
+
+    fun normZ(manifoldIdx: Int, contactIdx: Int): Float {
+        val baseIdx = manifoldIdx * manifoldDataSize + CONTACTS_OFFSET + contactIdx * CONTACT_DATA_SIZE
+        return arr[baseIdx + NORM_Z_OFFSET]
+    }
+
+    // Tangent 1 vector accessors
+    fun t1X(manifoldIdx: Int, contactIdx: Int): Float {
+        val baseIdx = manifoldIdx * manifoldDataSize + CONTACTS_OFFSET + contactIdx * CONTACT_DATA_SIZE
+        return arr[baseIdx + T1_X_OFFSET]
+    }
+
+    fun t1Y(manifoldIdx: Int, contactIdx: Int): Float {
+        val baseIdx = manifoldIdx * manifoldDataSize + CONTACTS_OFFSET + contactIdx * CONTACT_DATA_SIZE
+        return arr[baseIdx + T1_Y_OFFSET]
+    }
+
+    fun t1Z(manifoldIdx: Int, contactIdx: Int): Float {
+        val baseIdx = manifoldIdx * manifoldDataSize + CONTACTS_OFFSET + contactIdx * CONTACT_DATA_SIZE
+        return arr[baseIdx + T1_Z_OFFSET]
+    }
+
+    // Tangent 2 vector accessors
+    fun t2X(manifoldIdx: Int, contactIdx: Int): Float {
+        val baseIdx = manifoldIdx * manifoldDataSize + CONTACTS_OFFSET + contactIdx * CONTACT_DATA_SIZE
+        return arr[baseIdx + T2_X_OFFSET]
+    }
+
+    fun t2Y(manifoldIdx: Int, contactIdx: Int): Float {
+        val baseIdx = manifoldIdx * manifoldDataSize + CONTACTS_OFFSET + contactIdx * CONTACT_DATA_SIZE
+        return arr[baseIdx + T2_Y_OFFSET]
+    }
+
+    fun t2Z(manifoldIdx: Int, contactIdx: Int): Float {
+        val baseIdx = manifoldIdx * manifoldDataSize + CONTACTS_OFFSET + contactIdx * CONTACT_DATA_SIZE
+        return arr[baseIdx + T2_Z_OFFSET]
+    }
+
+    // Depth accessor
+    fun depth(manifoldIdx: Int, contactIdx: Int): Float {
+        val baseIdx = manifoldIdx * manifoldDataSize + CONTACTS_OFFSET + contactIdx * CONTACT_DATA_SIZE
+        return arr[baseIdx + DEPTH_OFFSET]
+    }
+
+    // Lambda accessors
+    fun normalLambda(manifoldIdx: Int, contactIdx: Int): Float {
+        val baseIdx = manifoldIdx * manifoldDataSize + CONTACTS_OFFSET + contactIdx * CONTACT_DATA_SIZE
+        val l = arr[baseIdx + NORMAL_LAMBDA_OFFSET]
+//        if (l == 0f) println("accessing cold lambda")
+        return l
+    }
+
+    fun setNormalLambda(manifoldIdx: Int, contactIdx: Int, value: Float) {
+        val baseIdx = manifoldIdx * manifoldDataSize + CONTACTS_OFFSET + contactIdx * CONTACT_DATA_SIZE
+        arr[baseIdx + NORMAL_LAMBDA_OFFSET] = value
+    }
+
+    fun t1Lambda(manifoldIdx: Int, contactIdx: Int): Float {
+        val baseIdx = manifoldIdx * manifoldDataSize + CONTACTS_OFFSET + contactIdx * CONTACT_DATA_SIZE
+        return arr[baseIdx + T1_LAMBDA_OFFSET]
+    }
+
+    fun setT1Lambda(manifoldIdx: Int, contactIdx: Int, value: Float) {
+        val baseIdx = manifoldIdx * manifoldDataSize + CONTACTS_OFFSET + contactIdx * CONTACT_DATA_SIZE
+        arr[baseIdx + T1_LAMBDA_OFFSET] = value
+    }
+
+    fun t2Lambda(manifoldIdx: Int, contactIdx: Int): Float {
+        val baseIdx = manifoldIdx * manifoldDataSize + CONTACTS_OFFSET + contactIdx * CONTACT_DATA_SIZE
+        return arr[baseIdx + T2_LAMBDA_OFFSET]
+    }
+
+    fun setT2Lambda(manifoldIdx: Int, contactIdx: Int, value: Float) {
+        val baseIdx = manifoldIdx * manifoldDataSize + CONTACTS_OFFSET + contactIdx * CONTACT_DATA_SIZE
+        arr[baseIdx + T2_LAMBDA_OFFSET] = value
     }
 
     private fun grow(required: Int) {
