@@ -19,8 +19,6 @@ import java.lang.reflect.Type
 private val gson: Gson = GsonBuilder()
     .registerTypeAdapter(Vector3d::class.java, Vector3dTypeAdapter)
     .registerTypeAdapter(Config::class.java, Config)
-    .registerTypeAdapter(Config.SDFConfig::class.java, Config.SDFConfig)
-    .registerTypeAdapter(Config.SATConfig::class.java, Config.SATConfig)
     .registerTypeAdapter(Config.DebugConfig::class.java, Config.DebugConfig)
     .registerTypeAdapter(Config.DebugConfig.Tests::class.java, TestsAdapter)
     .setPrettyPrinting()
@@ -30,11 +28,14 @@ object ConfigLoader {
     fun load() {
         val dataFolder = Udar.INSTANCE.dataFolder
         dataFolder.mkdirs()
+        
+        println("Data path: ${Udar.INSTANCE.dataPath}")
 
         val configFile = File(dataFolder, "testing.json")
+
         if (!configFile.exists()) {
             Udar.CONFIG = Config()
-            configFile.writeText(gson.toJson(Config()))
+            configFile.writeBytes(Udar.INSTANCE.getResource("default/testing.json")!!.readAllBytes())
 
             Udar.LOGGER.info("Created config!")
 
@@ -73,17 +74,14 @@ object ConfigLoader {
 
 data class Config(
     val enabled: Boolean = true,
-    val timeStep: Double = 0.005,
-    val gravity: Vector3d = Vector3d(0.0, -5.0, 0.0),
+    val timeStep: Double = 0.01,
+    val gravity: Vector3d = Vector3d(0.0, -10.0, 0.0),
     val collision: CollisionConfig = CollisionConfig(),
-    val sat: SATConfig = SATConfig(),
-    val sdf: SDFConfig = SDFConfig(),
     val debug: DebugConfig = DebugConfig(),
     val sleepLinearVelocity: Double = 1e-3,
     val sleepAngularVelocity: Double = 1e-3,
-    val sleepTime: Int = 20,
-    val birthTime: Int = 20,
-    val significant: Double = 1e-8,
+    val sleepTime: Int = 40,
+    val birthTime: Int = 40,
 ) {
     companion object : InstanceCreator<Config> {
         override fun createInstance(type: Type?): Config? {
@@ -92,14 +90,14 @@ data class Config(
     }
 
     data class CollisionConfig(
-        val bias: Double = 0.15,
-        val passiveSlop: Double = 0.0001,
-        val activeSlop: Double = 0.001,
-        val friction: Double = 0.3,
-        val lambdaCarryover: Float = 0.8f,
-        val normalIterations: Int = 4,
-        val frictionIterations: Int = 4,
-        val sameContactThreshold: Double = 0.1,
+        val bias: Double = 0.2,
+        val passiveSlop: Double = 1e-3,
+        val activeSlop: Double = 1e-3,
+        val friction: Double = 0.35,
+        val lambdaCarryover: Float = 0.99f,
+        val normalIterations: Int = 6,
+        val frictionIterations: Int = 3,
+        val sameContactThreshold: Double = 0.5,
     ) {
         companion object : InstanceCreator<CollisionConfig> {
             override fun createInstance(type: Type?): CollisionConfig? {
@@ -108,49 +106,14 @@ data class Config(
         }
     }
 
-    data class SATConfig(
-        val fudge: Double = 4.0,
-    ) {
-        companion object : InstanceCreator<SATConfig> {
-            override fun createInstance(type: Type?): SATConfig? {
-                return SATConfig()
-            }
-        }
-    }
-
-    data class SDFConfig(
-        val endFast: Boolean = false,
-        val maxSteps: Int = 20,
-        val maxNormalSteps: Int = 5,
-        val stepSize: Double = 0.02,
-        val fineStepSize: Double = 0.001,
-        val epsilon: Double = 1e-7,
-        val priority: Int = -1,
-        val errorEpsilon: Double = 1e-14,
-    ) {
-        companion object : InstanceCreator<SDFConfig> {
-            override fun createInstance(type: Type?): SDFConfig? {
-                return SDFConfig()
-            }
-        }
-    }
-
     data class DebugConfig(
-        val frequency: Int = 3,
+        val frequency: Int = 2,
         val mesh: Int = 0,
         val normals: Int = 0,
         val bbs: Boolean = false,
         val collisionTimes: Int = 0,
         val data: Int = 0,
 
-        val SDFContact: Int = 0,
-        val SDFParticleCount: Int = 5,
-        val SDFStartSize: Float = 0.1f,
-        val SDFNodeSize: Float = 0.05f,
-        val SDFDetection: Boolean = false,
-        val SDFMy: Boolean = false,
-        val SDFOther: Boolean = false,
-        val SDFNode: Int = -1,
         val tests: Tests = Tests(mapOf()),
 
         val timings: Boolean = false,
