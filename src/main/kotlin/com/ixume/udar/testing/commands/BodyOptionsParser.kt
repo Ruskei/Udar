@@ -10,11 +10,13 @@ data class BodyOptions(
     val density: Double,
     val hasGravity: Boolean,
     val trueOmega: Boolean,
+    val scale: Double,
 ) {
     companion object {
         fun fromArgs(
             args: Array<out String>,
         ): BodyOptions {
+            var scale = 1.0
             var v0 = Vector3d(0.0)
             var dims = Vector3d(0.99)
             var l = Vector3d(0.0)
@@ -127,6 +129,17 @@ data class BodyOptions(
                     }
                 }
 
+                if (arg == "--scale" || arg == "-s") {
+                    i++
+                    val arg2 = args[i]
+                    val s = arg2.toDoubleOrNull()
+                    if (s == null) {
+                        i--
+                    } else {
+                        scale = s
+                    }
+                }
+
                 if (arg == "--gravity" || arg == "-g") {
                     hasGravity = true
                 }
@@ -150,6 +163,7 @@ data class BodyOptions(
                 density = density,
                 hasGravity = hasGravity,
                 trueOmega = trueOmega,
+                scale = scale,
             )
         }
 
@@ -162,6 +176,7 @@ data class BodyOptions(
                 density = 1.0,
                 hasGravity = true,
                 trueOmega = false,
+                scale = 1.0,
             )
         }
     }

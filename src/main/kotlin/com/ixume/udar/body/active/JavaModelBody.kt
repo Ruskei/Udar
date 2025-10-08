@@ -14,11 +14,12 @@ import org.joml.Vector3f
 class JavaModelBody private constructor(
     val composite: CompositeImpl,
     model: JavaModel,
+    val scale: Double,
 ) : Composite by composite {
     private val display: ItemDisplay
 
     private val _v = Vector3f()
-    private val _s = Vector3f(1f)
+    private val _s = Vector3f(scale.toFloat())
     private val _r = Quaternionf()
     private val _eq = Quaternionf()
 
@@ -68,9 +69,14 @@ class JavaModelBody private constructor(
     }
 
     companion object {
-        fun construct(pw: PhysicsWorld, origin: Vector3d, model: JavaModel): JavaModelBody {
-            val composite = model.realize(pw, origin)
-            return JavaModelBody(composite, model)
+        fun construct(
+            pw: PhysicsWorld,
+            origin: Vector3d,
+            model: JavaModel,
+            scale: Double,
+        ): JavaModelBody {
+            val composite = model.realize(pw, origin, scale)
+            return JavaModelBody(composite, model, scale)
         }
     }
 }

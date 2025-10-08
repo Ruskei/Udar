@@ -11,10 +11,14 @@ class JavaModel(
     val elems: List<ModelElement>,
     val index: Int,
 ) {
-    fun realize(pw: PhysicsWorld, origin: Vector3d): CompositeImpl {
-        val adjustedOrigin = Vector3d(-0.5, -0.5, -0.5).add(origin)
+    fun realize(
+        pw: PhysicsWorld,
+        origin: Vector3d,
+        scale: Double,
+    ): CompositeImpl {
+        val adjustedOrigin = Vector3d(-0.5, -0.5, -0.5).mul(scale).add(origin)
         val bs = elems.map {
-            it.realize(pw, adjustedOrigin).apply {
+            it.realize(pw, adjustedOrigin, scale).apply {
                 isChild = true
             }
         }
