@@ -22,7 +22,7 @@ class LocalMesher {
     private lateinit var _xAxiss2: FlattenedEdgeQuadtree
     private lateinit var _yAxiss2: FlattenedEdgeQuadtree
     private lateinit var _zAxiss2: FlattenedEdgeQuadtree
-    
+
     private val _bp = BlockPos(0, 0, 0).mutable()
 
     /*
@@ -88,7 +88,7 @@ class LocalMesher {
 //                        println(" | maxX: $maxX")
 //                        println(" | maxY: $maxY")
 //                        println(" | maxZ: $maxZ")
-                        
+
                         val aabb = AABB(
                             x + minX,
                             y + minY,
@@ -378,7 +378,17 @@ class LocalMesher {
         }
 
         fun stateAt(x: Int, y: Int, z: Int): Long {
-            return state[(z - start.z) + (y - start.y) * length + (x - start.x) * height * length]
+            val idx = (z - start.z) + (y - start.y) * length + (x - start.x) * height * length
+            if (idx >= state.size) {
+                println("Tried to get state at ($x $y $z) but was OOB!")
+                println("| start: $start")
+                println("| end: $end")
+                println("| height: $height")
+                println("| length: $length")
+                return -1L
+            }
+
+            return state[idx]
         }
 
         fun relevant(
