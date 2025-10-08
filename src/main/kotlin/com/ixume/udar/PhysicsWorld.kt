@@ -4,6 +4,7 @@ import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.Composite
 import com.ixume.udar.collisiondetection.contactgeneration.worldmesh.WorldMeshesManager
+import com.ixume.udar.collisiondetection.multithreading.runPartitioned
 import com.ixume.udar.collisiondetection.pool.MathPool
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.dynamicaabb.FlattenedBodyAABBTree
@@ -82,7 +83,9 @@ class PhysicsWorld(
     private val entityUpdater = EntityUpdater(this)
     private val statusUpdater = StatusUpdater(this)
 
-    val worldMeshesManager = WorldMeshesManager(this)
+    private val DIFFING_PROCESSORS = 5
+    private val MESHING_PROCESSORS = 5
+    val worldMeshesManager = WorldMeshesManager(this, DIFFING_PROCESSORS, MESHING_PROCESSORS)
 
     private val simTask = Bukkit.getScheduler().runTaskTimerAsynchronously(Udar.INSTANCE, Runnable {
         val t = measureNanoTime {
@@ -100,10 +103,11 @@ class PhysicsWorld(
     private val NARROWPHASE_PROCESSORS = 8//Runtime.getRuntime().availableProcessors()
     private val ENV_PROCESSORS = 8
     val mathPool = MathPool(this, NARROWPHASE_PROCESSORS)
-    private val executor = Executors.newFixedThreadPool(NARROWPHASE_PROCESSORS)
+    private val narrowPhaseExecutor = Executors.newFixedThreadPool(NARROWPHASE_PROCESSORS)
     private val narrowPhaseCallables = Array(NARROWPHASE_PROCESSORS) { NarrowPhaseCallable(this) }
 
     private val envPhaseCallables = Array(ENV_PROCESSORS) { EnvPhaseCallable(this) }
+    private val envPhaseExecutor = Executors.newFixedThreadPool(ENV_PROCESSORS)
 
     private val constraintSolverManager = ConstraintSolverManager(this)
 
@@ -194,7 +198,7 @@ class PhysicsWorld(
 
                         callable.ps = activePairs[proc]
 
-                        executor.execute {
+                        narrowPhaseExecutor.execute {
                             callable.run()
 
                             latch.countDown()
@@ -209,31 +213,11 @@ class PhysicsWorld(
 //                println("TICK")
                 val envDuration = measureNanoTime {
                     if (bodiesSnapshot.isNotEmpty()) {
-                        val per = (bodiesSnapshot.size / ENV_PROCESSORS).coerceAtLeast(1)
-                        val latch = CountDownLatch(ENV_PROCESSORS)
-//                        println("ENV PHASE")
-                        var last = 0
-                        for (proc in 0..<ENV_PROCESSORS) {
-                            val callable = envPhaseCallables[proc]
-                            callable.start = last
-                            last = if (proc == ENV_PROCESSORS - 1) {
-                                bodiesSnapshot.size
-                            } else {
-                                (per * (proc + 1)).coerceAtMost(bodiesSnapshot.size)
-                            }
-
-                            callable.end = last
-
-                            callable.bodiesSnapshot = bodiesSnapshot
-
-                            executor.execute {
-                                callable.run()
-
-                                latch.countDown()
-                            }
+                        envPhaseExecutor.runPartitioned(bodiesSnapshot.size, envPhaseCallables) { start, end ->
+                            this.bodiesSnapshot = bodiesSnapshot
+                            this.start = start
+                            this.end = end
                         }
-
-                        latch.await()
                     }
                 }
 
@@ -500,7 +484,7 @@ class PhysicsWorld(
 
         simTask.cancel()
         entityTask.cancel()
-        executor.shutdown()
+        narrowPhaseExecutor.shutdown()
 
         worldMeshesManager.kill()
     }
