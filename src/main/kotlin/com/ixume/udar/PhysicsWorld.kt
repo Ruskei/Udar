@@ -31,6 +31,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlin.system.measureNanoTime
 import kotlin.time.DurationUnit
@@ -82,9 +83,11 @@ class PhysicsWorld(
 
     private val entityUpdater = EntityUpdater(this)
     private val statusUpdater = StatusUpdater(this)
+    
+    private val maxProcessors = Runtime.getRuntime().availableProcessors()
 
-    private val DIFFING_PROCESSORS = 5
-    private val MESHING_PROCESSORS = 5
+    private val DIFFING_PROCESSORS = 5.coerceAtMost(maxProcessors)
+    private val MESHING_PROCESSORS = 5.coerceAtMost(maxProcessors)
     val worldMeshesManager = WorldMeshesManager(this, DIFFING_PROCESSORS, MESHING_PROCESSORS)
 
     private val simTask = Bukkit.getScheduler().runTaskTimerAsynchronously(Udar.INSTANCE, Runnable {
@@ -100,8 +103,8 @@ class PhysicsWorld(
 
     private val busy = AtomicBoolean(false)
 
-    private val NARROWPHASE_PROCESSORS = 8//Runtime.getRuntime().availableProcessors()
-    private val ENV_PROCESSORS = 8
+    private val NARROWPHASE_PROCESSORS = 8.coerceAtMost(maxProcessors)
+    private val ENV_PROCESSORS = 8.coerceAtMost(maxProcessors)
     val mathPool = MathPool(this, NARROWPHASE_PROCESSORS)
     private val narrowPhaseExecutor = Executors.newFixedThreadPool(NARROWPHASE_PROCESSORS)
     private val narrowPhaseCallables = Array(NARROWPHASE_PROCESSORS) { NarrowPhaseCallable(this) }
