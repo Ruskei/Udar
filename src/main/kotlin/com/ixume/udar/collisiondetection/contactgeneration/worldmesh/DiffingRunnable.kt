@@ -34,13 +34,13 @@ class DiffingRunnable : Runnable {
 //                println(" * ${gen.activeBody.idx}")
             val bb = gen.activeBody.tightBB
 
-            val minX = floor(bb.minX).toInt()
-            val minY = floor(bb.minY).toInt()
-            val minZ = floor(bb.minZ).toInt()
+            val minX = floor(bb.minX).toInt() - 1
+            val minY = floor(bb.minY).toInt() - 1
+            val minZ = floor(bb.minZ).toInt() - 1
 
-            val maxX = (floor(bb.maxX).toInt() + 1)
-            val maxY = (floor(bb.maxY).toInt() + 1)
-            val maxZ = (floor(bb.maxZ).toInt() + 1)
+            val maxX = (floor(bb.maxX).toInt() + 2)
+            val maxY = (floor(bb.maxY).toInt() + 2)
+            val maxZ = (floor(bb.maxZ).toInt() + 2)
 
             var diff = false
 
