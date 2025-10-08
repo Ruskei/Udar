@@ -4,6 +4,7 @@ import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.Udar
 import com.ixume.udar.collisiondetection.ManifoldIDGenerator
 import com.ixume.udar.physics.contact.a2a.A2APrevContactDataBuffer
+import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldArray
 import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldBuffer
 import com.ixume.udar.physics.contact.a2s.A2SPrevContactDataBuffer
 import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldBuffer
@@ -43,7 +44,7 @@ class LocalConstraintSolver(
 //        }
     }
 
-    private lateinit var manifolds: A2AManifoldBuffer
+    private lateinit var manifolds: A2AManifoldArray
     private lateinit var envManifolds: A2SManifoldBuffer
     private var contactNormalData: FloatArray = FloatArray(1)
 
@@ -107,7 +108,7 @@ class LocalConstraintSolver(
     private val _c_tempMatrix3f2 = Matrix3f()
 
     private fun constructFlatConstraintData(component: ContactComponent) {
-        val numc = manifolds.numContacts.get()
+        val numc = manifolds.numContacts
         val relevantData = when (component) {
             ContactComponent.NORMAL -> {
                 if (contactNormalData.size < numc * A2A_N_CONTACT_DATA_FLOATS) {
@@ -405,7 +406,7 @@ class LocalConstraintSolver(
     fun warmStart() {
         if (!any) return
 
-        val n = manifolds.numContacts.get() * A2A_N_CONTACT_DATA_FLOATS
+        val n = manifolds.numContacts * A2A_N_CONTACT_DATA_FLOATS
         val e = envManifolds.numContacts.get() * A2S_N_CONTACT_DATA_FLOATS
 
         var i = 0
@@ -448,7 +449,7 @@ class LocalConstraintSolver(
         if (!any) return
 
 //        maxLambda = -Float.MAX_VALUE
-        val n = manifolds.numContacts.get() * A2A_N_CONTACT_DATA_FLOATS
+        val n = manifolds.numContacts * A2A_N_CONTACT_DATA_FLOATS
 
         var i = 0
         while (i < n) {
@@ -493,7 +494,7 @@ class LocalConstraintSolver(
         }
 
         var i = 0
-        val n = manifolds.numContacts.get() * A2A_N_CONTACT_DATA_FLOATS
+        val n = manifolds.numContacts * A2A_N_CONTACT_DATA_FLOATS
 
         while (i < n) {
             solveA2AContact(contactT1Data, i, ContactComponent.T1)
@@ -628,9 +629,9 @@ class LocalConstraintSolver(
 
     private fun warmA2AContact(data: FloatArray, contactIdx: Int, component: ContactComponent) {
         val lambda = data[contactIdx + A2A_N_LAMBDA_OFFSET]
-        if (component == ContactComponent.NORMAL && lambda != 0f) {
+//        if (component == ContactComponent.NORMAL && lambda != 0f) {
 //            println("warmed contact with $lambda!") CORRECT!
-        }
+//        }
 
         if (component != ContactComponent.NORMAL) {
             val n = contactNormalData[contactIdx + A2A_N_LAMBDA_OFFSET]

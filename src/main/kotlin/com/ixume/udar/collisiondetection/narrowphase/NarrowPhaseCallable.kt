@@ -2,6 +2,7 @@ package com.ixume.udar.collisiondetection.narrowphase
 
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.Udar
+import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldArray
 import it.unimi.dsi.fastutil.ints.Int2ObjectMaps
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 import it.unimi.dsi.fastutil.ints.IntArrayList
@@ -9,8 +10,10 @@ import kotlin.system.measureNanoTime
 
 class NarrowPhaseCallable(val world: PhysicsWorld) : Runnable {
     lateinit var ps: Int2ObjectOpenHashMap<IntArrayList>
+    val buf = A2AManifoldArray(4)
 
     override fun run() {
+        buf.clear()
         val math = world.mathPool.get()
 
         try {
@@ -26,7 +29,7 @@ class NarrowPhaseCallable(val world: PhysicsWorld) : Runnable {
                     val collided: Boolean
 
                     val t = measureNanoTime {
-                        collided = first.collides(second, math, world.manifoldBuffer)
+                        collided = first.collides(second, math, buf)
                     }
 
                     if (!collided) continue
