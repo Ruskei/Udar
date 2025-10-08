@@ -5,21 +5,16 @@ import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import java.util.concurrent.ConcurrentLinkedDeque
 
 class MathPool(
-    world: PhysicsWorld,
-    amount: Int,
+    val world: PhysicsWorld,
 ) : Pool<LocalMathUtil> {
     private val items = ConcurrentLinkedDeque<LocalMathUtil>()
 
     init {
-        repeat(amount * 2) {
-            items += LocalMathUtil(world)
-        }
+        items += LocalMathUtil(world)
     }
 
     override fun get(): LocalMathUtil {
-        check(items.isNotEmpty()) { "Too few math utils allocated!" }
-
-        return items.poll()
+        return items.poll() ?: LocalMathUtil(world)
     }
 
     override fun put(element: LocalMathUtil) {

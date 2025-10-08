@@ -4,13 +4,12 @@ import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.Composite
 import com.ixume.udar.collisiondetection.contactgeneration.worldmesh.WorldMeshesManager
-import com.ixume.udar.collisiondetection.multithreading.runPartitioned
+import com.ixume.udar.collisiondetection.envphase.EnvPhaseHandler
+import com.ixume.udar.collisiondetection.narrowphase.NarrowPhaseHandler
 import com.ixume.udar.collisiondetection.pool.MathPool
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.dynamicaabb.FlattenedBodyAABBTree
 import com.ixume.udar.physics.EntityUpdater
-import com.ixume.udar.physics.EnvPhaseCallable
-import com.ixume.udar.physics.NarrowPhaseCallable
 import com.ixume.udar.physics.StatusUpdater
 import com.ixume.udar.physics.constraint.ConstraintSolverManager
 import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldBuffer
@@ -26,12 +25,9 @@ import it.unimi.dsi.fastutil.ints.IntArrayList
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap
 import org.bukkit.*
 import org.joml.Vector3d
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
-import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlin.system.measureNanoTime
 import kotlin.time.DurationUnit
@@ -83,38 +79,28 @@ class PhysicsWorld(
 
     private val entityUpdater = EntityUpdater(this)
     private val statusUpdater = StatusUpdater(this)
-    
-    private val maxProcessors = Runtime.getRuntime().availableProcessors()
 
-    private val DIFFING_PROCESSORS = 5.coerceAtMost(maxProcessors)
-    private val MESHING_PROCESSORS = 5.coerceAtMost(maxProcessors)
-    val worldMeshesManager = WorldMeshesManager(this, DIFFING_PROCESSORS, MESHING_PROCESSORS)
+
+    val worldMeshesManager = WorldMeshesManager(this, Udar.CONFIG.worldDiffingProcessors, Udar.CONFIG.meshingProcessors)
 
     private val simTask = Bukkit.getScheduler().runTaskTimerAsynchronously(Udar.INSTANCE, Runnable {
         val t = measureNanoTime {
             tick()
         }
 
-        if (Udar.CONFIG.debug.timings) {
-            println("Tick took ${t.toDuration(DurationUnit.NANOSECONDS)}!")
-        }
+//        if (Udar.CONFIG.debug.timings) {
+//            println("Tick took ${t.toDuration(DurationUnit.NANOSECONDS)}!")
+//        }
     }, 1, 1)
     private val entityTask = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { entityUpdater.tick() }, 2, 2)
 
     private val busy = AtomicBoolean(false)
 
-    private val NARROWPHASE_PROCESSORS = 8.coerceAtMost(maxProcessors)
-    private val ENV_PROCESSORS = 8.coerceAtMost(maxProcessors)
-    val mathPool = MathPool(this, NARROWPHASE_PROCESSORS)
-    private val narrowPhaseExecutor = Executors.newFixedThreadPool(NARROWPHASE_PROCESSORS)
-    private val narrowPhaseCallables = Array(NARROWPHASE_PROCESSORS) { NarrowPhaseCallable(this) }
-
-    private val envPhaseCallables = Array(ENV_PROCESSORS) { EnvPhaseCallable(this) }
-    private val envPhaseExecutor = Executors.newFixedThreadPool(ENV_PROCESSORS)
+    val mathPool = MathPool(this)
+    private val narrowPhaseHandler = NarrowPhaseHandler(this)
+    private val envPhaseHandler = EnvPhaseHandler(this)
 
     private val constraintSolverManager = ConstraintSolverManager(this)
-
-    private val dataInterval = 400
 
     private var rollingAverage = 0.0
     private var rollingBroadAverage = 0.0
@@ -192,23 +178,7 @@ class PhysicsWorld(
                 val startNarrowTime = System.nanoTime()
 
                 if (activePairs != null) {
-                    check(activePairs.size == NARROWPHASE_PROCESSORS)
-
-                    val latch = CountDownLatch(NARROWPHASE_PROCESSORS)
-
-                    for (proc in 0..<NARROWPHASE_PROCESSORS) {
-                        val callable = narrowPhaseCallables[proc]
-
-                        callable.ps = activePairs[proc]
-
-                        narrowPhaseExecutor.execute {
-                            callable.run()
-
-                            latch.countDown()
-                        }
-                    }
-
-                    latch.await()
+                    narrowPhaseHandler.process(activePairs)
                 }
 
                 val endNarrowTime = System.nanoTime()
@@ -216,11 +186,7 @@ class PhysicsWorld(
 //                println("TICK")
                 val envDuration = measureNanoTime {
                     if (bodiesSnapshot.isNotEmpty()) {
-                        envPhaseExecutor.runPartitioned(bodiesSnapshot.size, envPhaseCallables) { start, end ->
-                            this.bodiesSnapshot = bodiesSnapshot
-                            this.start = start
-                            this.end = end
-                        }
+                        envPhaseHandler.process(bodiesSnapshot)
                     }
                 }
 
@@ -257,6 +223,8 @@ class PhysicsWorld(
                     untilCollision.set(false)
                     frozen.set(true)
                 }
+
+                val dataInterval = Udar.CONFIG.debug.timingsSimReportInterval
 
                 val duration = (System.nanoTime() - subtickStartTime).toDouble()
                 rollingAverage += duration / dataInterval.toDouble()
@@ -444,15 +412,13 @@ class PhysicsWorld(
     }
 
     private val _broadCollisions = Int2ObjectOpenHashMap<IntArrayList>().apply { defaultReturnValue(null) }
-    private val _groupedBroadCollisions =
-        Array<Int2ObjectOpenHashMap<IntArrayList>>(NARROWPHASE_PROCESSORS) { Int2ObjectOpenHashMap() }
 
     private fun broadPhase(bodies: List<ActiveBody>): Array<Int2ObjectOpenHashMap<IntArrayList>>? {
         numPossibleContacts = 0
         if (bodies.size <= 1) return null
 
         _broadCollisions.forEach { it.value.clear() }
-        _groupedBroadCollisions.forEach { it.clear() }
+        narrowPhaseHandler._groupedBroadCollisions.forEach { it.clear() }
 
         bodyAABBTree.constructCollisions(_broadCollisions)
         val iterator = Int2ObjectMaps.fastIterator(_broadCollisions)
@@ -461,10 +427,10 @@ class PhysicsWorld(
             val en = iterator.next()
             if (en.value.isEmpty) continue
             numPossibleContacts += en.value.size
-            _groupedBroadCollisions.minBy { it.size }.put(en.intKey, en.value)
+            narrowPhaseHandler._groupedBroadCollisions.minBy { it.size }.put(en.intKey, en.value)
         }
 
-        return _groupedBroadCollisions
+        return narrowPhaseHandler._groupedBroadCollisions
     }
 
     fun clear() {
@@ -487,7 +453,8 @@ class PhysicsWorld(
 
         simTask.cancel()
         entityTask.cancel()
-        narrowPhaseExecutor.shutdown()
+        narrowPhaseHandler.shutdown()
+        envPhaseHandler.shutdown()
 
         worldMeshesManager.kill()
     }

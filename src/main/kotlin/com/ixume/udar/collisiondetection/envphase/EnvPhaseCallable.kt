@@ -1,4 +1,4 @@
-package com.ixume.udar.physics
+package com.ixume.udar.collisiondetection.envphase
 
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.body.active.ActiveBody

@@ -1,4 +1,4 @@
-package com.ixume.udar.physics
+package com.ixume.udar.collisiondetection.narrowphase
 
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.Udar
@@ -34,7 +34,7 @@ class NarrowPhaseCallable(val world: PhysicsWorld) : Runnable {
                     first.awake.set(true)
                     second.awake.set(true)
 
-                    if (Udar.CONFIG.debug.collisionTimes > 0) {
+                    if (Udar.Companion.CONFIG.debug.collisionTimes > 0) {
                         println("B-B COLLISION TOOK: ${t.toDouble() / 1_000_000.0} ms")
                     }
                 }
