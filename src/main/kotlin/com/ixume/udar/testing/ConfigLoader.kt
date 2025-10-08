@@ -28,14 +28,12 @@ object ConfigLoader {
     fun load() {
         val dataFolder = Udar.INSTANCE.dataFolder
         dataFolder.mkdirs()
-        
-        println("Data path: ${Udar.INSTANCE.dataPath}")
 
         val configFile = File(dataFolder, "testing.json")
 
         if (!configFile.exists()) {
             Udar.CONFIG = Config()
-            configFile.writeBytes(Udar.INSTANCE.getResource("default/testing.json")!!.readAllBytes())
+            configFile.writeText(gson.toJson(Udar.CONFIG))
 
             Udar.LOGGER.info("Created config!")
 
@@ -82,6 +80,11 @@ data class Config(
     val sleepAngularVelocity: Double = 1e-3,
     val sleepTime: Int = 40,
     val birthTime: Int = 40,
+
+    val worldDiffingProcessors: Int = 5,
+    val meshingProcessors: Int = 5,
+    val narrowPhaseProcessors: Int = 5,
+    val envPhaseProcessors: Int = 7,
 ) {
     companion object : InstanceCreator<Config> {
         override fun createInstance(type: Type?): Config? {
@@ -114,9 +117,11 @@ data class Config(
         val collisionTimes: Int = 0,
         val data: Int = 0,
 
-        val tests: Tests = Tests(mapOf()),
+        val tests: Tests = Tests.DEFAULT_TESTS,
 
         val timings: Boolean = false,
+        val timingsSimReportInterval: Int = 500,
+        val timingsWorldReportInterval: Int = 40,
     ) {
         companion object : InstanceCreator<DebugConfig> {
             override fun createInstance(type: Type?): DebugConfig? {
@@ -152,6 +157,27 @@ data class Config(
                     task?.cancel()
                     task = null
                 }
+            }
+
+            companion object {
+                val DEFAULT_TESTS = Tests(
+                    mapOf(
+                        "stress-grid" to Test(
+                            mapOf(
+                                10 to listOf("udar stress-grid"),
+                                20 to listOf("udar stress-grid"),
+                                30 to listOf("udar stress-grid"),
+                                40 to listOf("udar stress-grid"),
+                                50 to listOf("udar stress-grid"),
+                                60 to listOf("udar stress-grid"),
+                                70 to listOf("udar stress-grid"),
+                                80 to listOf("udar stress-grid"),
+                                90 to listOf("udar stress-grid"),
+                                100 to listOf("udar stress-grid"),
+                            )
+                        )
+                    )
+                )
             }
         }
     }

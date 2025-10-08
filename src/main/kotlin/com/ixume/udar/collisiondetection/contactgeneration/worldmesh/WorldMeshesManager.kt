@@ -48,7 +48,6 @@ class WorldMeshesManager(
 
     private val busy = AtomicBoolean(false)
 
-    private val dataInterval = 4
     private var averageTickTime = 0.0
     private var time = 0
 
@@ -129,9 +128,12 @@ class WorldMeshesManager(
             }
         }
 //
-        averageTickTime += t.toDouble() / dataInterval
-        if (time % dataInterval == 0) {
-            println("Average tick time: ${averageTickTime.toDuration(DurationUnit.NANOSECONDS)}")
+        averageTickTime += t.toDouble() / Udar.CONFIG.debug.timingsWorldReportInterval
+        if (time % Udar.CONFIG.debug.timingsWorldReportInterval == 0) {
+            if (Udar.CONFIG.debug.timings) {
+                println("Average tick time: ${averageTickTime.toDuration(DurationUnit.NANOSECONDS)}")
+            }
+
             averageTickTime = 0.0
         }
 //        val d = t.toDuration(DurationUnit.NANOSECONDS)
