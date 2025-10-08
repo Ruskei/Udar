@@ -3,9 +3,7 @@ package com.ixume.udar.model.element.instance
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.Cuboid
-import com.ixume.udar.body.active.blockEntity
 import com.ixume.udar.model.element.Axis
-import org.bukkit.Material
 import org.joml.Quaterniond
 import org.joml.Vector3d
 
@@ -14,15 +12,19 @@ class CubeElement(
     val to: Vector3d,
     val rotation: Rotation?,
 ) : ModelElement {
-    override fun realize(pw: PhysicsWorld, origin: Vector3d): ActiveBody {
-        val dims = Vector3d(to).sub(from).div(16.0)
-        val offset = Vector3d(from).div(16.0)
+    override fun realize(
+        pw: PhysicsWorld,
+        origin: Vector3d,
+        scale: Double,
+    ): ActiveBody {
+        val dims = Vector3d(to).sub(from).div(16.0).mul(scale)
+        val offset = Vector3d(from).div(16.0).mul(scale)
 
         val q = Quaterniond()
         val p = Vector3d(origin).add(offset).add(Vector3d(dims).mul(0.5))
 
         if (rotation != null) {
-            val pivot = Vector3d(rotation.pivot).div(16.0)
+            val pivot = Vector3d(rotation.pivot).div(16.0).mul(scale)
             val o = Vector3d(offset).add(Vector3d(dims).mul(0.5)).sub(pivot)
 
             when (rotation.axis) {

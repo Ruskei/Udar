@@ -41,7 +41,7 @@ object ModelCommand : Command {
         val q = Quaterniond().rotateXYZ(opts.rot0.x, opts.rot0.y, opts.rot0.z)
         val o = if (opts.trueOmega) opts.l.rotate(Quaterniond(q).conjugate()) else opts.l
 
-        val output = JavaModelBody.construct(physicsWorld, origin, model)
+        val output = JavaModelBody.construct(physicsWorld, origin, model, opts.scale)
 
         output.omega.set(o)
         output.q.set(q)
