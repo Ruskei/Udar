@@ -3,6 +3,7 @@ package com.ixume.udar.body.active
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.Udar
 import com.ixume.udar.body.EnvironmentBody
+import com.ixume.udar.body.active.hook.HookManager
 import com.ixume.udar.collisiondetection.capability.GJKCapable
 import com.ixume.udar.collisiondetection.capability.SDFCapable
 import com.ixume.udar.collisiondetection.contactgeneration.CuboidSATContactGenerator
@@ -48,6 +49,8 @@ class Cuboid(
     override val awake = AtomicBoolean(true)
     override val startled = AtomicBoolean(true)
     override var idleTime: Int = 0
+
+    override val hookManager = HookManager()
 
     val scale = Vector3d(width, height, length)
 
