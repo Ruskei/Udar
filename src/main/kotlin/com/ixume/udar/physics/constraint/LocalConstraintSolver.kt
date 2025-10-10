@@ -2,10 +2,8 @@ package com.ixume.udar.physics.constraint
 
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.Udar
-import com.ixume.udar.collisiondetection.ManifoldIDGenerator
 import com.ixume.udar.physics.contact.a2a.A2APrevContactDataBuffer
 import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldArray
-import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldBuffer
 import com.ixume.udar.physics.contact.a2s.A2SPrevContactDataBuffer
 import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldBuffer
 import org.joml.*
@@ -840,15 +838,9 @@ class LocalConstraintSolver(
             _a2sContactDataBuffer.clear()
             val numContacts = envManifolds.numContacts(k)
             val manifoldID = envManifolds.manifoldID(k)
+            val body = physicsWorld.activeBodies.fastGet(envManifolds.bodyIdx(k))!!
             if (physicsWorld.prevEnvContactMap.containsKey(manifoldID)) {
-                val type = ManifoldIDGenerator.A2SManifoldType.entries[(manifoldID ushr 32).toInt() and 0b11]
                 println("A2S ID COLLISION: $manifoldID!")
-                println("| body.uuid.hash: ${manifoldID and 0xFFFFFFFF}")
-                println("| meshl6: ${(manifoldID ushr 34).toInt() and 0b111111}")
-                println("| type: $type")
-                if (type == ManifoldIDGenerator.A2SManifoldType.FACE_EDGE) {
-                    println("| meshEdgeIdx: ${(manifoldID ushr 42) and 0b111111}")
-                }
 
                 k++
                 continue
@@ -857,10 +849,14 @@ class LocalConstraintSolver(
             var l = 0
             while (l < numContacts) {
                 val nl = envContactNormalData[envCount * A2S_N_CONTACT_DATA_FLOATS + A2S_N_LAMBDA_OFFSET]
+                val x = envManifolds.pointAX(k, l)
+                val y = envManifolds.pointAY(k, l)
+                val z = envManifolds.pointAZ(k, l)
+                body.hookManager.onCollision(x.toDouble(), y.toDouble(), z.toDouble(), nl.toDouble())
                 _a2sContactDataBuffer.add(
-                    x = envManifolds.pointAX(k, l),
-                    y = envManifolds.pointAY(k, l),
-                    z = envManifolds.pointAZ(k, l),
+                    x = x,
+                    y = y,
+                    z = z,
 
                     normalLambda = nl * Udar.CONFIG.collision.lambdaCarryover,
                     t1Lambda = envContactT1Data[envCount * A2S_N_CONTACT_DATA_FLOATS + A2S_N_LAMBDA_OFFSET] * Udar.CONFIG.collision.lambdaCarryover,

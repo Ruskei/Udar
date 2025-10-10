@@ -10,7 +10,6 @@ import com.ixume.udar.collisiondetection.mesh.mesh2.MeshFaceSortedList
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.physics.contact.a2s.A2SContactDataBuffer
 import com.ixume.udar.physics.contact.a2s.EnvManifoldBuffer
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet
 import org.joml.Vector3d
 import org.joml.Vector3f
 import kotlin.math.abs
@@ -77,7 +76,7 @@ class LocalMathUtil(
                 val v = vertices[i]
                 val p = axis.project(v).toFloat().toDouble() // for consistency with exclusion with holes
 
-                if (p <= level) {
+                if (p <= level - MIN_DEPTH_EPSILON) {
                     if (
                         !(v.x >= faces.meshStart.x && v.x < faces.meshEnd.x + 1 &&
                           v.y >= faces.meshStart.y && v.y < faces.meshEnd.y + 1 &&
@@ -137,7 +136,7 @@ class LocalMathUtil(
                 val v = vertices[i]
                 val p = axis.project(v).toFloat().toDouble()
 
-                if (p >= level) {
+                if (p >= level + MIN_DEPTH_EPSILON) {
                     if (
                         !(v.x >= faces.meshStart.x && v.x < faces.meshEnd.x + 1 &&
                           v.y >= faces.meshStart.y && v.y < faces.meshEnd.y + 1 &&
@@ -369,6 +368,7 @@ class LocalMathUtil(
          */
 
         if (minCrossOverlap < minBodyOverlap) {
+            if (minCrossOverlap < MIN_DEPTH_EPSILON) return
             minCrossAxis!!
 
             val norm = if (minCrossInDirOfAxis) {
@@ -497,6 +497,8 @@ class LocalMathUtil(
 
             return
         } else {
+            if (minBodyOverlap < MIN_DEPTH_EPSILON) return
+
             minBodyAxis!!
 
             val norm = if (minBodyInDirOfAxis) {
@@ -975,4 +977,8 @@ class LocalMathUtil(
     val _n = Vector3f()
     val _t1v = Vector3f()
     val _t2v = Vector3f()
+
+    companion object {
+        const val MIN_DEPTH_EPSILON = 1e-8
+    }
 }

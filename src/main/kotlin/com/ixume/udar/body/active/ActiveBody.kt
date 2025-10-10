@@ -3,6 +3,7 @@ package com.ixume.udar.body.active
 import com.ixume.udar.body.A2ACollidable
 import com.ixume.udar.body.A2SCollidable
 import com.ixume.udar.body.Body
+import com.ixume.udar.body.active.hook.HookManager
 import com.ixume.udar.collisiondetection.capability.Projectable
 import com.ixume.udar.dynamicaabb.AABB
 import org.joml.Quaterniond
@@ -42,6 +43,8 @@ interface ActiveBody : A2ACollidable, A2SCollidable, Body, Projectable {
     fun step() {}
     fun update() {}
     fun ensureNonAligned() {}
+    
+    val hookManager: HookManager
 
     /**
      * @return List of intersection positions and normals
