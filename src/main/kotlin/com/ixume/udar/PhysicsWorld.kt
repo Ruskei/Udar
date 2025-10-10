@@ -13,7 +13,6 @@ import com.ixume.udar.physics.EntityUpdater
 import com.ixume.udar.physics.StatusUpdater
 import com.ixume.udar.physics.constraint.ConstraintSolverManager
 import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldArray
-import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldBuffer
 import com.ixume.udar.physics.contact.a2a.manifold.A2APrevManifoldData
 import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldBuffer
 import com.ixume.udar.physics.contact.a2s.manifold.A2SPrevManifoldData
@@ -78,23 +77,6 @@ class PhysicsWorld(
 
     val debugData = PhysicsWorldTestDebugData()
 
-    private val entityUpdater = EntityUpdater(this)
-    private val statusUpdater = StatusUpdater(this)
-
-
-    val worldMeshesManager = WorldMeshesManager(this, Udar.CONFIG.worldDiffingProcessors, Udar.CONFIG.meshingProcessors)
-
-    private val simTask = Bukkit.getScheduler().runTaskTimerAsynchronously(Udar.INSTANCE, Runnable {
-        val t = measureNanoTime {
-            tick()
-        }
-
-//        if (Udar.CONFIG.debug.timings) {
-//            println("Tick took ${t.toDuration(DurationUnit.NANOSECONDS)}!")
-//        }
-    }, 1, 1)
-    private val entityTask = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { entityUpdater.tick() }, 2, 2)
-
     private val busy = AtomicBoolean(false)
 
     val mathPool = MathPool(this)
@@ -111,6 +93,21 @@ class PhysicsWorld(
     private var rollingStepAverage = 0.0
 
     val bodyAABBTree = FlattenedBodyAABBTree(this, 0)
+
+    private val simTask = Bukkit.getScheduler().runTaskTimerAsynchronously(Udar.INSTANCE, Runnable {
+        val t = measureNanoTime {
+            tick()
+        }
+
+//        if (Udar.CONFIG.debug.timings) {
+//            println("Tick took ${t.toDuration(DurationUnit.NANOSECONDS)}!")
+//        }
+    }, 1, 1)
+    private val entityTask = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { entityUpdater.tick() }, 2, 2)
+    val worldMeshesManager = WorldMeshesManager(this, Udar.CONFIG.worldDiffingProcessors, Udar.CONFIG.meshingProcessors)
+
+    private val entityUpdater = EntityUpdater(this)
+    private val statusUpdater = StatusUpdater(this)
 
     fun registerBody(body: ActiveBody) {
         bodiesToAdd += body
