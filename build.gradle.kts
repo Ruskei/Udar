@@ -1,12 +1,12 @@
 plugins {
     `maven-publish`
     kotlin("jvm") version "2.0.0"
-    id("com.gradleup.shadow") version "8.3.0"
+    id("com.gradleup.shadow") version "9.2.2"
     id("io.papermc.paperweight.userdev") version "2.0.0-beta.19"
 }
 
 group = "com.ixume"
-version = "0.3.0"
+version = "0.4.0.1"
 
 repositories {
     mavenCentral()
@@ -43,6 +43,10 @@ tasks.build {
 tasks.shadowJar {
     exclude("org/intellij/*")
     exclude("org/jetbrains/*")
+
+    exclude("kotlin/**")
+    exclude("kotlinx/**")
+    relocate("kotlin", "gg.aquatic.waves.libs.kotlin")
 }
 
 tasks.processResources {
