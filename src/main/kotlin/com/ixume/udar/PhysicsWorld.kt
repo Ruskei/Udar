@@ -94,6 +94,12 @@ class PhysicsWorld(
 
     val bodyAABBTree = FlattenedBodyAABBTree(this, 0)
 
+    private val entityTask = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { entityUpdater.tick() }, 2, 2)
+    val worldMeshesManager = WorldMeshesManager(this, Udar.CONFIG.worldDiffingProcessors, Udar.CONFIG.meshingProcessors)
+
+    private val entityUpdater = EntityUpdater(this)
+    private val statusUpdater = StatusUpdater(this)
+
     private val simTask = Bukkit.getScheduler().runTaskTimerAsynchronously(Udar.INSTANCE, Runnable {
         val t = measureNanoTime {
             tick()
@@ -103,11 +109,6 @@ class PhysicsWorld(
 //            println("Tick took ${t.toDuration(DurationUnit.NANOSECONDS)}!")
 //        }
     }, 1, 1)
-    private val entityTask = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { entityUpdater.tick() }, 2, 2)
-    val worldMeshesManager = WorldMeshesManager(this, Udar.CONFIG.worldDiffingProcessors, Udar.CONFIG.meshingProcessors)
-
-    private val entityUpdater = EntityUpdater(this)
-    private val statusUpdater = StatusUpdater(this)
 
     fun registerBody(body: ActiveBody) {
         bodiesToAdd += body

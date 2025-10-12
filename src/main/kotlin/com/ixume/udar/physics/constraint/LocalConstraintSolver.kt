@@ -796,6 +796,8 @@ class LocalConstraintSolver(
             _a2aContactDataBuffer.clear()
             val numContacts = manifolds.numContacts(j)
             val manifoldID = manifolds.manifoldID(j)
+            val bodyA = physicsWorld.activeBodies.fastGet(manifolds.bodyAIdx(j))!!
+            val bodyB = physicsWorld.activeBodies.fastGet(manifolds.bodyBIdx(j))!!
 
             if (physicsWorld.prevContactMap.containsKey(manifoldID)) {
                 println("A2A ID COLLISION! $manifoldID")
@@ -806,14 +808,22 @@ class LocalConstraintSolver(
             var l = 0
             while (l < numContacts) {
                 val nl = contactNormalData[count * A2A_N_CONTACT_DATA_FLOATS + A2A_N_LAMBDA_OFFSET]
+                val ax = manifolds.pointAX(j, l)
+                val ay = manifolds.pointAY(j, l)
+                val az = manifolds.pointAZ(j, l)
+                bodyA.hookManager.onCollision(ax.toDouble(), ay.toDouble(), az.toDouble(), nl.toDouble())
+                val bx = manifolds.pointBX(j, l)
+                val by = manifolds.pointBY(j, l)
+                val bz = manifolds.pointBZ(j, l)
+                bodyB.hookManager.onCollision(bx.toDouble(), by.toDouble(), bz.toDouble(), nl.toDouble())
                 _a2aContactDataBuffer.add(
-                    ax = manifolds.pointAX(j, l),
-                    ay = manifolds.pointAY(j, l),
-                    az = manifolds.pointAZ(j, l),
+                    ax = ax,
+                    ay = ay,
+                    az = az,
 
-                    bx = manifolds.pointBX(j, l),
-                    by = manifolds.pointBY(j, l),
-                    bz = manifolds.pointBZ(j, l),
+                    bx = bx,
+                    by = by,
+                    bz = bz,
 
                     normalLambda = nl * Udar.CONFIG.collision.lambdaCarryover,
                     t1Lambda = contactT1Data[count * A2A_N_CONTACT_DATA_FLOATS + A2A_N_LAMBDA_OFFSET] * Udar.CONFIG.collision.lambdaCarryover,

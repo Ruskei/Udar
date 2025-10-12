@@ -33,9 +33,9 @@ class JavaModelBody private constructor(
         display.setItemStack(RPManager.item(model.id))
 
         display.transformation = createTransformation()
-        display.interpolationDuration = 2
+        display.interpolationDuration = 3
         display.interpolationDelay = 0
-        display.teleportDuration = 2
+        display.teleportDuration = 3
     }
 
     private fun createTransformation(): Transformation {
@@ -55,9 +55,9 @@ class JavaModelBody private constructor(
         if (!awake.get()) return
 
         val pos2 = _pos2.set(composite.pos).sub(_rp.set(composite.comOffset).rotate(composite.q))
-        display.interpolationDuration = 2
+        display.interpolationDuration = 3
         display.interpolationDelay = 0
-        display.teleportDuration = 2
+        display.teleportDuration = 3
         display.transformation = createTransformation()
         display.teleport(Location(world, pos2.x, pos2.y, pos2.z))
 //        composite.visualize()
