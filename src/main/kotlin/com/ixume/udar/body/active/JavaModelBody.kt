@@ -48,13 +48,15 @@ class JavaModelBody private constructor(
         )
     }
 
-    private val _pos2 = Vector3d()
+    @JvmField
+    val modelPos = Vector3d()
+
     private val _rp = Vector3d()
 
     override fun visualize() {
         if (!awake.get()) return
 
-        val pos2 = _pos2.set(composite.pos).sub(_rp.set(composite.comOffset).rotate(composite.q))
+        val pos2 = modelPos.set(composite.pos).sub(_rp.set(composite.comOffset).rotate(composite.q))
         display.interpolationDuration = 3
         display.interpolationDelay = 0
         display.teleportDuration = 3

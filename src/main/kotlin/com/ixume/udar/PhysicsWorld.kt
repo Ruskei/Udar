@@ -167,7 +167,6 @@ class PhysicsWorld(
                 val bodiesSnapshot = activeBodies.activeBodies()
 
                 statusUpdater.updateBodies(bodiesSnapshot)
-                constraintSolverManager.prepare()
 
                 val startBroadTime = System.nanoTime()
                 val activePairs = broadPhase(bodiesSnapshot)
