@@ -4,11 +4,13 @@ import com.ixume.udar.body.A2ACollidable
 import com.ixume.udar.body.A2SCollidable
 import com.ixume.udar.body.Body
 import com.ixume.udar.body.active.hook.HookManager
+import com.ixume.udar.body.active.tag.Tag
 import com.ixume.udar.collisiondetection.capability.Projectable
 import com.ixume.udar.dynamicaabb.AABB
 import org.joml.Quaterniond
 import org.joml.Vector2d
 import org.joml.Vector3d
+import java.util.concurrent.CopyOnWriteArraySet
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.max
 import kotlin.math.min
@@ -21,6 +23,8 @@ interface ActiveBody : A2ACollidable, A2SCollidable, Body, Projectable {
 
     var age: Int
     var isChild: Boolean
+
+    val tags: CopyOnWriteArraySet<Tag>
 
     val vertices: Array<Vector3d>
     val faces: Array<Face>
@@ -43,7 +47,7 @@ interface ActiveBody : A2ACollidable, A2SCollidable, Body, Projectable {
     fun step() {}
     fun update() {}
     fun ensureNonAligned() {}
-    
+
     val hookManager: HookManager
 
     /**

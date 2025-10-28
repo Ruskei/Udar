@@ -1,4 +1,4 @@
-package com.ixume.udar.physics.constraint.solvers
+package com.ixume.udar.physics.contact
 
 import com.ixume.udar.Udar
 import com.ixume.udar.physics.constraint.BODY_DATA_FLOATS
@@ -49,7 +49,6 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
     private val _c_j1 = Vector3f()
     private val _c_j1Temp = Vector3f()
     private val _c_j2 = Vector3f()
-    private val _c_j3 = Vector3f()
     private val _c_j3Temp = Vector3f()
     private val _c_im = Vector3f()
     private val _norm = Vector3f()

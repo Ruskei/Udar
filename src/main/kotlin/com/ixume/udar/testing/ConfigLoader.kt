@@ -75,6 +75,7 @@ data class Config(
     val timeStep: Double = 0.01,
     val gravity: Vector3d = Vector3d(0.0, -10.0, 0.0),
     val collision: CollisionConfig = CollisionConfig(),
+    val sphericalJoint: SphericalJointConfig = SphericalJointConfig(),
     val debug: DebugConfig = DebugConfig(),
     val sleepLinearVelocity: Double = 1e-3,
     val sleepAngularVelocity: Double = 1e-3,
@@ -105,6 +106,19 @@ data class Config(
         companion object : InstanceCreator<CollisionConfig> {
             override fun createInstance(type: Type?): CollisionConfig? {
                 return CollisionConfig()
+            }
+        }
+    }
+    
+    data class SphericalJointConfig(
+        val bias: Double = 0.2,
+        val slop: Double = 1e-3,
+        val iterations: Int = 6,
+        val lambdaCarryover: Float = 0.99f,
+    ) {
+        companion object : InstanceCreator<SphericalJointConfig> {
+            override fun createInstance(type: Type?): SphericalJointConfig? {
+                return SphericalJointConfig()
             }
         }
     }

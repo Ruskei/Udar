@@ -4,6 +4,7 @@ import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.Udar
 import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.body.active.hook.HookManager
+import com.ixume.udar.body.active.tag.Tag
 import com.ixume.udar.collisiondetection.contactgeneration.CompositeCompositeContactGenerator
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.dynamicaabb.AABB
@@ -16,6 +17,7 @@ import org.joml.Matrix3d
 import org.joml.Quaterniond
 import org.joml.Vector3d
 import java.util.*
+import java.util.concurrent.CopyOnWriteArraySet
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.max
 import kotlin.math.min
@@ -40,6 +42,7 @@ class CompositeImpl(
     override var idx: Int = -1
     override val physicsWorld: PhysicsWorld = world.physicsWorld!!
     override val id: Long = physicsWorld.createID()
+    override val tags: CopyOnWriteArraySet<Tag> = CopyOnWriteArraySet()
 
     override val dead: AtomicBoolean = AtomicBoolean()
     override var isChild: Boolean = false

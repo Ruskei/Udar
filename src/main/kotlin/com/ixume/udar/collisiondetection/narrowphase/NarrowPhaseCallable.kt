@@ -26,6 +26,20 @@ class NarrowPhaseCallable(val world: PhysicsWorld) : Runnable {
                 for (i in 0..<ls.size) {
                     val second = world.activeBodies.fastGet(ls.getInt(i))!!
 
+                    var shouldCollide = true
+                    run check@{
+                        for (tag1 in first.tags) {
+                            for (tag2 in second.tags) {
+                                if (tag1 == tag2 && !tag1.collide) {
+                                    shouldCollide = false;
+                                    return@check
+                                }
+                            }
+                        }
+                    }
+
+                    if (!shouldCollide) continue
+
                     val collided: Boolean
 
                     val t = measureNanoTime {

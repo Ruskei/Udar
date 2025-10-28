@@ -1,21 +1,18 @@
 package com.ixume.udar.physics.constraint
 
 import com.ixume.udar.PhysicsWorld
-import com.ixume.udar.Udar
-import com.ixume.udar.physics.constraint.solvers.LocalContactSolver
-import com.ixume.udar.physics.contact.a2a.A2APrevContactDataBuffer
-import com.ixume.udar.physics.contact.a2s.A2SPrevContactDataBuffer
+import com.ixume.udar.physics.contact.LocalContactSolver
+import com.ixume.udar.physics.sphericaljoint.LocalSphericalJointSolver
 import org.joml.*
 import java.lang.Math.fma
 import java.nio.FloatBuffer
-import kotlin.math.abs
 import kotlin.math.max
-import kotlin.math.min
 
 class LocalConstraintSolver(
     val physicsWorld: PhysicsWorld,
 ) {
     private val contactSolver = LocalContactSolver(this)
+    private val sphericalJointSolver = LocalSphericalJointSolver(this)
     private val _vec3 = Vector3f()
     private val _quat = Quaternionf()
 
@@ -37,8 +34,9 @@ class LocalConstraintSolver(
         }
 
         buildFlatBodyData()
-        
+
         contactSolver.setup()
+        sphericalJointSolver.setup()
     }
 
     private fun buildFlatBodyData() {
@@ -67,6 +65,10 @@ class LocalConstraintSolver(
 
     fun solveFriction() {
         contactSolver.solveFriction()
+    }
+    
+    fun solveJoints() {
+        sphericalJointSolver.solve()
     }
 
     fun write() {

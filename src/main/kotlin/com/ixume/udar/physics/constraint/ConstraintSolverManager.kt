@@ -9,6 +9,13 @@ class ConstraintSolverManager(val physicsWorld: PhysicsWorld) {
     fun solve() {
         constraintSolver.setup()
 
+        var jointItrs = 1
+        while (jointItrs < Udar.CONFIG.sphericalJoint.iterations) {
+            constraintSolver.solveJoints()
+
+            jointItrs++
+        }
+
         var normalItrs = 1
         while (normalItrs <= Udar.CONFIG.collision.normalIterations) {
             constraintSolver.solveNormal()
