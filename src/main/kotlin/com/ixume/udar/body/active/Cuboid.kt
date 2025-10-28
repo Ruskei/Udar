@@ -199,7 +199,6 @@ class Cuboid(
     override val localInertia: Vector3d = calcInertia()
     val localInverseInertia: Vector3d = Vector3d(1.0 / localInertia.x, 1.0 / localInertia.y, 1.0 / localInertia.z)
 
-
     override val inverseInertia: Matrix3d = Matrix3d()
 
     init {

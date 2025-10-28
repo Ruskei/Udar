@@ -44,7 +44,7 @@ class SphericalJointConstraintManager(val physicsWorld: PhysicsWorld) {
         for (i in 0..<toRemoveBuffer.size) {
             constraints.remove(toRemoveBuffer.getInt(i))
         }
-
+        
         for (request in constraintsToAdd) {
             constraints.add(
                 request.a,

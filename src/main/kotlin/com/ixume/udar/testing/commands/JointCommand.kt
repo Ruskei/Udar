@@ -58,7 +58,7 @@ object JointCommand : Command {
         )
 
         top.tags += tag
-        
+
         val ph = sender.world.physicsWorld ?: return false
 
         ph.registerBody(BlockEntityCuboid(bottom, Material.GLASS))

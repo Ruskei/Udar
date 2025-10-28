@@ -21,18 +21,10 @@ class LocalConstraintSolver(
     @JvmField
     var flatBodyData: FloatArray = FloatArray(1)
 
-    private var any = false
-
     private val _quatd = Quaterniond()
 
     fun setup() {
         bodyCount = physicsWorld.activeBodies.size()
-        any = true
-        if (bodyCount == 0) {
-            any = false
-            return
-        }
-
         buildFlatBodyData()
 
         contactSolver.setup()
@@ -77,8 +69,6 @@ class LocalConstraintSolver(
 
         physicsWorld.prevEnvContactMap.clear()
         physicsWorld.prevEnvContactData.clear()
-
-        if (!any) return
 
         var i = 0
         val n = bodyCount * BODY_DATA_FLOATS

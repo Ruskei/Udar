@@ -7,6 +7,7 @@ class ConstraintSolverManager(val physicsWorld: PhysicsWorld) {
     private val constraintSolver = LocalConstraintSolver(physicsWorld)
 
     fun solve() {
+        if (physicsWorld.activeBodies.size() == 0) return
         constraintSolver.setup()
 
         var jointItrs = 1
