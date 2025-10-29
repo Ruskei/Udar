@@ -70,11 +70,21 @@ object JointCommand : Command {
             b = holder,
             rb = Vector3d(0.75, 0.0, 0.0),
         )
+//        ph.angularConstraints.addConstraint(
+//            a = spinner,
+//            b = holder,
+//            bodyAAxis = Vector3f(1.0f, 0.0f, 0.0f),
+//            bodyBAxis = Vector3f(1.0f, 0.0f, 0.0f),
+//        )
         ph.angularConstraints.addConstraint(
             a = spinner,
             b = holder,
-            bodyAAxis = Vector3f(1.0f, 0.0f, 0.0f),
-            bodyBAxis = Vector3f(1.0f, 0.0f, 0.0f),
+            jA = Vector3f(1.0f, 0.0f, 0.0f),
+            jB = Vector3f(1.0f, 0.0f, 0.0f),
+            gA = Vector3f(0.0f, -1.0f, 0.0f),
+            gB = Vector3f(0.0f, -1.0f, 0.0f),
+            minAngle = -Math.toRadians(30.0).toFloat(),
+            maxAngle = Math.toRadians(30.0).toFloat(),
         )
 
         return true

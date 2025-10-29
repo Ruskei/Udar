@@ -21,20 +21,20 @@ class AngularConstraintList {
         bodyBAxisY: Float,
         bodyBAxisZ: Float,
     ): Int {
-        val idx = cursor * DATA_SIZE
+        val idx = cursor * ANGULAR_DATA_SIZE
         val constraintIdx = cursor
         cursor++
 
-        grow(idx + DATA_SIZE)
+        grow(idx + ANGULAR_DATA_SIZE)
 
-        arr[idx + BODY_A_IDX_OFFSET] = Float.fromBits(bodyA.idx)
-        arr[idx + BODY_B_IDX_OFFSET] = Float.fromBits(bodyB.idx)
-        arr[idx + BODY_A_AXIS_X_OFFSET] = bodyAAxisX
-        arr[idx + BODY_A_AXIS_Y_OFFSET] = bodyAAxisY
-        arr[idx + BODY_A_AXIS_Z_OFFSET] = bodyAAxisZ
-        arr[idx + BODY_B_AXIS_X_OFFSET] = bodyBAxisX
-        arr[idx + BODY_B_AXIS_Y_OFFSET] = bodyBAxisY
-        arr[idx + BODY_B_AXIS_Z_OFFSET] = bodyBAxisZ
+        arr[idx + ANGULAR_BODY_A_IDX_OFFSET] = Float.fromBits(bodyA.idx)
+        arr[idx + ANGULAR_BODY_B_IDX_OFFSET] = Float.fromBits(bodyB.idx)
+        arr[idx + ANGULAR_BODY_A_AXIS_X_OFFSET] = bodyAAxisX
+        arr[idx + ANGULAR_BODY_A_AXIS_Y_OFFSET] = bodyAAxisY
+        arr[idx + ANGULAR_BODY_A_AXIS_Z_OFFSET] = bodyAAxisZ
+        arr[idx + ANGULAR_BODY_B_AXIS_X_OFFSET] = bodyBAxisX
+        arr[idx + ANGULAR_BODY_B_AXIS_Y_OFFSET] = bodyBAxisY
+        arr[idx + ANGULAR_BODY_B_AXIS_Z_OFFSET] = bodyBAxisZ
 
         return constraintIdx
     }
@@ -42,48 +42,24 @@ class AngularConstraintList {
     fun remove(constraintIdx: Int) {
         if (constraintIdx < 0 || constraintIdx >= cursor) return
 
-        val lastIdx = (cursor - 1) * DATA_SIZE
-        val removeIdx = constraintIdx * DATA_SIZE
+        val lastIdx = (cursor - 1) * ANGULAR_DATA_SIZE
+        val removeIdx = constraintIdx * ANGULAR_DATA_SIZE
 
         if (constraintIdx != cursor - 1) {
-            System.arraycopy(arr, lastIdx, arr, removeIdx, DATA_SIZE)
+            System.arraycopy(arr, lastIdx, arr, removeIdx, ANGULAR_DATA_SIZE)
         }
 
         cursor--
     }
 
     fun bodyAIdx(constraintIdx: Int): Int {
-        return arr[constraintIdx * DATA_SIZE + BODY_A_IDX_OFFSET].toRawBits()
+        return arr[constraintIdx * ANGULAR_DATA_SIZE + ANGULAR_BODY_A_IDX_OFFSET].toRawBits()
     }
 
     fun bodyBIdx(constraintIdx: Int): Int {
-        return arr[constraintIdx * DATA_SIZE + BODY_B_IDX_OFFSET].toRawBits()
+        return arr[constraintIdx * ANGULAR_DATA_SIZE + ANGULAR_BODY_B_IDX_OFFSET].toRawBits()
     }
-
-    fun bodyAAxisX(constraintIdx: Int): Float {
-        return arr[constraintIdx * DATA_SIZE + BODY_A_AXIS_X_OFFSET]
-    }
-
-    fun bodyAAxisY(constraintIdx: Int): Float {
-        return arr[constraintIdx * DATA_SIZE + BODY_A_AXIS_Y_OFFSET]
-    }
-
-    fun bodyAAxisZ(constraintIdx: Int): Float {
-        return arr[constraintIdx * DATA_SIZE + BODY_A_AXIS_Z_OFFSET]
-    }
-
-    fun bodyBAxisX(constraintIdx: Int): Float {
-        return arr[constraintIdx * DATA_SIZE + BODY_B_AXIS_X_OFFSET]
-    }
-
-    fun bodyBAxisY(constraintIdx: Int): Float {
-        return arr[constraintIdx * DATA_SIZE + BODY_B_AXIS_Y_OFFSET]
-    }
-
-    fun bodyBAxisZ(constraintIdx: Int): Float {
-        return arr[constraintIdx * DATA_SIZE + BODY_B_AXIS_Z_OFFSET]
-    }
-
+    
     fun clear() {
         cursor = 0
     }
@@ -91,16 +67,16 @@ class AngularConstraintList {
     inline fun forEach(block: (constraintIdx: Int, bodyAIdx: Int, bodyBIdx: Int, bodyAAxisX: Float, bodyAAxisY: Float, bodyAAxisZ: Float, bodyBAxisX: Float, bodyBAxisY: Float, bodyBAxisZ: Float) -> Unit) {
         var i = 0
         while (i < cursor) {
-            val idx = i * DATA_SIZE
+            val idx = i * ANGULAR_DATA_SIZE
 
-            val bodyAIdx = arr[idx + BODY_A_IDX_OFFSET].toRawBits()
-            val bodyBIdx = arr[idx + BODY_B_IDX_OFFSET].toRawBits()
-            val bodyAAxisX = arr[idx + BODY_A_AXIS_X_OFFSET]
-            val bodyAAxisY = arr[idx + BODY_A_AXIS_Y_OFFSET]
-            val bodyAAxisZ = arr[idx + BODY_A_AXIS_Z_OFFSET]
-            val bodyBAxisX = arr[idx + BODY_B_AXIS_X_OFFSET]
-            val bodyBAxisY = arr[idx + BODY_B_AXIS_Y_OFFSET]
-            val bodyBAxisZ = arr[idx + BODY_B_AXIS_Z_OFFSET]
+            val bodyAIdx = arr[idx + ANGULAR_BODY_A_IDX_OFFSET].toRawBits()
+            val bodyBIdx = arr[idx + ANGULAR_BODY_B_IDX_OFFSET].toRawBits()
+            val bodyAAxisX = arr[idx + ANGULAR_BODY_A_AXIS_X_OFFSET]
+            val bodyAAxisY = arr[idx + ANGULAR_BODY_A_AXIS_Y_OFFSET]
+            val bodyAAxisZ = arr[idx + ANGULAR_BODY_A_AXIS_Z_OFFSET]
+            val bodyBAxisX = arr[idx + ANGULAR_BODY_B_AXIS_X_OFFSET]
+            val bodyBAxisY = arr[idx + ANGULAR_BODY_B_AXIS_Y_OFFSET]
+            val bodyBAxisZ = arr[idx + ANGULAR_BODY_B_AXIS_Z_OFFSET]
 
             block(i, bodyAIdx, bodyBIdx, bodyAAxisX, bodyAAxisY, bodyAAxisZ, bodyBAxisX, bodyBAxisY, bodyBAxisZ)
 
@@ -116,16 +92,15 @@ class AngularConstraintList {
     }
 }
 
-const val DATA_SIZE = 8
-
-const val BODY_A_IDX_OFFSET = 0
-const val BODY_B_IDX_OFFSET = 1
-const val BODY_A_AXIS_X_OFFSET = 2
-const val BODY_A_AXIS_Y_OFFSET = 3
-const val BODY_A_AXIS_Z_OFFSET = 4
-const val BODY_B_AXIS_X_OFFSET = 5
-const val BODY_B_AXIS_Y_OFFSET = 6
-const val BODY_B_AXIS_Z_OFFSET = 7
+const val ANGULAR_DATA_SIZE = 8
+const val ANGULAR_BODY_A_IDX_OFFSET = 0
+const val ANGULAR_BODY_B_IDX_OFFSET = 1
+const val ANGULAR_BODY_A_AXIS_X_OFFSET = 2
+const val ANGULAR_BODY_A_AXIS_Y_OFFSET = 3
+const val ANGULAR_BODY_A_AXIS_Z_OFFSET = 4
+const val ANGULAR_BODY_B_AXIS_X_OFFSET = 5
+const val ANGULAR_BODY_B_AXIS_Y_OFFSET = 6
+const val ANGULAR_BODY_B_AXIS_Z_OFFSET = 7
 
 /*
 Data layout (8 floats per constraint):

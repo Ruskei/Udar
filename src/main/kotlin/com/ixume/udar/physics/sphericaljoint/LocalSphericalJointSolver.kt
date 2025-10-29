@@ -5,7 +5,6 @@ import com.ixume.udar.physics.constraint.BODY_DATA_FLOATS
 import com.ixume.udar.physics.constraint.LocalConstraintSolver
 import com.ixume.udar.physics.constraint.O_OFFSET
 import com.ixume.udar.physics.constraint.V_OFFSET
-import com.ixume.udar.physics.contact.Component
 import org.joml.Vector3d
 import org.joml.Vector3f
 import java.lang.Math.fma
