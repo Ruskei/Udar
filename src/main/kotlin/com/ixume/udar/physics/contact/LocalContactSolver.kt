@@ -70,24 +70,24 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
             return
         }
 
-        constructFlatConstraintData(ContactComponent.NORMAL)
-        constructFlatEnvConstraintData(ContactComponent.NORMAL)
+        constructFlatConstraintData(Component.AXIS)
+        constructFlatEnvConstraintData(Component.AXIS)
 
-        constructFlatConstraintData(ContactComponent.T1)
-        constructFlatEnvConstraintData(ContactComponent.T1)
+        constructFlatConstraintData(Component.T1)
+        constructFlatEnvConstraintData(Component.T1)
 
-        constructFlatConstraintData(ContactComponent.T2)
-        constructFlatEnvConstraintData(ContactComponent.T2)
+        constructFlatConstraintData(Component.T2)
+        constructFlatEnvConstraintData(Component.T2)
 
         itr = 0
 
         warmStart()
     }
 
-    private fun constructFlatConstraintData(component: ContactComponent) {
+    private fun constructFlatConstraintData(component: Component) {
         val numc = manifolds.numContacts
         val relevantData = when (component) {
-            ContactComponent.NORMAL -> {
+            Component.AXIS -> {
                 if (contactNormalData.size < numc * A2A_N_CONTACT_DATA_FLOATS) {
                     contactNormalData = FloatArray(max(contactNormalData.size * 2, numc * A2A_N_CONTACT_DATA_FLOATS))
                 }
@@ -95,7 +95,7 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
                 contactNormalData
             }
 
-            ContactComponent.T1 -> {
+            Component.T1 -> {
                 if (contactT1Data.size < numc * A2A_N_CONTACT_DATA_FLOATS) {
                     contactT1Data = FloatArray(max(contactT1Data.size * 2, numc * A2A_N_CONTACT_DATA_FLOATS))
                 }
@@ -103,7 +103,7 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
                 contactT1Data
             }
 
-            ContactComponent.T2 -> {
+            Component.T2 -> {
                 if (contactT2Data.size < numc * A2A_N_CONTACT_DATA_FLOATS) {
                     contactT2Data = FloatArray(max(contactT2Data.size * 2, numc * A2A_N_CONTACT_DATA_FLOATS))
                 }
@@ -122,7 +122,7 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
                 val ny: Float
                 val nz: Float
                 when (component) {
-                    ContactComponent.NORMAL -> {
+                    Component.AXIS -> {
                         nx = manifolds.normX(i, m)
                         ny = manifolds.normY(i, m)
                         nz = manifolds.normZ(i, m)
@@ -130,14 +130,14 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
                         _norm.set(nx, ny, nz)
                     }
 
-                    ContactComponent.T1 -> {
+                    Component.T1 -> {
                         nx = manifolds.t1X(i, m)
                         ny = manifolds.t1Y(i, m)
                         nz = manifolds.t1Z(i, m)
                         _norm.set(nx, ny, nz)
                     }
 
-                    ContactComponent.T2 -> {
+                    Component.T2 -> {
                         nx = manifolds.t2X(i, m)
                         ny = manifolds.t2Y(i, m)
                         nz = manifolds.t2Z(i, m)
@@ -187,7 +187,7 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
 
                 val depth = manifolds.depth(i, m)
 
-                if (component == ContactComponent.NORMAL) {
+                if (component == Component.AXIS) {
                     val tb = bias / timeStep * max(0f, abs(depth) - slop)
                     n.put(tb) // bias
                 } else {
@@ -226,9 +226,9 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
 
                 n.put(
                     when (component) {
-                        ContactComponent.NORMAL -> manifolds.normalLambda(i, m)
-                        ContactComponent.T1 -> manifolds.t1Lambda(i, m)
-                        ContactComponent.T2 -> manifolds.t2Lambda(i, m)
+                        Component.AXIS -> manifolds.normalLambda(i, m)
+                        Component.T1 -> manifolds.t1Lambda(i, m)
+                        Component.T2 -> manifolds.t2Lambda(i, m)
                     }
                 ) // lambda
 
@@ -249,10 +249,10 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
         }
     }
 
-    private fun constructFlatEnvConstraintData(component: ContactComponent) {
+    private fun constructFlatEnvConstraintData(component: Component) {
         val numc = envManifolds.numContacts.get()
         val relevantData = when (component) {
-            ContactComponent.NORMAL -> {
+            Component.AXIS -> {
                 if (envContactNormalData.size < numc * A2S_N_CONTACT_DATA_FLOATS) {
                     envContactNormalData =
                         FloatArray(max(envContactNormalData.size * 2, numc * A2S_N_CONTACT_DATA_FLOATS))
@@ -260,14 +260,14 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
                 envContactNormalData
             }
 
-            ContactComponent.T1 -> {
+            Component.T1 -> {
                 if (envContactT1Data.size < numc * A2S_N_CONTACT_DATA_FLOATS) {
                     envContactT1Data = FloatArray(max(envContactT1Data.size * 2, numc * A2S_N_CONTACT_DATA_FLOATS))
                 }
                 envContactT1Data
             }
 
-            ContactComponent.T2 -> {
+            Component.T2 -> {
                 if (envContactT2Data.size < numc * A2S_N_CONTACT_DATA_FLOATS) {
                     envContactT2Data = FloatArray(max(envContactT2Data.size * 2, numc * A2S_N_CONTACT_DATA_FLOATS))
                 }
@@ -283,19 +283,19 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
             var m = 0
             while (m < num) {
                 when (component) {
-                    ContactComponent.NORMAL -> _norm.set(
+                    Component.AXIS -> _norm.set(
                         envManifolds.normX(ns, m),
                         envManifolds.normY(ns, m),
                         envManifolds.normZ(ns, m)
                     )
 
-                    ContactComponent.T1 -> _norm.set(
+                    Component.T1 -> _norm.set(
                         envManifolds.t1X(ns, m),
                         envManifolds.t1Y(ns, m),
                         envManifolds.t1Z(ns, m)
                     )
 
-                    ContactComponent.T2 -> _norm.set(
+                    Component.T2 -> _norm.set(
                         envManifolds.t2X(ns, m),
                         envManifolds.t2Y(ns, m),
                         envManifolds.t2Z(ns, m)
@@ -310,7 +310,7 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
                     .cross(_norm)
                 n.putVector3f(j1)
 
-                if (component == ContactComponent.NORMAL) {
+                if (component == Component.AXIS) {
                     n.put(bias / timeStep * max(0f, abs(envManifolds.depth(ns, m)) - slop)) // bias
                 } else {
                     n.put(0f)
@@ -332,9 +332,9 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
 
                 n.put(
                     when (component) {
-                        ContactComponent.NORMAL -> envManifolds.normalLambda(ns, m)
-                        ContactComponent.T1 -> envManifolds.t1Lambda(ns, m)
-                        ContactComponent.T2 -> envManifolds.t2Lambda(ns, m)
+                        Component.AXIS -> envManifolds.normalLambda(ns, m)
+                        Component.T1 -> envManifolds.t1Lambda(ns, m)
+                        Component.T2 -> envManifolds.t2Lambda(ns, m)
                     }
                 ) // lambda
 
@@ -369,43 +369,43 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
 
         var i = 0
         while (i < n) {
-            warmA2AContact(contactNormalData, i, ContactComponent.NORMAL)
+            warmA2AContact(contactNormalData, i, Component.AXIS)
 
             i += A2A_N_CONTACT_DATA_FLOATS
         }
 
         var j = 0
         while (j < e) {
-            warmA2SContact(envContactNormalData, j, ContactComponent.NORMAL)
+            warmA2SContact(envContactNormalData, j, Component.AXIS)
 
             j += A2S_N_CONTACT_DATA_FLOATS
         }
 
         var k = 0
         while (k < n) {
-            warmA2AContact(contactT1Data, k, ContactComponent.T1)
-            warmA2AContact(contactT2Data, k, ContactComponent.T2)
+            warmA2AContact(contactT1Data, k, Component.T1)
+            warmA2AContact(contactT2Data, k, Component.T2)
 
             k += A2A_N_CONTACT_DATA_FLOATS
         }
 
         var l = 0
         while (l < e) {
-            warmA2SContact(envContactT1Data, l, ContactComponent.T1)
-            warmA2SContact(envContactT2Data, l, ContactComponent.T2)
+            warmA2SContact(envContactT1Data, l, Component.T1)
+            warmA2SContact(envContactT2Data, l, Component.T2)
 
             l += A2S_N_CONTACT_DATA_FLOATS
         }
     }
 
-    private fun warmA2AContact(data: FloatArray, contactIdx: Int, component: ContactComponent) {
+    private fun warmA2AContact(data: FloatArray, contactIdx: Int, component: Component) {
         val flatBodyData = constraintSolver.flatBodyData
         val lambda = data[contactIdx + A2A_N_LAMBDA_OFFSET]
 //        if (component == ContactComponent.NORMAL && lambda != 0f) {
 //            println("warmed contact with $lambda!") CORRECT!
 //        }
 
-        if (component != ContactComponent.NORMAL) {
+        if (component != Component.AXIS) {
             val n = contactNormalData[contactIdx + A2A_N_LAMBDA_OFFSET]
             if (n < FRICTION_LAMBDA_EPSILON) {
                 return
@@ -432,7 +432,7 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
         flatBodyData[otherIdx + 5] -= (data[contactIdx + A2A_N_DELTA_OFFSET + 11] * lambda)
     }
 
-    private fun warmA2SContact(data: FloatArray, contactIdx: Int, component: ContactComponent) {
+    private fun warmA2SContact(data: FloatArray, contactIdx: Int, component: Component) {
         val flatBodyData = constraintSolver.flatBodyData
         val lambda = data[contactIdx + A2S_N_LAMBDA_OFFSET]
         if (lambda == 0f) {
@@ -441,7 +441,7 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
 
         val myIdx = data[contactIdx + A2S_N_MY_IDX_OFFSET].toRawBits() * BODY_DATA_FLOATS
 
-        if (abs(lambda) < FRICTION_LAMBDA_EPSILON && component != ContactComponent.NORMAL) {
+        if (abs(lambda) < FRICTION_LAMBDA_EPSILON && component != Component.AXIS) {
             return
         }
 
@@ -565,7 +565,7 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
 
         var i = 0
         while (i < n) {
-            this.solveA2AContact(contactNormalData, i, ContactComponent.NORMAL)
+            this.solveA2AContact(contactNormalData, i, Component.AXIS)
 
             i += A2A_N_CONTACT_DATA_FLOATS
         }
@@ -575,7 +575,7 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
 
         var j = 0
         while (j < e) {
-            solveA2SContact(envContactNormalData, j, ContactComponent.NORMAL)
+            solveA2SContact(envContactNormalData, j, Component.AXIS)
 
             j += A2S_N_CONTACT_DATA_FLOATS
         }
@@ -588,8 +588,8 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
         val e = envManifolds.numContacts.get() * A2S_N_CONTACT_DATA_FLOATS
 
         while (j < e) {
-            solveA2SContact(envContactT1Data, j, ContactComponent.T1)
-            solveA2SContact(envContactT2Data, j, ContactComponent.T2)
+            solveA2SContact(envContactT1Data, j, Component.T1)
+            solveA2SContact(envContactT2Data, j, Component.T2)
 
             j += A2S_N_CONTACT_DATA_FLOATS
         }
@@ -598,8 +598,8 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
         val n = manifolds.numContacts * A2A_N_CONTACT_DATA_FLOATS
 
         while (i < n) {
-            solveA2AContact(contactT1Data, i, ContactComponent.T1)
-            solveA2AContact(contactT2Data, i, ContactComponent.T2)
+            solveA2AContact(contactT1Data, i, Component.T1)
+            solveA2AContact(contactT2Data, i, Component.T2)
 
             i += A2A_N_CONTACT_DATA_FLOATS
         }
@@ -608,9 +608,9 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
     /**
      * For a contact between active objects
      */
-    private fun solveA2AContact(data: FloatArray, contactIdx: Int, component: ContactComponent) {
+    private fun solveA2AContact(data: FloatArray, contactIdx: Int, component: Component) {
         val flatBodyData = constraintSolver.flatBodyData
-        if (component != ContactComponent.NORMAL) {
+        if (component != Component.AXIS) {
             val n = contactNormalData[contactIdx + A2A_N_LAMBDA_OFFSET]
             if (n < FRICTION_LAMBDA_EPSILON) {
                 return
@@ -699,7 +699,7 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
 
         val l = data[contactIdx + A2A_N_LAMBDA_OFFSET]
 
-        if (component == ContactComponent.NORMAL) {
+        if (component == Component.AXIS) {
             data[contactIdx + A2A_N_LAMBDA_OFFSET] = max(0f, l + lambda)
         } else {
             val n = contactNormalData[contactIdx + A2A_N_LAMBDA_OFFSET]
@@ -733,14 +733,14 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
     /**
      * For a contact between an active body and a static object
      */
-    private fun solveA2SContact(data: FloatArray, contactIdx: Int, component: ContactComponent) {
+    private fun solveA2SContact(data: FloatArray, contactIdx: Int, component: Component) {
         val flatBodyData = constraintSolver.flatBodyData
         val nx = data[contactIdx + A2S_N_NORMAL_OFFSET]
         val ny = data[contactIdx + A2S_N_NORMAL_OFFSET + 1]
         val nz = data[contactIdx + A2S_N_NORMAL_OFFSET + 2]
 
         val bias = data[contactIdx + A2S_N_BIAS_OFFSET]
-        if (component != ContactComponent.NORMAL) {
+        if (component != Component.AXIS) {
             check(bias == 0f)
         }
 
@@ -785,7 +785,7 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
 
         val l = data[contactIdx + A2S_N_LAMBDA_OFFSET]
 
-        if (component == ContactComponent.NORMAL) {
+        if (component == Component.AXIS) {
             data[contactIdx + A2S_N_LAMBDA_OFFSET] = max(0f, l + lambda)
         } else {
             val n = envContactNormalData[contactIdx + A2S_N_LAMBDA_OFFSET]
@@ -798,7 +798,7 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
 //            maxLambda = lambda
 //        }
 //
-        if (abs(lambda) < FRICTION_LAMBDA_EPSILON && component != ContactComponent.NORMAL) {
+        if (abs(lambda) < FRICTION_LAMBDA_EPSILON && component != Component.AXIS) {
             return
         }
 
@@ -817,8 +817,8 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
     }
 }
 
-enum class ContactComponent {
-    NORMAL, T1, T2
+enum class Component {
+    AXIS, T1, T2
 }
 
 private const val FRICTION_LAMBDA_EPSILON = 0.0

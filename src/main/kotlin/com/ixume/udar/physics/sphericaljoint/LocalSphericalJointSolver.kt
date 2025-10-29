@@ -5,47 +5,57 @@ import com.ixume.udar.physics.constraint.BODY_DATA_FLOATS
 import com.ixume.udar.physics.constraint.LocalConstraintSolver
 import com.ixume.udar.physics.constraint.O_OFFSET
 import com.ixume.udar.physics.constraint.V_OFFSET
+import com.ixume.udar.physics.contact.Component
 import org.joml.Vector3d
+import org.joml.Vector3f
 import java.lang.Math.fma
 import java.nio.FloatBuffer
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.sqrt
 
 class LocalSphericalJointSolver(val constraintSolver: LocalConstraintSolver) {
     private var timeStep = Udar.Companion.CONFIG.timeStep.toFloat()
     private var bias = Udar.Companion.CONFIG.sphericalJoint.bias.toFloat()
     private var slop = Udar.Companion.CONFIG.sphericalJoint.slop.toFloat()
+    private var friction = Udar.Companion.CONFIG.sphericalJoint.friction.toFloat()
 
     private val constraints = constraintSolver.physicsWorld.sphericalJointConstraints.constraints
     private var toSolve = 0
 
-    private var jointData: FloatArray = FloatArray(1)
+    private var jointAxisData: FloatArray = FloatArray(1)
+    private var jointT1Data: FloatArray = FloatArray(1)
+    private var jointT2Data: FloatArray = FloatArray(1)
 
     private val _rotatedRA = Vector3d()
     private val _rotatedRB = Vector3d()
     private val _j1scaled = Vector3d()
     private val _j3scaled = Vector3d()
-
+    private val _t1 = Vector3f()
+    private val _t2 = Vector3f()
+    private val _ref = Vector3f()
 
     fun setup() {
         timeStep = Udar.CONFIG.timeStep.toFloat()
         bias = Udar.CONFIG.sphericalJoint.bias.toFloat()
         slop = Udar.CONFIG.sphericalJoint.slop.toFloat()
+        friction = Udar.CONFIG.sphericalJoint.friction.toFloat()
 
         constructFlatConstraintData()
     }
 
     private fun constructFlatConstraintData() {
         val numc = constraints.size()
-        val relevantData = run {
-            if (jointData.size < numc * OFFSET_12_AA_DATA_SIZE) {
-                jointData = FloatArray(max(jointData.size * 2, numc * OFFSET_12_AA_DATA_SIZE))
-            }
 
-            jointData
+        if (jointAxisData.size < numc * OFFSET_12_AA_DATA_SIZE) {
+            jointAxisData = FloatArray(max(jointAxisData.size * 2, numc * OFFSET_12_AA_DATA_SIZE))
+            jointT1Data = FloatArray(max(jointT1Data.size * 2, numc * OFFSET_12_AA_DATA_SIZE))
+            jointT2Data = FloatArray(max(jointT2Data.size * 2, numc * OFFSET_12_AA_DATA_SIZE))
         }
 
-        val n = FloatBuffer.wrap(relevantData)
+        val axisBuf = FloatBuffer.wrap(jointAxisData)
+        val t1Buf = FloatBuffer.wrap(jointT1Data)
+        val t2Buf = FloatBuffer.wrap(jointT2Data)
 
         toSolve = 0
         constraints.forEach { constraintIdx, bodyAIdx, bodyBIdx, rax, ray, raz, rbx, rby, rbz ->
@@ -82,63 +92,193 @@ class LocalSphericalJointSolver(val constraintSolver: LocalConstraintSolver) {
             val rotatedRA = qA.transform(rax.toDouble(), ray.toDouble(), raz.toDouble(), _rotatedRA)
             val rotatedRB = qB.transform(rbx.toDouble(), rby.toDouble(), rbz.toDouble(), _rotatedRB)
 
-            val j0x = (rotatedRA.x - rotatedRB.x + pa.x - pb.x).toFloat()
-            val j0y = (rotatedRA.y - rotatedRB.y + pa.y - pb.y).toFloat()
-            val j0z = (rotatedRA.z - rotatedRB.z + pa.z - pb.z).toFloat()
+            _ref.set(
+                (rotatedRA.x - rotatedRB.x + pa.x - pb.x).toFloat(),
+                (rotatedRA.y - rotatedRB.y + pa.y - pb.y).toFloat(),
+                (rotatedRA.z - rotatedRB.z + pa.z - pb.z).toFloat(),
+            )
+            _t1.set(1f).orthogonalizeUnit(_ref)
+            _t2.set(_t1).cross(_ref).normalize()
+            
+            run axis@{
+                val j0x = _ref.x
+                val j0y = _ref.y
+                val j0z = _ref.z
+                
+                val rr = fma(j0x, j0x, fma(j0y, j0y, j0z * j0z))
+                if (rr < 1e-11) return@forEach
 
-            val rr = fma(j0x, j0x, fma(j0y, j0y, j0z * j0z))
-            if (rr < 1e-11) return@forEach
+                axisBuf.put(j0x)
+                axisBuf.put(j0y)
+                axisBuf.put(j0z)
 
-            n.put(j0x)
-            n.put(j0y)
-            n.put(j0z)
+                val j1x = fma(rotatedRA.y.toFloat(), j0z, -rotatedRA.z.toFloat() * j0y)
+                val j1y = fma(rotatedRA.z.toFloat(), j0x, -rotatedRA.x.toFloat() * j0z)
+                val j1z = fma(rotatedRA.x.toFloat(), j0y, -rotatedRA.y.toFloat() * j0x)
 
-            val j1x = fma(rotatedRA.y.toFloat(), j0z, -rotatedRA.z.toFloat() * j0y)
-            val j1y = fma(rotatedRA.z.toFloat(), j0x, -rotatedRA.x.toFloat() * j0z)
-            val j1z = fma(rotatedRA.x.toFloat(), j0y, -rotatedRA.y.toFloat() * j0x)
+                axisBuf.put(j1x)
+                axisBuf.put(j1y)
+                axisBuf.put(j1z)
 
-            n.put(j1x)
-            n.put(j1y)
-            n.put(j1z)
+                val j3x = -fma(rotatedRB.y.toFloat(), j0z, -rotatedRB.z.toFloat() * j0y)
+                val j3y = -fma(rotatedRB.z.toFloat(), j0x, -rotatedRB.x.toFloat() * j0z)
+                val j3z = -fma(rotatedRB.x.toFloat(), j0y, -rotatedRB.y.toFloat() * j0x)
 
-            val j3x = -fma(rotatedRB.y.toFloat(), j0z, -rotatedRB.z.toFloat() * j0y)
-            val j3y = -fma(rotatedRB.z.toFloat(), j0x, -rotatedRB.x.toFloat() * j0z)
-            val j3z = -fma(rotatedRB.x.toFloat(), j0y, -rotatedRB.y.toFloat() * j0x)
+                axisBuf.put(j3x)
+                axisBuf.put(j3y)
+                axisBuf.put(j3z)
 
-            n.put(j3x)
-            n.put(j3y)
-            n.put(j3z)
+                axisBuf.put(ima)
+                axisBuf.put(imb)
 
-            n.put(ima)
-            n.put(imb)
+                val j1scaled = iia.transform(j1x.toDouble(), j1y.toDouble(), j1z.toDouble(), _j1scaled)
 
-            val j1scaled = iia.transform(j1x.toDouble(), j1y.toDouble(), j1z.toDouble(), _j1scaled)
+                axisBuf.put(j1scaled.x.toFloat())
+                axisBuf.put(j1scaled.y.toFloat())
+                axisBuf.put(j1scaled.z.toFloat())
 
-            n.put(j1scaled.x.toFloat())
-            n.put(j1scaled.y.toFloat())
-            n.put(j1scaled.z.toFloat())
+                val j3scaled = iib.transform(j3x.toDouble(), j3y.toDouble(), j3z.toDouble(), _j3scaled)
 
-            val j3scaled = iib.transform(j3x.toDouble(), j3y.toDouble(), j3z.toDouble(), _j3scaled)
+                axisBuf.put(j3scaled.x.toFloat())
+                axisBuf.put(j3scaled.y.toFloat())
+                axisBuf.put(j3scaled.z.toFloat())
 
-            n.put(j3scaled.x.toFloat())
-            n.put(j3scaled.y.toFloat())
-            n.put(j3scaled.z.toFloat())
+                val b = bias / timeStep * sqrt(rr)
+                axisBuf.put(b)
 
-            val b = bias / timeStep * sqrt(rr)
-            n.put(b)
+                val den =
+                    rr * ima +
+                    rr * imb +
+                    j1scaled.dot(j1x.toDouble(), j1y.toDouble(), j1z.toDouble()).toFloat() +
+                    j3scaled.dot(j3x.toDouble(), j3y.toDouble(), j3z.toDouble()).toFloat()
+                if (den < 1e-11) return@forEach
+                axisBuf.put(den)
 
-            val den =
-                rr * ima +
-                rr * imb +
-                j1scaled.dot(j1x.toDouble(), j1y.toDouble(), j1z.toDouble()).toFloat() +
-                j3scaled.dot(j3x.toDouble(), j3y.toDouble(), j3z.toDouble()).toFloat()
-            if (den < 1e-11) return@forEach
-            n.put(den)
+                axisBuf.put(Float.fromBits(bodyAIdx))
+                axisBuf.put(Float.fromBits(bodyBIdx))
 
-            n.put(Float.fromBits(bodyAIdx))
-            n.put(Float.fromBits(bodyBIdx))
+                axisBuf.put(0f)
+            }
 
-            n.put(0f)
+            run t1@{
+                val j0x = _t1.x
+                val j0y = _t1.y
+                val j0z = _t1.z
+
+                val rr = fma(j0x, j0x, fma(j0y, j0y, j0z * j0z))
+                if (rr < 1e-11) return@forEach
+
+                t1Buf.put(j0x)
+                t1Buf.put(j0y)
+                t1Buf.put(j0z)
+
+                val j1x = fma(rotatedRA.y.toFloat(), j0z, -rotatedRA.z.toFloat() * j0y)
+                val j1y = fma(rotatedRA.z.toFloat(), j0x, -rotatedRA.x.toFloat() * j0z)
+                val j1z = fma(rotatedRA.x.toFloat(), j0y, -rotatedRA.y.toFloat() * j0x)
+
+                t1Buf.put(j1x)
+                t1Buf.put(j1y)
+                t1Buf.put(j1z)
+
+                val j3x = -fma(rotatedRB.y.toFloat(), j0z, -rotatedRB.z.toFloat() * j0y)
+                val j3y = -fma(rotatedRB.z.toFloat(), j0x, -rotatedRB.x.toFloat() * j0z)
+                val j3z = -fma(rotatedRB.x.toFloat(), j0y, -rotatedRB.y.toFloat() * j0x)
+
+                t1Buf.put(j3x)
+                t1Buf.put(j3y)
+                t1Buf.put(j3z)
+
+                t1Buf.put(ima)
+                t1Buf.put(imb)
+
+                val j1scaled = iia.transform(j1x.toDouble(), j1y.toDouble(), j1z.toDouble(), _j1scaled)
+
+                t1Buf.put(j1scaled.x.toFloat())
+                t1Buf.put(j1scaled.y.toFloat())
+                t1Buf.put(j1scaled.z.toFloat())
+
+                val j3scaled = iib.transform(j3x.toDouble(), j3y.toDouble(), j3z.toDouble(), _j3scaled)
+
+                t1Buf.put(j3scaled.x.toFloat())
+                t1Buf.put(j3scaled.y.toFloat())
+                t1Buf.put(j3scaled.z.toFloat())
+
+                val b = 0f
+                t1Buf.put(b)
+
+                val den =
+                    rr * ima +
+                    rr * imb +
+                    j1scaled.dot(j1x.toDouble(), j1y.toDouble(), j1z.toDouble()).toFloat() +
+                    j3scaled.dot(j3x.toDouble(), j3y.toDouble(), j3z.toDouble()).toFloat()
+                if (den < 1e-11) return@forEach
+                t1Buf.put(den)
+
+                t1Buf.put(Float.fromBits(bodyAIdx))
+                t1Buf.put(Float.fromBits(bodyBIdx))
+
+                t1Buf.put(0f)
+            }
+
+            run t2@{
+                val j0x = _t2.x
+                val j0y = _t2.y
+                val j0z = _t2.z
+
+                val rr = fma(j0x, j0x, fma(j0y, j0y, j0z * j0z))
+                if (rr < 1e-11) return@forEach
+
+                t2Buf.put(j0x)
+                t2Buf.put(j0y)
+                t2Buf.put(j0z)
+
+                val j1x = fma(rotatedRA.y.toFloat(), j0z, -rotatedRA.z.toFloat() * j0y)
+                val j1y = fma(rotatedRA.z.toFloat(), j0x, -rotatedRA.x.toFloat() * j0z)
+                val j1z = fma(rotatedRA.x.toFloat(), j0y, -rotatedRA.y.toFloat() * j0x)
+
+                t2Buf.put(j1x)
+                t2Buf.put(j1y)
+                t2Buf.put(j1z)
+
+                val j3x = -fma(rotatedRB.y.toFloat(), j0z, -rotatedRB.z.toFloat() * j0y)
+                val j3y = -fma(rotatedRB.z.toFloat(), j0x, -rotatedRB.x.toFloat() * j0z)
+                val j3z = -fma(rotatedRB.x.toFloat(), j0y, -rotatedRB.y.toFloat() * j0x)
+
+                t2Buf.put(j3x)
+                t2Buf.put(j3y)
+                t2Buf.put(j3z)
+
+                t2Buf.put(ima)
+                t2Buf.put(imb)
+
+                val j1scaled = iia.transform(j1x.toDouble(), j1y.toDouble(), j1z.toDouble(), _j1scaled)
+
+                t2Buf.put(j1scaled.x.toFloat())
+                t2Buf.put(j1scaled.y.toFloat())
+                t2Buf.put(j1scaled.z.toFloat())
+
+                val j3scaled = iib.transform(j3x.toDouble(), j3y.toDouble(), j3z.toDouble(), _j3scaled)
+
+                t2Buf.put(j3scaled.x.toFloat())
+                t2Buf.put(j3scaled.y.toFloat())
+                t2Buf.put(j3scaled.z.toFloat())
+
+                val b = 0f
+                t2Buf.put(b)
+
+                val den =
+                    rr * ima +
+                    rr * imb +
+                    j1scaled.dot(j1x.toDouble(), j1y.toDouble(), j1z.toDouble()).toFloat() +
+                    j3scaled.dot(j3x.toDouble(), j3y.toDouble(), j3z.toDouble()).toFloat()
+                if (den < 1e-11) return@forEach
+                t2Buf.put(den)
+
+                t2Buf.put(Float.fromBits(bodyAIdx))
+                t2Buf.put(Float.fromBits(bodyBIdx))
+
+                t2Buf.put(0f)
+            }
 
             toSolve += OFFSET_12_AA_DATA_SIZE
         }
@@ -147,8 +287,25 @@ class LocalSphericalJointSolver(val constraintSolver: LocalConstraintSolver) {
     fun solve() {
         var i = 0
         while (i < toSolve) {
-            solveLinearConstraint(constraintSolver.flatBodyData, jointData, i) { existing, calculated ->
+            solveLinearConstraint(constraintSolver.flatBodyData, jointAxisData, i) { existing, calculated ->
                 max(0f, existing + calculated)
+            }
+
+            i += OFFSET_12_AA_DATA_SIZE
+        }
+    }
+
+    fun solveFriction() {
+        var i = 0
+        while (i < toSolve) {
+            solveLinearConstraint(constraintSolver.flatBodyData, jointT1Data, i) { existing, calculated ->
+                val n = jointAxisData[i + OFFSET_12_AA_LAMBDA]
+                min(max(-friction * n, existing + calculated), friction * n)
+            }
+
+            solveLinearConstraint(constraintSolver.flatBodyData, jointT2Data, i) { existing, calculated ->
+                val n = jointAxisData[i + OFFSET_12_AA_LAMBDA]
+                min(max(-friction * n, existing + calculated), friction * n)
             }
 
             i += OFFSET_12_AA_DATA_SIZE

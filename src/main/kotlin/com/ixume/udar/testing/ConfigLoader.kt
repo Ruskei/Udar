@@ -115,6 +115,7 @@ data class Config(
         val bias: Double = 0.05,
         val slop: Double = 0.001,
         val iterations: Int = 8,
+        val friction: Double = 0.2,
         val lambdaCarryover: Float = 0.99f,
     ) {
         companion object : InstanceCreator<SphericalJointConfig> {

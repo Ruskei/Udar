@@ -62,6 +62,7 @@ class LocalConstraintSolver(
 
     fun solvePost() {
         contactSolver.solveFriction()
+        sphericalJointSolver.solveFriction()
     }
 
     fun write() {
