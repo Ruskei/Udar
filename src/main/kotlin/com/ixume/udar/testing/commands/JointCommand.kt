@@ -9,6 +9,7 @@ import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 import org.joml.Quaterniond
 import org.joml.Vector3d
+import org.joml.Vector3f
 import kotlin.random.Random
 
 object JointCommand : Command {
@@ -29,45 +30,51 @@ object JointCommand : Command {
         val origin = sender.location.toVector().toVector3d()
         val q = Quaterniond().rotateXYZ(opts.rot0.x, opts.rot0.y, opts.rot0.z)
         val o = if (opts.trueOmega) opts.l.rotate(Quaterniond(q).conjugate()) else opts.l
-        val bottom = Cuboid(
+        val spinner = Cuboid(
+            world = sender.world,
+            pos = Vector3d(origin).add(0.75, 0.0, 0.0),
+            velocity = Vector3d(opts.v0),
+            width = 0.5,
+            height = 0.5,
+            length = 1.0,
+            q = Quaterniond(q),
+            omega = Vector3d(0.0, 0.0, 0.0),
+            density = 1.0,
+            hasGravity = false,
+        )
+
+        spinner.tags += tag
+
+        val holder = Cuboid(
             world = sender.world,
             pos = Vector3d(origin),
             velocity = Vector3d(opts.v0),
-            width = opts.dims.x,
-            height = opts.dims.y,
-            length = opts.dims.z,
+            width = 1.0,
+            height = 1.0,
+            length = 1.0,
             q = Quaterniond(q),
             omega = Vector3d(o),
-            density = opts.density,
-            hasGravity = opts.hasGravity,
+            density = 100_000.0,
+            hasGravity = false,
         )
 
-        bottom.tags += tag
-
-        val top = Cuboid(
-            world = sender.world,
-            pos = Vector3d(origin).add(0.0, 1.0, 0.0),
-            velocity = Vector3d(opts.v0),
-            width = opts.dims.x,
-            height = opts.dims.y,
-            length = opts.dims.z,
-            q = Quaterniond(q),
-            omega = Vector3d(o),
-            density = opts.density,
-            hasGravity = opts.hasGravity,
-        )
-
-        top.tags += tag
+        holder.tags += tag
 
         val ph = sender.world.physicsWorld ?: return false
 
-        ph.registerBody(BlockEntityCuboid(bottom, Material.GLASS))
-        ph.registerBody(BlockEntityCuboid(top, Material.GLASS))
+        ph.registerBody(BlockEntityCuboid(spinner, Material.GLASS))
+        ph.registerBody(BlockEntityCuboid(holder, Material.GLASS))
         ph.sphericalJointConstraints.addConstraint(
-            a = bottom,
-            ra = Vector3d(0.5, 0.5, 0.5),
-            b = top,
-            rb = Vector3d(0.5, -0.5, 0.5),
+            a = spinner,
+            ra = Vector3d(0.0, 0.0, 0.0),
+            b = holder,
+            rb = Vector3d(0.75, 0.0, 0.0),
+        )
+        ph.angularConstraints.addConstraint(
+            a = spinner,
+            b = holder,
+            bodyAAxis = Vector3f(1.0f, 0.0f, 0.0f),
+            bodyBAxis = Vector3f(1.0f, 0.0f, 0.0f),
         )
 
         return true

@@ -10,23 +10,16 @@ class ConstraintSolverManager(val physicsWorld: PhysicsWorld) {
         if (physicsWorld.activeBodies.size() == 0) return
         constraintSolver.setup()
 
-        var jointItrs = 1
-        while (jointItrs < Udar.CONFIG.sphericalJoint.iterations) {
-            constraintSolver.solveJoints()
-
-            jointItrs++
-        }
-
         var normalItrs = 1
         while (normalItrs <= Udar.CONFIG.collision.normalIterations) {
-            constraintSolver.solveNormal()
+            constraintSolver.solve()
 
             normalItrs++
         }
 
         var frictionItrs = 1
         while (frictionItrs <= Udar.CONFIG.collision.frictionIterations) {
-            constraintSolver.solveFriction()
+            constraintSolver.solvePost()
 
             frictionItrs++
         }

@@ -1,6 +1,7 @@
 package com.ixume.udar.physics.constraint
 
 import com.ixume.udar.PhysicsWorld
+import com.ixume.udar.physics.angular.LocalAngularConstraintSolver
 import com.ixume.udar.physics.contact.LocalContactSolver
 import com.ixume.udar.physics.sphericaljoint.LocalSphericalJointSolver
 import org.joml.*
@@ -13,6 +14,7 @@ class LocalConstraintSolver(
 ) {
     private val contactSolver = LocalContactSolver(this)
     private val sphericalJointSolver = LocalSphericalJointSolver(this)
+    private val angularConstraintSolver = LocalAngularConstraintSolver(this)
     private val _vec3 = Vector3f()
     private val _quat = Quaternionf()
 
@@ -29,6 +31,7 @@ class LocalConstraintSolver(
 
         contactSolver.setup()
         sphericalJointSolver.setup()
+        angularConstraintSolver.setup()
     }
 
     private fun buildFlatBodyData() {
@@ -51,16 +54,14 @@ class LocalConstraintSolver(
     }
 
 
-    fun solveNormal() {
+    fun solve() {
+        angularConstraintSolver.solve()
+        sphericalJointSolver.solve()
         contactSolver.solveNormal()
     }
 
-    fun solveFriction() {
+    fun solvePost() {
         contactSolver.solveFriction()
-    }
-    
-    fun solveJoints() {
-        sphericalJointSolver.solve()
     }
 
     fun write() {

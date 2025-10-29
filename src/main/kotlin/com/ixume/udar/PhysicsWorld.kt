@@ -11,6 +11,7 @@ import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.dynamicaabb.FlattenedBodyAABBTree
 import com.ixume.udar.physics.EntityUpdater
 import com.ixume.udar.physics.StatusUpdater
+import com.ixume.udar.physics.angular.AngularConstraintManager
 import com.ixume.udar.physics.constraint.ConstraintSolverManager
 import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldArray
 import com.ixume.udar.physics.contact.a2a.manifold.A2APrevManifoldData
@@ -64,6 +65,7 @@ class PhysicsWorld(
     val prevEnvContactData = A2SPrevManifoldData()
 
     val sphericalJointConstraints = SphericalJointConstraintManager(this)
+    val angularConstraints = AngularConstraintManager(this)
 
     init {
         prevEnvContactMap.defaultReturnValue(-1)
@@ -97,7 +99,7 @@ class PhysicsWorld(
 
     val bodyAABBTree = FlattenedBodyAABBTree(this, 0)
 
-    private val entityTask = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { entityUpdater.tick() }, 2, 2)
+    private val entityTask = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { entityUpdater.tick() }, 1, 1)
     val worldMeshesManager = WorldMeshesManager(this, Udar.CONFIG.worldDiffingProcessors, Udar.CONFIG.meshingProcessors)
 
     private val entityUpdater = EntityUpdater(this)
@@ -161,6 +163,7 @@ class PhysicsWorld(
                 processToAdd()
                 processToRemove()
                 sphericalJointConstraints.tick()
+                angularConstraints.tick()
 
                 physicsTime++
 
