@@ -4,9 +4,6 @@ import com.ixume.udar.Udar
 import com.ixume.udar.physics.constraint.BODY_DATA_FLOATS
 import com.ixume.udar.physics.constraint.LocalConstraintSolver
 import com.ixume.udar.physics.constraint.O_OFFSET
-import org.bukkit.Color
-import org.bukkit.Location
-import org.bukkit.Particle
 import org.joml.Matrix3d
 import org.joml.Vector3d
 import org.joml.Vector3f
@@ -69,7 +66,7 @@ class LocalAngularConstraintSolver(val constraintSolver: LocalConstraintSolver) 
             jointData
         }
 
-        val n = FloatBuffer.wrap(relevantData)
+        val buf = FloatBuffer.wrap(relevantData)
 
         axisToSolve = 0
         axisConstraints.forEach { constraintIdx, bodyAIdx, bodyBIdx, bodyAAxisX, bodyAAxisY, bodyAAxisZ, bodyBAxisX, bodyBAxisY, bodyBAxisZ ->
@@ -87,7 +84,7 @@ class LocalAngularConstraintSolver(val constraintSolver: LocalConstraintSolver) 
                     bodyBIdx = bodyBIdx,
                     iia = bodyA.inverseInertia,
                     iib = bodyB.inverseInertia,
-                    buf = n,
+                    buf = buf,
                     i = i,
                     j = j,
                 )
@@ -127,7 +124,7 @@ class LocalAngularConstraintSolver(val constraintSolver: LocalConstraintSolver) 
             limitedJointData
         }
 
-        val n = FloatBuffer.wrap(relevantData)
+        val buf = FloatBuffer.wrap(relevantData)
 
         angleToSolve = 0
         angleConstraints.forEach { constraintIdx, bodyAIdx, bodyBIdx, jAX, jAY, jAZ, jBX, jBY, jBZ, gAX, gAY, gAZ, gBX, gBY, gBZ, minAngle, maxAngle ->
@@ -179,7 +176,7 @@ class LocalAngularConstraintSolver(val constraintSolver: LocalConstraintSolver) 
                     bodyBIdx = bodyBIdx,
                     iia = bodyA.inverseInertia,
                     iib = bodyB.inverseInertia,
-                    buf = n,
+                    buf = buf,
                     i = _temp2.set(`pA'`),
                     j = _temp3.set(pB),
                 )
@@ -229,7 +226,7 @@ class LocalAngularConstraintSolver(val constraintSolver: LocalConstraintSolver) 
             revoluteJointData
         }
 
-        val n = FloatBuffer.wrap(relevantData)
+        val buf = FloatBuffer.wrap(relevantData)
 
         ballToSolve = 0
         ballConstraints.forEach { constraintIdx, bodyAIdx, bodyBIdx, jAX, jAY, jAZ, jBX, jBY, jBZ, gAX, gAY, gAZ, gBX, gBY, gBZ, swingAngle, minTwistAngle, maxTwistAngle ->
@@ -260,7 +257,7 @@ class LocalAngularConstraintSolver(val constraintSolver: LocalConstraintSolver) 
                         bodyBIdx = bodyBIdx,
                         iia = bodyA.inverseInertia,
                         iib = bodyB.inverseInertia,
-                        buf = n,
+                        buf = buf,
                         i = _temp2.set(`jA''`),
                         j = _temp3.set(`jB'`),
                     )
@@ -292,7 +289,7 @@ class LocalAngularConstraintSolver(val constraintSolver: LocalConstraintSolver) 
                         bodyBIdx = bodyBIdx,
                         iia = bodyA.inverseInertia,
                         iib = bodyB.inverseInertia,
-                        buf = n,
+                        buf = buf,
                         i = _temp2.set(`pA'`),
                         j = _temp3.set(pB),
                     )
@@ -420,15 +417,15 @@ class LocalAngularConstraintSolver(val constraintSolver: LocalConstraintSolver) 
     }
 }
 
-private const val OFFSET_6_AA_DATA_SIZE = 14
+const val OFFSET_6_AA_DATA_SIZE = 14
 
-private const val OFFSET_6_AA_BIAS = 9
-private const val OFFSET_6_AA_DEN = 10
-private const val OFFSET_6_AA_A_IDX = 11
-private const val OFFSET_6_AA_B_IDX = 12
-private const val OFFSET_6_AA_LAMBDA = 13
+const val OFFSET_6_AA_BIAS = 9
+const val OFFSET_6_AA_DEN = 10
+const val OFFSET_6_AA_A_IDX = 11
+const val OFFSET_6_AA_B_IDX = 12
+const val OFFSET_6_AA_LAMBDA = 13
 
-private inline fun solveAngleConstraint(
+inline fun solveAngleConstraint(
     bodyData: FloatArray,
     constraintData: FloatArray,
     idx: Int,

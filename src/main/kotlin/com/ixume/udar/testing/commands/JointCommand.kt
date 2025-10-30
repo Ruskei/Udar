@@ -1,5 +1,6 @@
 package com.ixume.udar.testing.commands
 
+import com.ixume.udar.Udar
 import com.ixume.udar.body.active.BlockEntityCuboid
 import com.ixume.udar.body.active.Cuboid
 import com.ixume.udar.body.active.tag.Tag
@@ -38,7 +39,7 @@ object JointCommand : Command {
             height = 0.5,
             length = 0.5,
             q = Quaterniond(q),
-            omega = Vector3d(0.0, 0.0, 0.0),
+            omega = Vector3d(0.0, 0.0, 2.0),
             density = 1.0,
             hasGravity = true,
         )

@@ -99,7 +99,7 @@ class PhysicsWorld(
 
     val bodyAABBTree = FlattenedBodyAABBTree(this, 0)
 
-    private val entityTask = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { entityUpdater.tick() }, 1, 1)
+    private val entityTask = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { entityUpdater.tick() }, 2, 2)
     val worldMeshesManager = WorldMeshesManager(this, Udar.CONFIG.worldDiffingProcessors, Udar.CONFIG.meshingProcessors)
 
     private val entityUpdater = EntityUpdater(this)

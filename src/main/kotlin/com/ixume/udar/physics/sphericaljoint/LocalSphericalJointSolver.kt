@@ -1,6 +1,8 @@
 package com.ixume.udar.physics.sphericaljoint
 
 import com.ixume.udar.Udar
+import com.ixume.udar.physics.angular.OFFSET_6_AA_DATA_SIZE
+import com.ixume.udar.physics.angular.solveAngleConstraint
 import com.ixume.udar.physics.constraint.BODY_DATA_FLOATS
 import com.ixume.udar.physics.constraint.LocalConstraintSolver
 import com.ixume.udar.physics.constraint.O_OFFSET
@@ -10,6 +12,7 @@ import org.joml.Vector3f
 import java.lang.Math.fma
 import java.nio.FloatBuffer
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.sqrt
 
 class LocalSphericalJointSolver(val constraintSolver: LocalConstraintSolver) {
@@ -20,14 +23,20 @@ class LocalSphericalJointSolver(val constraintSolver: LocalConstraintSolver) {
 
     private val constraints = constraintSolver.physicsWorld.sphericalJointConstraints.constraints
     private var toSolve = 0
+    private var angleData: FloatArray = FloatArray(1)
+    private var toSolveAngular = 0
 
     private var jointAxisData: FloatArray = FloatArray(1)
 
     private val _rotatedRA = Vector3d()
     private val _rotatedRB = Vector3d()
+    private val _j0scaled = Vector3d()
     private val _j1scaled = Vector3d()
     private val _j3scaled = Vector3d()
     private val _ref = Vector3f()
+    private val _temp1 = Vector3f()
+    private val _t1 = Vector3f()
+    private val _t2 = Vector3f()
 
     fun setup() {
         timeStep = Udar.CONFIG.timeStep.toFloat()
@@ -43,11 +52,14 @@ class LocalSphericalJointSolver(val constraintSolver: LocalConstraintSolver) {
 
         if (jointAxisData.size < numc * OFFSET_12_AA_DATA_SIZE) {
             jointAxisData = FloatArray(max(jointAxisData.size * 2, numc * OFFSET_12_AA_DATA_SIZE))
+            angleData = FloatArray(max(jointAxisData.size * 2, numc * 3 * OFFSET_6_AA_DATA_SIZE))
         }
 
         val axisBuf = FloatBuffer.wrap(jointAxisData)
+        val angleBuf = FloatBuffer.wrap(angleData)
 
         toSolve = 0
+        toSolveAngular = 0
         constraints.forEach { constraintIdx, bodyAIdx, bodyBIdx, rax, ray, raz, rbx, rby, rbz ->
             /*
             distance constraint between 2 points P_a and P_b on bodies a and b can be modeled as:
@@ -89,10 +101,12 @@ class LocalSphericalJointSolver(val constraintSolver: LocalConstraintSolver) {
             )
             val rr = _ref.lengthSquared()
             if (rr < 1e-11) return@forEach
+            val n = _temp1.set(_ref).normalize()
+            _t1.set(1f, 0f, 0f).orthogonalizeUnit(n)
+            _t2.set(n).cross(_t1).normalize()
+            val dist = sqrt(rr)
 
             run axis@{
-                val dist = sqrt(rr)
-
                 val j0x = _ref.x / dist
                 val j0y = _ref.y / dist
                 val j0z = _ref.z / dist
@@ -140,7 +154,6 @@ class LocalSphericalJointSolver(val constraintSolver: LocalConstraintSolver) {
                     imb +
                     j1scaled.dot(j1x.toDouble(), j1y.toDouble(), j1z.toDouble()).toFloat() +
                     j3scaled.dot(j3x.toDouble(), j3y.toDouble(), j3z.toDouble()).toFloat()
-                if (den < 1e-11) return@forEach
                 axisBuf.put(den)
 
                 axisBuf.put(Float.fromBits(bodyAIdx))
@@ -149,22 +162,151 @@ class LocalSphericalJointSolver(val constraintSolver: LocalConstraintSolver) {
                 axisBuf.put(0f)
             }
 
+            run x@{
+                val j0x = 1f
+                val j0y = 0f
+                val j0z = 0f
+
+                angleBuf.put(j0x)
+                angleBuf.put(j0y)
+                angleBuf.put(j0z)
+
+                val j0scaled = bodyA.inverseInertia.transform(j0x.toDouble(), j0y.toDouble(), j0z.toDouble(), _j0scaled)
+
+                angleBuf.put(j0scaled.x.toFloat())
+                angleBuf.put(j0scaled.y.toFloat())
+                angleBuf.put(j0scaled.z.toFloat())
+
+                val j1x = -j0x
+                val j1y = -j0y
+                val j1z = -j0z
+
+                val j1scaled = bodyB.inverseInertia.transform(j1x.toDouble(), j1y.toDouble(), j1z.toDouble(), _j1scaled)
+
+                angleBuf.put(j1scaled.x.toFloat())
+                angleBuf.put(j1scaled.y.toFloat())
+                angleBuf.put(j1scaled.z.toFloat())
+
+                val b = 0f
+                angleBuf.put(b)
+
+                val den =
+                    j0scaled.dot(j0x.toDouble(), j0y.toDouble(), j0z.toDouble()).toFloat() +
+                    j1scaled.dot(j1x.toDouble(), j1y.toDouble(), j1z.toDouble()).toFloat()
+                angleBuf.put(den)
+
+                angleBuf.put(Float.fromBits(bodyAIdx))
+                angleBuf.put(Float.fromBits(bodyBIdx))
+
+                angleBuf.put(0f)
+            }
+            
+            run y@{
+                val j0x = 0f
+                val j0y = 1f
+                val j0z = 0f
+
+                angleBuf.put(j0x)
+                angleBuf.put(j0y)
+                angleBuf.put(j0z)
+
+                val j0scaled = bodyA.inverseInertia.transform(j0x.toDouble(), j0y.toDouble(), j0z.toDouble(), _j0scaled)
+
+                angleBuf.put(j0scaled.x.toFloat())
+                angleBuf.put(j0scaled.y.toFloat())
+                angleBuf.put(j0scaled.z.toFloat())
+
+                val j1x = -j0x
+                val j1y = -j0y
+                val j1z = -j0z
+
+                val j1scaled = bodyB.inverseInertia.transform(j1x.toDouble(), j1y.toDouble(), j1z.toDouble(), _j1scaled)
+
+                angleBuf.put(j1scaled.x.toFloat())
+                angleBuf.put(j1scaled.y.toFloat())
+                angleBuf.put(j1scaled.z.toFloat())
+
+                val b = 0f
+                angleBuf.put(b)
+
+                val den =
+                    j0scaled.dot(j0x.toDouble(), j0y.toDouble(), j0z.toDouble()).toFloat() +
+                    j1scaled.dot(j1x.toDouble(), j1y.toDouble(), j1z.toDouble()).toFloat()
+                angleBuf.put(den)
+
+                angleBuf.put(Float.fromBits(bodyAIdx))
+                angleBuf.put(Float.fromBits(bodyBIdx))
+
+                angleBuf.put(0f)
+            }
+            
+            run z@{
+                val j0x = 0f
+                val j0y = 0f
+                val j0z = 1f
+
+                angleBuf.put(j0x)
+                angleBuf.put(j0y)
+                angleBuf.put(j0z)
+
+                val j0scaled = bodyA.inverseInertia.transform(j0x.toDouble(), j0y.toDouble(), j0z.toDouble(), _j0scaled)
+
+                angleBuf.put(j0scaled.x.toFloat())
+                angleBuf.put(j0scaled.y.toFloat())
+                angleBuf.put(j0scaled.z.toFloat())
+
+                val j1x = -j0x
+                val j1y = -j0y
+                val j1z = -j0z
+
+                val j1scaled = bodyB.inverseInertia.transform(j1x.toDouble(), j1y.toDouble(), j1z.toDouble(), _j1scaled)
+
+                angleBuf.put(j1scaled.x.toFloat())
+                angleBuf.put(j1scaled.y.toFloat())
+                angleBuf.put(j1scaled.z.toFloat())
+
+                val b = 0f
+                angleBuf.put(b)
+
+                val den =
+                    j0scaled.dot(j0x.toDouble(), j0y.toDouble(), j0z.toDouble()).toFloat() +
+                    j1scaled.dot(j1x.toDouble(), j1y.toDouble(), j1z.toDouble()).toFloat()
+                angleBuf.put(den)
+
+                angleBuf.put(Float.fromBits(bodyAIdx))
+                angleBuf.put(Float.fromBits(bodyBIdx))
+
+                angleBuf.put(0f)
+            }
+
             toSolve += OFFSET_12_AA_DATA_SIZE
+            toSolveAngular += OFFSET_6_AA_DATA_SIZE * 3
         }
     }
 
     fun solve() {
         var i = 0
         while (i < toSolve) {
-            solveLinearConstraint(constraintSolver.flatBodyData, jointAxisData, i) { existing, calculated ->
-                max(0f, existing + calculated)
-            }
+            solveLinearConstraint(
+                constraintSolver.flatBodyData,
+                jointAxisData,
+                i
+            ) { existing, calculated -> existing + calculated }
 
             i += OFFSET_12_AA_DATA_SIZE
         }
     }
 
     fun solveFriction() {
+        var i = 0
+        while (i < toSolveAngular) {
+            solveAngleConstraint(constraintSolver.flatBodyData, angleData, i) { existing, calculated ->
+                val n = jointAxisData[i / OFFSET_6_AA_DATA_SIZE / 3 * OFFSET_12_AA_DATA_SIZE + OFFSET_12_AA_LAMBDA]
+                min(max(-friction * n, existing + calculated), friction * n)
+            }
+
+            i += OFFSET_6_AA_DATA_SIZE
+        }
     }
 }
 

@@ -36,6 +36,12 @@ data class BallJointConstraintRequest(
     val maxTwistAngle: Float,
 )
 
+data class AngularFrictionConstraintRequest(
+    val a: ActiveBody,
+    val b: ActiveBody,
+    val friction: Float,
+)
+
 class AngularConstraintManager(val physicsWorld: PhysicsWorld) {
     val constraints = AngularConstraintList()
     val limitedConstraints = LimitedAngularConstraintList()
