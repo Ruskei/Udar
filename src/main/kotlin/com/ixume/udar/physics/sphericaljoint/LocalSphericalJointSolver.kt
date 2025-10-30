@@ -10,7 +10,6 @@ import org.joml.Vector3f
 import java.lang.Math.fma
 import java.nio.FloatBuffer
 import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.sqrt
 
 class LocalSphericalJointSolver(val constraintSolver: LocalConstraintSolver) {
@@ -23,17 +22,12 @@ class LocalSphericalJointSolver(val constraintSolver: LocalConstraintSolver) {
     private var toSolve = 0
 
     private var jointAxisData: FloatArray = FloatArray(1)
-    private var jointT1Data: FloatArray = FloatArray(1)
-    private var jointT2Data: FloatArray = FloatArray(1)
 
     private val _rotatedRA = Vector3d()
     private val _rotatedRB = Vector3d()
     private val _j1scaled = Vector3d()
     private val _j3scaled = Vector3d()
-    private val _t1 = Vector3f()
-    private val _t2 = Vector3f()
     private val _ref = Vector3f()
-    private val _temp1 = Vector3f()
 
     fun setup() {
         timeStep = Udar.CONFIG.timeStep.toFloat()
@@ -49,13 +43,9 @@ class LocalSphericalJointSolver(val constraintSolver: LocalConstraintSolver) {
 
         if (jointAxisData.size < numc * OFFSET_12_AA_DATA_SIZE) {
             jointAxisData = FloatArray(max(jointAxisData.size * 2, numc * OFFSET_12_AA_DATA_SIZE))
-            jointT1Data = FloatArray(max(jointT1Data.size * 2, numc * OFFSET_12_AA_DATA_SIZE))
-            jointT2Data = FloatArray(max(jointT2Data.size * 2, numc * OFFSET_12_AA_DATA_SIZE))
         }
 
         val axisBuf = FloatBuffer.wrap(jointAxisData)
-        val t1Buf = FloatBuffer.wrap(jointT1Data)
-        val t2Buf = FloatBuffer.wrap(jointT2Data)
 
         toSolve = 0
         constraints.forEach { constraintIdx, bodyAIdx, bodyBIdx, rax, ray, raz, rbx, rby, rbz ->
@@ -99,8 +89,6 @@ class LocalSphericalJointSolver(val constraintSolver: LocalConstraintSolver) {
             )
             val rr = _ref.lengthSquared()
             if (rr < 1e-11) return@forEach
-            _t1.set(1f).orthogonalizeUnit(_temp1.set(_ref).normalize())
-            _t2.set(_t1).cross(_temp1.set(_ref).normalize()).normalize()
 
             run axis@{
                 val dist = sqrt(rr)
@@ -161,120 +149,6 @@ class LocalSphericalJointSolver(val constraintSolver: LocalConstraintSolver) {
                 axisBuf.put(0f)
             }
 
-            run t1@{
-                val j0x = _t1.x
-                val j0y = _t1.y
-                val j0z = _t1.z
-
-                t1Buf.put(j0x)
-                t1Buf.put(j0y)
-                t1Buf.put(j0z)
-
-                val j1x = fma(rotatedRA.y.toFloat(), j0z, -rotatedRA.z.toFloat() * j0y)
-                val j1y = fma(rotatedRA.z.toFloat(), j0x, -rotatedRA.x.toFloat() * j0z)
-                val j1z = fma(rotatedRA.x.toFloat(), j0y, -rotatedRA.y.toFloat() * j0x)
-
-                t1Buf.put(j1x)
-                t1Buf.put(j1y)
-                t1Buf.put(j1z)
-
-                val j3x = -fma(rotatedRB.y.toFloat(), j0z, -rotatedRB.z.toFloat() * j0y)
-                val j3y = -fma(rotatedRB.z.toFloat(), j0x, -rotatedRB.x.toFloat() * j0z)
-                val j3z = -fma(rotatedRB.x.toFloat(), j0y, -rotatedRB.y.toFloat() * j0x)
-
-                t1Buf.put(j3x)
-                t1Buf.put(j3y)
-                t1Buf.put(j3z)
-
-                t1Buf.put(ima)
-                t1Buf.put(imb)
-
-                val j1scaled = iia.transform(j1x.toDouble(), j1y.toDouble(), j1z.toDouble(), _j1scaled)
-
-                t1Buf.put(j1scaled.x.toFloat())
-                t1Buf.put(j1scaled.y.toFloat())
-                t1Buf.put(j1scaled.z.toFloat())
-
-                val j3scaled = iib.transform(j3x.toDouble(), j3y.toDouble(), j3z.toDouble(), _j3scaled)
-
-                t1Buf.put(j3scaled.x.toFloat())
-                t1Buf.put(j3scaled.y.toFloat())
-                t1Buf.put(j3scaled.z.toFloat())
-
-                val b = 0f
-                t1Buf.put(b)
-
-                val den =
-                    ima +
-                    imb +
-                    j1scaled.dot(j1x.toDouble(), j1y.toDouble(), j1z.toDouble()).toFloat() +
-                    j3scaled.dot(j3x.toDouble(), j3y.toDouble(), j3z.toDouble()).toFloat()
-                if (den < 1e-11) return@forEach
-                t1Buf.put(den)
-
-                t1Buf.put(Float.fromBits(bodyAIdx))
-                t1Buf.put(Float.fromBits(bodyBIdx))
-
-                t1Buf.put(0f)
-            }
-
-            run t2@{
-                val j0x = _t2.x
-                val j0y = _t2.y
-                val j0z = _t2.z
-
-                t2Buf.put(j0x)
-                t2Buf.put(j0y)
-                t2Buf.put(j0z)
-
-                val j1x = fma(rotatedRA.y.toFloat(), j0z, -rotatedRA.z.toFloat() * j0y)
-                val j1y = fma(rotatedRA.z.toFloat(), j0x, -rotatedRA.x.toFloat() * j0z)
-                val j1z = fma(rotatedRA.x.toFloat(), j0y, -rotatedRA.y.toFloat() * j0x)
-
-                t2Buf.put(j1x)
-                t2Buf.put(j1y)
-                t2Buf.put(j1z)
-
-                val j3x = -fma(rotatedRB.y.toFloat(), j0z, -rotatedRB.z.toFloat() * j0y)
-                val j3y = -fma(rotatedRB.z.toFloat(), j0x, -rotatedRB.x.toFloat() * j0z)
-                val j3z = -fma(rotatedRB.x.toFloat(), j0y, -rotatedRB.y.toFloat() * j0x)
-
-                t2Buf.put(j3x)
-                t2Buf.put(j3y)
-                t2Buf.put(j3z)
-
-                t2Buf.put(ima)
-                t2Buf.put(imb)
-
-                val j1scaled = iia.transform(j1x.toDouble(), j1y.toDouble(), j1z.toDouble(), _j1scaled)
-
-                t2Buf.put(j1scaled.x.toFloat())
-                t2Buf.put(j1scaled.y.toFloat())
-                t2Buf.put(j1scaled.z.toFloat())
-
-                val j3scaled = iib.transform(j3x.toDouble(), j3y.toDouble(), j3z.toDouble(), _j3scaled)
-
-                t2Buf.put(j3scaled.x.toFloat())
-                t2Buf.put(j3scaled.y.toFloat())
-                t2Buf.put(j3scaled.z.toFloat())
-
-                val b = 0f
-                t2Buf.put(b)
-
-                val den =
-                    ima +
-                    imb +
-                    j1scaled.dot(j1x.toDouble(), j1y.toDouble(), j1z.toDouble()).toFloat() +
-                    j3scaled.dot(j3x.toDouble(), j3y.toDouble(), j3z.toDouble()).toFloat()
-                if (den < 1e-11) return@forEach
-                t2Buf.put(den)
-
-                t2Buf.put(Float.fromBits(bodyAIdx))
-                t2Buf.put(Float.fromBits(bodyBIdx))
-
-                t2Buf.put(0f)
-            }
-
             toSolve += OFFSET_12_AA_DATA_SIZE
         }
     }
@@ -291,22 +165,6 @@ class LocalSphericalJointSolver(val constraintSolver: LocalConstraintSolver) {
     }
 
     fun solveFriction() {
-        var i = 0
-        while (i < toSolve) {
-            solveLinearConstraint(constraintSolver.flatBodyData, jointT1Data, i) { existing, calculated ->
-                existing + calculated
-//                val n = jointAxisData[i + OFFSET_12_AA_LAMBDA]
-//                min(max(-friction * n, existing + calculated), friction * n).also { println("  n: $n, ($existing, $calculated) -> eff: $it") }
-            }
-
-            solveLinearConstraint(constraintSolver.flatBodyData, jointT2Data, i) { existing, calculated ->
-                existing + calculated
-//                val n = jointAxisData[i + OFFSET_12_AA_LAMBDA]
-//                min(max(-friction * n, existing + calculated), friction * n)
-            }
-
-            i += OFFSET_12_AA_DATA_SIZE
-        }
     }
 }
 
@@ -339,8 +197,8 @@ private inline fun solveLinearConstraint(
     val j3y = constraintData[idx + 7]
     val j3z = constraintData[idx + 8]
 
-    val ima = constraintData[OFFSET_12_AA_IMA]
-    val imb = constraintData[OFFSET_12_AA_IMB]
+    val ima = constraintData[idx + OFFSET_12_AA_IMA]
+    val imb = constraintData[idx + OFFSET_12_AA_IMB]
 
     val v0x = j0x * ima
     val v0y = j0y * ima
@@ -355,13 +213,13 @@ private inline fun solveLinearConstraint(
     val v3y = constraintData[idx + 15]
     val v3z = constraintData[idx + 16]
 
-    val bias = constraintData[OFFSET_12_AA_BIAS]
-    val den = constraintData[OFFSET_12_AA_DEN]
+    val bias = constraintData[idx + OFFSET_12_AA_BIAS]
+    val den = constraintData[idx + OFFSET_12_AA_DEN]
 
-    val aIdx = constraintData[OFFSET_12_AA_A_IDX].toRawBits() * BODY_DATA_FLOATS
-    val bIdx = constraintData[OFFSET_12_AA_B_IDX].toRawBits() * BODY_DATA_FLOATS
+    val aIdx = constraintData[idx + OFFSET_12_AA_A_IDX].toRawBits() * BODY_DATA_FLOATS
+    val bIdx = constraintData[idx + OFFSET_12_AA_B_IDX].toRawBits() * BODY_DATA_FLOATS
 
-    val existing = constraintData[OFFSET_12_AA_LAMBDA]
+    val existing = constraintData[idx + OFFSET_12_AA_LAMBDA]
 
     val vAx = bodyData[aIdx + V_OFFSET]
     val vAy = bodyData[aIdx + V_OFFSET + 1]
@@ -418,8 +276,8 @@ private inline fun solveLinearConstraint(
             )
         ) / den
 
-    constraintData[OFFSET_12_AA_LAMBDA] = lambdaTransform(existing, lambda)
-    val effective = constraintData[OFFSET_12_AA_LAMBDA] - existing
+    constraintData[idx + OFFSET_12_AA_LAMBDA] = lambdaTransform(existing, lambda)
+    val effective = constraintData[idx + OFFSET_12_AA_LAMBDA] - existing
 
     bodyData[aIdx + 0] -= v0x * effective
     bodyData[aIdx + 1] -= v0y * effective

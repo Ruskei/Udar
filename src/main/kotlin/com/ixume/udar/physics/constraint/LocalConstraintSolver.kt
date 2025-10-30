@@ -66,7 +66,6 @@ class LocalConstraintSolver(
     }
 
     fun write() {
-        println("WRITING")
         physicsWorld.prevContactMap.clear()
         physicsWorld.prevContactData.clear()
 
@@ -76,12 +75,9 @@ class LocalConstraintSolver(
         var i = 0
         val n = bodyCount * BODY_DATA_FLOATS
         while (i < n) {
-            println("  ${i / BODY_DATA_FLOATS}")
             val body = physicsWorld.activeBodies.fastGet(i / BODY_DATA_FLOATS)!!
 
             body.velocity.from(i + V_OFFSET, flatBodyData)
-            println("  p: ${body.pos.x} ${body.pos.y} ${body.pos.z}")
-            println("  v: ${body.velocity.x} ${body.velocity.y} ${body.velocity.z}")
             check(body.velocity.isFinite)
             body.omega.from(i + O_OFFSET, flatBodyData).rotate(_quatd.set(body.q).conjugate())
             check(body.omega.isFinite)

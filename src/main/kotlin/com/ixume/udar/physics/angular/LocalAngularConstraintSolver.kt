@@ -4,6 +4,9 @@ import com.ixume.udar.Udar
 import com.ixume.udar.physics.constraint.BODY_DATA_FLOATS
 import com.ixume.udar.physics.constraint.LocalConstraintSolver
 import com.ixume.udar.physics.constraint.O_OFFSET
+import org.bukkit.Color
+import org.bukkit.Location
+import org.bukkit.Particle
 import org.joml.Matrix3d
 import org.joml.Vector3d
 import org.joml.Vector3f
@@ -266,42 +269,37 @@ class LocalAngularConstraintSolver(val constraintSolver: LocalConstraintSolver) 
                 }
             }
 
-//            run twist@{
-//                println("  TWIST")
-//                val j = _J.set(`jA'`).add(`jB'`).normalize()
-//
-//                val `gA'` = qA.transform(gAX.toDouble(), gAY.toDouble(), gAZ.toDouble(), `_gA'`)
-//                val `gB'` = qB.transform(gBX.toDouble(), gBY.toDouble(), gBZ.toDouble(), `_gB'`)
-//
-//                val pA = _pA.set(`gA'`).reject(j).normalize()
-//                val pB = _pB.set(`gB'`).reject(j).normalize()
-//                val theta = atan2(_temp1.set(pA).cross(pB).dot(j), pA.dot(pB))
-//                if (!theta.isFinite()) return@twist
-//                if (theta in minTwistAngle..maxTwistAngle) return@twist
-//                
-//                println("    gA': ${`gA'`.x} ${`gA'`.y} ${`gA'`.z}")
-//                println("    gB': ${`gB'`.x} ${`gB'`.y} ${`gB'`.z}")
-//                println("    theta: $theta")
-//
-//                val `theta'` = min(max(minTwistAngle.toDouble(), theta), maxTwistAngle.toDouble())
-//                val `pA'` = `_pA'`.set(pA).mul(cos(`theta'`))
-//                    .add(_temp1.set(j).cross(pA).mul(sin(`theta'`)))
-//                    .add(_temp1.set(j).mul(j.dot(pA) * (1.0 - cos(`theta'`))))
-//                    .normalize()
-//
-//                if (alignAxis(
-//                        bodyAIdx = bodyAIdx,
-//                        bodyBIdx = bodyBIdx,
-//                        iia = bodyA.inverseInertia,
-//                        iib = bodyB.inverseInertia,
-//                        buf = n,
-//                        i = _temp2.set(`pA'`),
-//                        j = _temp3.set(pB),
-//                    )
-//                ) {
-//                    ballToSolve += OFFSET_6_AA_DATA_SIZE
-//                }
-//            }
+            run twist@{
+                val j = _J.set(`jA'`).add(`jB'`).normalize()
+
+                val `gA'` = qA.transform(gAX.toDouble(), gAY.toDouble(), gAZ.toDouble(), `_gA'`)
+                val `gB'` = qB.transform(gBX.toDouble(), gBY.toDouble(), gBZ.toDouble(), `_gB'`)
+
+                val pA = _pA.set(`gA'`).reject(j).normalize()
+                val pB = _pB.set(`gB'`).reject(j).normalize()
+                val theta = atan2(_temp1.set(pA).cross(pB).dot(j), pA.dot(pB))
+                if (!theta.isFinite()) return@twist
+                if (theta in minTwistAngle..maxTwistAngle) return@twist
+
+                val `theta'` = min(max(minTwistAngle.toDouble(), theta), maxTwistAngle.toDouble())
+                val `pA'` = `_pA'`.set(pA).mul(cos(`theta'`))
+                    .add(_temp1.set(j).cross(pA).mul(sin(`theta'`)))
+                    .add(_temp1.set(j).mul(j.dot(pA) * (1.0 - cos(`theta'`))))
+                    .normalize()
+
+                if (alignAxis(
+                        bodyAIdx = bodyAIdx,
+                        bodyBIdx = bodyBIdx,
+                        iia = bodyA.inverseInertia,
+                        iib = bodyB.inverseInertia,
+                        buf = n,
+                        i = _temp2.set(`pA'`),
+                        j = _temp3.set(pB),
+                    )
+                ) {
+                    ballToSolve += OFFSET_6_AA_DATA_SIZE
+                }
+            }
             /*
             for an revolute constraint with an revolute limit, we take in the following constraint data:
             jA = axis of rotation on A
@@ -361,7 +359,6 @@ class LocalAngularConstraintSolver(val constraintSolver: LocalConstraintSolver) 
         run ball@{
             var i = 0
             while (i < ballToSolve) {
-                println("    solving: $i")
                 solveAngleConstraint(constraintSolver.flatBodyData, revoluteJointData, i) { existing, calculated ->
                     max(0f, existing + calculated)
                 }
@@ -451,13 +448,13 @@ private inline fun solveAngleConstraint(
     val v1y = constraintData[idx + 7]
     val v1z = constraintData[idx + 8]
 
-    val bias = constraintData[OFFSET_6_AA_BIAS]
-    val den = constraintData[OFFSET_6_AA_DEN]
+    val bias = constraintData[idx + OFFSET_6_AA_BIAS]
+    val den = constraintData[idx + OFFSET_6_AA_DEN]
 
-    val aIdx = constraintData[OFFSET_6_AA_A_IDX].toRawBits() * BODY_DATA_FLOATS
-    val bIdx = constraintData[OFFSET_6_AA_B_IDX].toRawBits() * BODY_DATA_FLOATS
+    val aIdx = constraintData[idx + OFFSET_6_AA_A_IDX].toRawBits() * BODY_DATA_FLOATS
+    val bIdx = constraintData[idx + OFFSET_6_AA_B_IDX].toRawBits() * BODY_DATA_FLOATS
 
-    val existing = constraintData[OFFSET_6_AA_LAMBDA]
+    val existing = constraintData[idx + OFFSET_6_AA_LAMBDA]
 
     val oAx = bodyData[aIdx + O_OFFSET]
     val oAy = bodyData[aIdx + O_OFFSET + 1]
@@ -488,13 +485,9 @@ private inline fun solveAngleConstraint(
             )
         ) / den
     
-    println("      raw: $lambda ($den)")
-
-    constraintData[OFFSET_6_AA_LAMBDA] = lambdaTransform(existing, lambda)
-    val effective = constraintData[OFFSET_6_AA_LAMBDA] - existing
+    constraintData[idx + OFFSET_6_AA_LAMBDA] = lambdaTransform(existing, lambda)
+    val effective = constraintData[idx + OFFSET_6_AA_LAMBDA] - existing
     
-    println("      eff: $effective")
-
     bodyData[aIdx + 3] += v0x * effective
     bodyData[aIdx + 4] += v0y * effective
     bodyData[aIdx + 5] += v0z * effective

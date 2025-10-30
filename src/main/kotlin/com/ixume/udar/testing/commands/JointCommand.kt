@@ -65,22 +65,22 @@ object JointCommand : Command {
         ph.registerBody(BlockEntityCuboid(spinner, Material.GLASS))
         ph.registerBody(BlockEntityCuboid(holder, Material.GLASS))
         ph.sphericalJointConstraints.addConstraint(
-            a = spinner,
-            ra = Vector3d(-0.25, 0.0, 0.0),
-            b = holder,
-            rb = Vector3d(0.75, 0.0, 0.0),
+            a = holder,
+            ra = Vector3d(0.75, 0.0, 0.0),
+            b = spinner,
+            rb = Vector3d(-0.25, 0.0, 0.0),
         )
-//        ph.angularConstraints.addConstraint(
-//            a = holder,
-//            b = spinner,
-//            jA = Vector3f(1.0f, 0.0f, 0.0f),
-//            jB = Vector3f(1.0f, 0.0f, 0.0f),
-//            gA = Vector3f(0.0f, 0.0f, 1.0f),
-//            gB = Vector3f(0.0f, 0.0f, 1.0f),
-//            swingAngle = Math.toRadians(30.0).toFloat(),
-//            minTwistAngle = -Math.toRadians(45.0).toFloat(),
-//            maxTwistAngle = Math.toRadians(45.0).toFloat(),
-//        )
+        ph.angularConstraints.addConstraint(
+            a = holder,
+            b = spinner,
+            jA = Vector3f(1.0f, 0.0f, 0.0f),
+            jB = Vector3f(1.0f, 0.0f, 0.0f),
+            gA = Vector3f(0.0f, 0.0f, 1.0f),
+            gB = Vector3f(0.0f, 0.0f, 1.0f),
+            swingAngle = Math.toRadians(30.0).toFloat(),
+            minTwistAngle = -Math.toRadians(45.0).toFloat(),
+            maxTwistAngle = Math.toRadians(45.0).toFloat(),
+        )
 
         return true
     }
