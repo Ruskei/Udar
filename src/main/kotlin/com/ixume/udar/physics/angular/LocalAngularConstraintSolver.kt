@@ -9,11 +9,7 @@ import org.joml.Vector3d
 import org.joml.Vector3f
 import java.lang.Math.fma
 import java.nio.FloatBuffer
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.sin
+import kotlin.math.*
 
 class LocalAngularConstraintSolver(val constraintSolver: LocalConstraintSolver) {
     private var timeStep = Udar.Companion.CONFIG.timeStep.toFloat()
@@ -24,9 +20,12 @@ class LocalAngularConstraintSolver(val constraintSolver: LocalConstraintSolver) 
     private var axisToSolve = 0
     private val angleConstraints = constraintSolver.physicsWorld.angularConstraints.limitedConstraints
     private var angleToSolve = 0
+    private val ballConstraints = constraintSolver.physicsWorld.angularConstraints.ballConstraints
+    private var ballToSolve = 0
 
     private var jointData: FloatArray = FloatArray(1)
     private var limitedJointData: FloatArray = FloatArray(1)
+    private var revoluteJointData: FloatArray = FloatArray(1)
 
     private val _i = Vector3f()
     private val _j = Vector3f()
@@ -45,6 +44,8 @@ class LocalAngularConstraintSolver(val constraintSolver: LocalConstraintSolver) 
     private val _temp2 = Vector3f()
     private val _temp3 = Vector3f()
 
+    private val _J = Vector3d()
+
     fun setup() {
         timeStep = Udar.CONFIG.timeStep.toFloat()
         bias = Udar.CONFIG.angularConstraint.bias.toFloat()
@@ -52,6 +53,7 @@ class LocalAngularConstraintSolver(val constraintSolver: LocalConstraintSolver) 
 
         constructAxisConstraintData()
         constructLimitedAngleConstraintData()
+        constructBallConstraintData()
     }
 
     private fun constructAxisConstraintData() {
@@ -126,7 +128,6 @@ class LocalAngularConstraintSolver(val constraintSolver: LocalConstraintSolver) 
 
         angleToSolve = 0
         angleConstraints.forEach { constraintIdx, bodyAIdx, bodyBIdx, jAX, jAY, jAZ, jBX, jBY, jBZ, gAX, gAY, gAZ, gBX, gBY, gBZ, minAngle, maxAngle ->
-            println("$bodyAIdx <===> $bodyBIdx")
             val bodyA = constraintSolver.physicsWorld.activeBodies.fastGet(bodyAIdx)!!
             val bodyB = constraintSolver.physicsWorld.activeBodies.fastGet(bodyBIdx)!!
 
@@ -162,14 +163,14 @@ class LocalAngularConstraintSolver(val constraintSolver: LocalConstraintSolver) 
             if (!theta.isFinite()) return@forEach
 
             if (theta in minAngle..maxAngle) return@forEach
-            
+
 
             val `theta'` = min(max(minAngle.toDouble(), theta), maxAngle.toDouble())
             val `pA'` = `_pA'`.set(pA).mul(cos(`theta'`))
                 .add(_temp1.set(j).cross(pA).mul(sin(`theta'`)))
                 .add(_temp1.set(j).mul(j.dot(pA) * (1.0 - cos(`theta'`))))
                 .normalize()
-            
+
             if (alignAxis(
                     bodyAIdx = bodyAIdx,
                     bodyBIdx = bodyBIdx,
@@ -215,6 +216,125 @@ class LocalAngularConstraintSolver(val constraintSolver: LocalConstraintSolver) 
         }
     }
 
+    private fun constructBallConstraintData() {
+        val numc = ballConstraints.size()
+        val relevantData = run {
+            if (revoluteJointData.size < numc * 2 * OFFSET_6_AA_DATA_SIZE) {
+                revoluteJointData = FloatArray(max(revoluteJointData.size * 2, numc * 2 * OFFSET_6_AA_DATA_SIZE))
+            }
+
+            revoluteJointData
+        }
+
+        val n = FloatBuffer.wrap(relevantData)
+
+        ballToSolve = 0
+        ballConstraints.forEach { constraintIdx, bodyAIdx, bodyBIdx, jAX, jAY, jAZ, jBX, jBY, jBZ, gAX, gAY, gAZ, gBX, gBY, gBZ, swingAngle, minTwistAngle, maxTwistAngle ->
+            val bodyA = constraintSolver.physicsWorld.activeBodies.fastGet(bodyAIdx)!!
+            val bodyB = constraintSolver.physicsWorld.activeBodies.fastGet(bodyBIdx)!!
+
+            val qA = bodyA.q
+            val qB = bodyB.q
+
+            val `jA'` = qA.transform(jAX.toDouble(), jAY.toDouble(), jAZ.toDouble(), `_jA'`).normalize()
+            val `jB'` = qB.transform(jBX.toDouble(), jBY.toDouble(), jBZ.toDouble(), `_jB'`).normalize()
+
+            run swing@{
+                val J = _J.set(`jA'`).cross(`jB'`).normalize()
+
+                val theta = atan2(_temp1.set(`jA'`).cross(`jB'`).dot(J), `jA'`.dot(`jB'`))
+                if (!theta.isFinite()) return@swing
+                if (theta < swingAngle) return@swing
+
+                val `theta'` = min(theta, swingAngle.toDouble())
+                val `jA''` = `_pA'`.set(`jA'`).mul(cos(`theta'`))
+                    .add(_temp1.set(J).cross(`jA'`).mul(sin(`theta'`)))
+                    .add(_temp1.set(J).mul(J.dot(`jA'`) * (1.0 - cos(`theta'`))))
+                    .normalize()
+
+                if (alignAxis(
+                        bodyAIdx = bodyAIdx,
+                        bodyBIdx = bodyBIdx,
+                        iia = bodyA.inverseInertia,
+                        iib = bodyB.inverseInertia,
+                        buf = n,
+                        i = _temp2.set(`jA''`),
+                        j = _temp3.set(`jB'`),
+                    )
+                ) {
+                    ballToSolve += OFFSET_6_AA_DATA_SIZE
+                }
+            }
+
+//            run twist@{
+//                println("  TWIST")
+//                val j = _J.set(`jA'`).add(`jB'`).normalize()
+//
+//                val `gA'` = qA.transform(gAX.toDouble(), gAY.toDouble(), gAZ.toDouble(), `_gA'`)
+//                val `gB'` = qB.transform(gBX.toDouble(), gBY.toDouble(), gBZ.toDouble(), `_gB'`)
+//
+//                val pA = _pA.set(`gA'`).reject(j).normalize()
+//                val pB = _pB.set(`gB'`).reject(j).normalize()
+//                val theta = atan2(_temp1.set(pA).cross(pB).dot(j), pA.dot(pB))
+//                if (!theta.isFinite()) return@twist
+//                if (theta in minTwistAngle..maxTwistAngle) return@twist
+//                
+//                println("    gA': ${`gA'`.x} ${`gA'`.y} ${`gA'`.z}")
+//                println("    gB': ${`gB'`.x} ${`gB'`.y} ${`gB'`.z}")
+//                println("    theta: $theta")
+//
+//                val `theta'` = min(max(minTwistAngle.toDouble(), theta), maxTwistAngle.toDouble())
+//                val `pA'` = `_pA'`.set(pA).mul(cos(`theta'`))
+//                    .add(_temp1.set(j).cross(pA).mul(sin(`theta'`)))
+//                    .add(_temp1.set(j).mul(j.dot(pA) * (1.0 - cos(`theta'`))))
+//                    .normalize()
+//
+//                if (alignAxis(
+//                        bodyAIdx = bodyAIdx,
+//                        bodyBIdx = bodyBIdx,
+//                        iia = bodyA.inverseInertia,
+//                        iib = bodyB.inverseInertia,
+//                        buf = n,
+//                        i = _temp2.set(`pA'`),
+//                        j = _temp3.set(pB),
+//                    )
+//                ) {
+//                    ballToSolve += OFFSET_6_AA_DATA_SIZE
+//                }
+//            }
+            /*
+            for an revolute constraint with an revolute limit, we take in the following constraint data:
+            jA = axis of rotation on A
+            jB = axis of rotation on B
+            gA = reference axis on A
+            gB = reference axis on B
+            phi< = min revolute
+            phi> = max revolute
+            
+            we also have:
+            qA, qB = rotations
+            oA, oB = omegas
+            
+            if a vector is ', then it was rotated from local to world
+            
+            first, the normalized rotation axis will be:
+            j = (jA' + jB') / 2
+            then we project gA' and gB' onto j plane
+            pA = gA' - j(gA' . j)
+            pB = gB' - j(gB' . j)
+            
+            theta = atan2(pA x pB . j, pA . pB)
+            
+            if theta < phi< or theta > phi>
+                theta' = clamp(theta, phi<, phi>)
+                pA' = rotate pA around j by theta'
+                align: pA' to pB
+            
+            the output is 2 axes that we need to align
+             */
+        }
+    }
+
     fun solve() {
         run axis@{
             var i = 0
@@ -227,12 +347,23 @@ class LocalAngularConstraintSolver(val constraintSolver: LocalConstraintSolver) 
             }
         }
 
-        run axis@{
+        run angle@{
             var i = 0
             while (i < angleToSolve) {
                 solveAngleConstraint(constraintSolver.flatBodyData, limitedJointData, i) { existing, calculated ->
-                    existing + calculated
-//                    max(0f, existing + calculated)
+                    max(0f, existing + calculated)
+                }
+
+                i += OFFSET_6_AA_DATA_SIZE
+            }
+        }
+
+        run ball@{
+            var i = 0
+            while (i < ballToSolve) {
+                println("    solving: $i")
+                solveAngleConstraint(constraintSolver.flatBodyData, revoluteJointData, i) { existing, calculated ->
+                    max(0f, existing + calculated)
                 }
 
                 i += OFFSET_6_AA_DATA_SIZE
@@ -249,6 +380,8 @@ class LocalAngularConstraintSolver(val constraintSolver: LocalConstraintSolver) 
         i: Vector3f,
         j: Vector3f,
     ): Boolean {
+        if (!i.isFinite) return false
+        if (!j.isFinite) return false
         val j0x = fma(i.y, j.z, -i.z * j.y)
         val j0y = fma(i.z, j.x, -i.x * j.z)
         val j0z = fma(i.x, j.y, -i.y * j.x)
@@ -354,9 +487,13 @@ private inline fun solveAngleConstraint(
                 )
             )
         ) / den
+    
+    println("      raw: $lambda ($den)")
 
     constraintData[OFFSET_6_AA_LAMBDA] = lambdaTransform(existing, lambda)
     val effective = constraintData[OFFSET_6_AA_LAMBDA] - existing
+    
+    println("      eff: $effective")
 
     bodyData[aIdx + 3] += v0x * effective
     bodyData[aIdx + 4] += v0y * effective
@@ -365,4 +502,13 @@ private inline fun solveAngleConstraint(
     bodyData[bIdx + 3] += v1x * effective
     bodyData[bIdx + 4] += v1y * effective
     bodyData[bIdx + 5] += v1z * effective
+}
+
+inline fun Vector3d.reject(x: Double, y: Double, z: Double): Vector3d {
+    val m = dot(x, y, z)
+    return sub(x * m, y * m, z * m)
+}
+
+inline fun Vector3d.reject(other: Vector3d): Vector3d {
+    return reject(other.x, other.y, other.z)
 }

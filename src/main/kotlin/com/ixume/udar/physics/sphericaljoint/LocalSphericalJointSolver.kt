@@ -33,6 +33,7 @@ class LocalSphericalJointSolver(val constraintSolver: LocalConstraintSolver) {
     private val _t1 = Vector3f()
     private val _t2 = Vector3f()
     private val _ref = Vector3f()
+    private val _temp1 = Vector3f()
 
     fun setup() {
         timeStep = Udar.CONFIG.timeStep.toFloat()
@@ -96,16 +97,17 @@ class LocalSphericalJointSolver(val constraintSolver: LocalConstraintSolver) {
                 (rotatedRA.y - rotatedRB.y + pa.y - pb.y).toFloat(),
                 (rotatedRA.z - rotatedRB.z + pa.z - pb.z).toFloat(),
             )
-            _t1.set(1f).orthogonalizeUnit(_ref)
-            _t2.set(_t1).cross(_ref).normalize()
-            
+            val rr = _ref.lengthSquared()
+            if (rr < 1e-11) return@forEach
+            _t1.set(1f).orthogonalizeUnit(_temp1.set(_ref).normalize())
+            _t2.set(_t1).cross(_temp1.set(_ref).normalize()).normalize()
+
             run axis@{
-                val j0x = _ref.x
-                val j0y = _ref.y
-                val j0z = _ref.z
-                
-                val rr = fma(j0x, j0x, fma(j0y, j0y, j0z * j0z))
-                if (rr < 1e-11) return@forEach
+                val dist = sqrt(rr)
+
+                val j0x = _ref.x / dist
+                val j0y = _ref.y / dist
+                val j0z = _ref.z / dist
 
                 axisBuf.put(j0x)
                 axisBuf.put(j0y)
@@ -142,12 +144,12 @@ class LocalSphericalJointSolver(val constraintSolver: LocalConstraintSolver) {
                 axisBuf.put(j3scaled.y.toFloat())
                 axisBuf.put(j3scaled.z.toFloat())
 
-                val b = bias / timeStep * sqrt(rr)
+                val b = bias / timeStep * max(dist - slop, 0f)
                 axisBuf.put(b)
 
                 val den =
-                    rr * ima +
-                    rr * imb +
+                    ima +
+                    imb +
                     j1scaled.dot(j1x.toDouble(), j1y.toDouble(), j1z.toDouble()).toFloat() +
                     j3scaled.dot(j3x.toDouble(), j3y.toDouble(), j3z.toDouble()).toFloat()
                 if (den < 1e-11) return@forEach
@@ -163,9 +165,6 @@ class LocalSphericalJointSolver(val constraintSolver: LocalConstraintSolver) {
                 val j0x = _t1.x
                 val j0y = _t1.y
                 val j0z = _t1.z
-
-                val rr = fma(j0x, j0x, fma(j0y, j0y, j0z * j0z))
-                if (rr < 1e-11) return@forEach
 
                 t1Buf.put(j0x)
                 t1Buf.put(j0y)
@@ -206,8 +205,8 @@ class LocalSphericalJointSolver(val constraintSolver: LocalConstraintSolver) {
                 t1Buf.put(b)
 
                 val den =
-                    rr * ima +
-                    rr * imb +
+                    ima +
+                    imb +
                     j1scaled.dot(j1x.toDouble(), j1y.toDouble(), j1z.toDouble()).toFloat() +
                     j3scaled.dot(j3x.toDouble(), j3y.toDouble(), j3z.toDouble()).toFloat()
                 if (den < 1e-11) return@forEach
@@ -223,9 +222,6 @@ class LocalSphericalJointSolver(val constraintSolver: LocalConstraintSolver) {
                 val j0x = _t2.x
                 val j0y = _t2.y
                 val j0z = _t2.z
-
-                val rr = fma(j0x, j0x, fma(j0y, j0y, j0z * j0z))
-                if (rr < 1e-11) return@forEach
 
                 t2Buf.put(j0x)
                 t2Buf.put(j0y)
@@ -266,8 +262,8 @@ class LocalSphericalJointSolver(val constraintSolver: LocalConstraintSolver) {
                 t2Buf.put(b)
 
                 val den =
-                    rr * ima +
-                    rr * imb +
+                    ima +
+                    imb +
                     j1scaled.dot(j1x.toDouble(), j1y.toDouble(), j1z.toDouble()).toFloat() +
                     j3scaled.dot(j3x.toDouble(), j3y.toDouble(), j3z.toDouble()).toFloat()
                 if (den < 1e-11) return@forEach
@@ -298,13 +294,15 @@ class LocalSphericalJointSolver(val constraintSolver: LocalConstraintSolver) {
         var i = 0
         while (i < toSolve) {
             solveLinearConstraint(constraintSolver.flatBodyData, jointT1Data, i) { existing, calculated ->
-                val n = jointAxisData[i + OFFSET_12_AA_LAMBDA]
-                min(max(-friction * n, existing + calculated), friction * n)
+                existing + calculated
+//                val n = jointAxisData[i + OFFSET_12_AA_LAMBDA]
+//                min(max(-friction * n, existing + calculated), friction * n).also { println("  n: $n, ($existing, $calculated) -> eff: $it") }
             }
 
             solveLinearConstraint(constraintSolver.flatBodyData, jointT2Data, i) { existing, calculated ->
-                val n = jointAxisData[i + OFFSET_12_AA_LAMBDA]
-                min(max(-friction * n, existing + calculated), friction * n)
+                existing + calculated
+//                val n = jointAxisData[i + OFFSET_12_AA_LAMBDA]
+//                min(max(-friction * n, existing + calculated), friction * n)
             }
 
             i += OFFSET_12_AA_DATA_SIZE

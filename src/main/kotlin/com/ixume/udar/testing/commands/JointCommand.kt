@@ -32,15 +32,15 @@ object JointCommand : Command {
         val o = if (opts.trueOmega) opts.l.rotate(Quaterniond(q).conjugate()) else opts.l
         val spinner = Cuboid(
             world = sender.world,
-            pos = Vector3d(origin).add(0.75, 0.0, 0.0),
+            pos = Vector3d(origin).add(1.0, 0.0, 0.0),
             velocity = Vector3d(opts.v0),
-            width = 0.5,
+            width = 1.0,
             height = 0.5,
-            length = 1.0,
+            length = 0.5,
             q = Quaterniond(q),
             omega = Vector3d(0.0, 0.0, 0.0),
             density = 1.0,
-            hasGravity = false,
+            hasGravity = true,
         )
 
         spinner.tags += tag
@@ -66,26 +66,21 @@ object JointCommand : Command {
         ph.registerBody(BlockEntityCuboid(holder, Material.GLASS))
         ph.sphericalJointConstraints.addConstraint(
             a = spinner,
-            ra = Vector3d(0.0, 0.0, 0.0),
+            ra = Vector3d(-0.25, 0.0, 0.0),
             b = holder,
             rb = Vector3d(0.75, 0.0, 0.0),
         )
 //        ph.angularConstraints.addConstraint(
-//            a = spinner,
-//            b = holder,
-//            bodyAAxis = Vector3f(1.0f, 0.0f, 0.0f),
-//            bodyBAxis = Vector3f(1.0f, 0.0f, 0.0f),
+//            a = holder,
+//            b = spinner,
+//            jA = Vector3f(1.0f, 0.0f, 0.0f),
+//            jB = Vector3f(1.0f, 0.0f, 0.0f),
+//            gA = Vector3f(0.0f, 0.0f, 1.0f),
+//            gB = Vector3f(0.0f, 0.0f, 1.0f),
+//            swingAngle = Math.toRadians(30.0).toFloat(),
+//            minTwistAngle = -Math.toRadians(45.0).toFloat(),
+//            maxTwistAngle = Math.toRadians(45.0).toFloat(),
 //        )
-        ph.angularConstraints.addConstraint(
-            a = spinner,
-            b = holder,
-            jA = Vector3f(1.0f, 0.0f, 0.0f),
-            jB = Vector3f(1.0f, 0.0f, 0.0f),
-            gA = Vector3f(0.0f, -1.0f, 0.0f),
-            gB = Vector3f(0.0f, -1.0f, 0.0f),
-            minAngle = -Math.toRadians(30.0).toFloat(),
-            maxAngle = Math.toRadians(30.0).toFloat(),
-        )
 
         return true
     }

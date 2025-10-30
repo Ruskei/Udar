@@ -24,11 +24,25 @@ data class LimitedAngularConstraintRequest(
     val maxAngle: Float,
 )
 
+data class BallJointConstraintRequest(
+    val a: ActiveBody,
+    val b: ActiveBody,
+    val jA: Vector3f,
+    val jB: Vector3f,
+    val gA: Vector3f,
+    val gB: Vector3f,
+    val swingAngle: Float,
+    val minTwistAngle: Float,
+    val maxTwistAngle: Float,
+)
+
 class AngularConstraintManager(val physicsWorld: PhysicsWorld) {
     val constraints = AngularConstraintList()
     val limitedConstraints = LimitedAngularConstraintList()
+    val ballConstraints = BallJointConstraintList()
     private val toAdd = AtomicList<AngularConstraintRequest>()
     private val limitedToAdd = AtomicList<LimitedAngularConstraintRequest>()
+    private val ballToAdd = AtomicList<BallJointConstraintRequest>()
 
     fun addConstraint(a: ActiveBody, b: ActiveBody, bodyAAxis: Vector3f, bodyBAxis: Vector3f) {
         toAdd.add(AngularConstraintRequest(a, b, bodyAAxis, bodyBAxis))
@@ -38,12 +52,18 @@ class AngularConstraintManager(val physicsWorld: PhysicsWorld) {
         limitedToAdd.add(LimitedAngularConstraintRequest(a, b, jA, jB, gA, gB, minAngle, maxAngle))
     }
 
+    fun addConstraint(a: ActiveBody, b: ActiveBody, jA: Vector3f, jB: Vector3f, gA: Vector3f, gB: Vector3f, swingAngle: Float, minTwistAngle: Float, maxTwistAngle: Float) {
+        ballToAdd.add(BallJointConstraintRequest(a, b, jA, jB, gA, gB, swingAngle, minTwistAngle, maxTwistAngle))
+    }
+
     private var toRemoveBuffer = IntArrayList()
     private var limitedToRemoveBuffer = IntArrayList()
+    private var ballToRemoveBuffer = IntArrayList()
 
     fun tick() {
         val constraintsToAdd = toAdd.getAndClear()
         val limitedConstraintsToAdd = limitedToAdd.getAndClear()
+        val ballConstraintsToAdd = ballToAdd.getAndClear()
 
         // Process regular constraints
         toRemoveBuffer.clear()
@@ -116,6 +136,48 @@ class AngularConstraintManager(val physicsWorld: PhysicsWorld) {
                 request.gB.z,
                 request.minAngle,
                 request.maxAngle
+            )
+        }
+
+        // Process ball joint constraints
+        ballToRemoveBuffer.clear()
+        ballConstraints.forEach { constraintIdx, bodyAIdx, bodyBIdx, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ ->
+            val a = physicsWorld.activeBodies.fastGet(bodyAIdx)
+            if (a == null || a.dead.get()) {
+                ballToRemoveBuffer.add(constraintIdx)
+                return@forEach
+            }
+
+            val b = physicsWorld.activeBodies.fastGet(bodyBIdx)
+            if (b == null || b.dead.get()) {
+                ballToRemoveBuffer.add(constraintIdx)
+                return@forEach
+            }
+        }
+
+        for (i in 0..<ballToRemoveBuffer.size) {
+            ballConstraints.remove(ballToRemoveBuffer.getInt(i))
+        }
+
+        for (request in ballConstraintsToAdd) {
+            ballConstraints.add(
+                request.a,
+                request.b,
+                request.jA.x,
+                request.jA.y,
+                request.jA.z,
+                request.jB.x,
+                request.jB.y,
+                request.jB.z,
+                request.gA.x,
+                request.gA.y,
+                request.gA.z,
+                request.gB.x,
+                request.gB.y,
+                request.gB.z,
+                request.swingAngle,
+                request.minTwistAngle,
+                request.maxTwistAngle
             )
         }
     }
