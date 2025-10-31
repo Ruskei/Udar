@@ -25,7 +25,7 @@ class LocalAngularConstraintSolver(val constraintSolver: LocalConstraintSolver) 
 
     private var jointData: FloatArray = FloatArray(1)
     private var limitedJointData: FloatArray = FloatArray(1)
-    private var revoluteJointData: FloatArray = FloatArray(1)
+    private var ballJointData: FloatArray = FloatArray(1)
 
     private val _i = Vector3f()
     private val _j = Vector3f()
@@ -219,11 +219,11 @@ class LocalAngularConstraintSolver(val constraintSolver: LocalConstraintSolver) 
     private fun constructBallConstraintData() {
         val numc = ballConstraints.size()
         val relevantData = run {
-            if (revoluteJointData.size < numc * 2 * OFFSET_6_AA_DATA_SIZE) {
-                revoluteJointData = FloatArray(max(revoluteJointData.size * 2, numc * 2 * OFFSET_6_AA_DATA_SIZE))
+            if (ballJointData.size < numc * 2 * OFFSET_6_AA_DATA_SIZE) {
+                ballJointData = FloatArray(max(ballJointData.size * 2, numc * 2 * OFFSET_6_AA_DATA_SIZE))
             }
 
-            revoluteJointData
+            ballJointData
         }
 
         val buf = FloatBuffer.wrap(relevantData)
@@ -356,7 +356,7 @@ class LocalAngularConstraintSolver(val constraintSolver: LocalConstraintSolver) 
         run ball@{
             var i = 0
             while (i < ballToSolve) {
-                solveAngleConstraint(constraintSolver.flatBodyData, revoluteJointData, i) { existing, calculated ->
+                solveAngleConstraint(constraintSolver.flatBodyData, ballJointData, i) { existing, calculated ->
                     max(0f, existing + calculated)
                 }
 
@@ -380,15 +380,7 @@ class LocalAngularConstraintSolver(val constraintSolver: LocalConstraintSolver) 
         val j0y = fma(i.z, j.x, -i.x * j.z)
         val j0z = fma(i.x, j.y, -i.y * j.x)
 
-        buf.put(j0x)
-        buf.put(j0y)
-        buf.put(j0z)
-
         val j0scaled = iia.transform(j0x.toDouble(), j0y.toDouble(), j0z.toDouble(), _j0scaled)
-
-        buf.put(j0scaled.x.toFloat())
-        buf.put(j0scaled.y.toFloat())
-        buf.put(j0scaled.z.toFloat())
 
         val j1x = -j0x
         val j1y = -j0y
@@ -396,17 +388,26 @@ class LocalAngularConstraintSolver(val constraintSolver: LocalConstraintSolver) 
 
         val j1scaled = iib.transform(j1x.toDouble(), j1y.toDouble(), j1z.toDouble(), _j1scaled)
 
-        buf.put(j1scaled.x.toFloat())
-        buf.put(j1scaled.y.toFloat())
-        buf.put(j1scaled.z.toFloat())
-
         val b = -bias / timeStep * (1f - i.dot(j))
-        buf.put(b)
 
         val den =
             j0scaled.dot(j0x.toDouble(), j0y.toDouble(), j0z.toDouble()).toFloat() +
             j1scaled.dot(j1x.toDouble(), j1y.toDouble(), j1z.toDouble()).toFloat()
         if (den < 1e-11) return false
+
+        buf.put(j0x)
+        buf.put(j0y)
+        buf.put(j0z)
+
+        buf.put(j0scaled.x.toFloat())
+        buf.put(j0scaled.y.toFloat())
+        buf.put(j0scaled.z.toFloat())
+
+        buf.put(j1scaled.x.toFloat())
+        buf.put(j1scaled.y.toFloat())
+        buf.put(j1scaled.z.toFloat())
+
+        buf.put(b)
         buf.put(den)
 
         buf.put(Float.fromBits(bodyAIdx))
@@ -425,7 +426,7 @@ const val OFFSET_6_AA_A_IDX = 11
 const val OFFSET_6_AA_B_IDX = 12
 const val OFFSET_6_AA_LAMBDA = 13
 
-inline fun solveAngleConstraint(
+fun solveAngleConstraint(
     bodyData: FloatArray,
     constraintData: FloatArray,
     idx: Int,
@@ -481,10 +482,10 @@ inline fun solveAngleConstraint(
                 )
             )
         ) / den
-    
+
     constraintData[idx + OFFSET_6_AA_LAMBDA] = lambdaTransform(existing, lambda)
     val effective = constraintData[idx + OFFSET_6_AA_LAMBDA] - existing
-    
+
     bodyData[aIdx + 3] += v0x * effective
     bodyData[aIdx + 4] += v0y * effective
     bodyData[aIdx + 5] += v0z * effective
