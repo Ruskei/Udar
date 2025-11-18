@@ -44,13 +44,9 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
     private var itr = 0
     private var t = 0
 
-    private val _c_vec3 = Vector3f()
-    private val _c_j0 = Vector3f()
     private val _c_j1 = Vector3f()
     private val _c_j1Temp = Vector3f()
-    private val _c_j2 = Vector3f()
     private val _c_j3Temp = Vector3f()
-    private val _c_im = Vector3f()
     private val _norm = Vector3f()
     private val _c_tempMatrix3f1 = Matrix3f()
     private val _c_tempMatrix3f2 = Matrix3f()
@@ -194,33 +190,16 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
                     n.put(0f)
                 }
 
-                val bodyAInverseMass = manifolds.bodyAIM(i)
-                val bodyBInverseMass = manifolds.bodyBIM(i)
-                val bodyAInverseInertia = manifolds.bodyAII(i, _c_tempMatrix3f1)
-                val bodyBInverseInertia = manifolds.bodyBII(i, _c_tempMatrix3f2)
+                val ima = manifolds.bodyAIM(i)
+                val imb = manifolds.bodyBIM(i)
+                val iia = manifolds.bodyAII(i, _c_tempMatrix3f1)
+                val iib = manifolds.bodyBII(i, _c_tempMatrix3f2)
 
                 val den =
-                    _c_j0.set(
-                        _norm.x * _norm.x,
-                        _norm.y * _norm.y,
-                        _norm.z * _norm.z
-                    ).dot(
-                        bodyAInverseMass,
-                        bodyAInverseMass,
-                        bodyAInverseMass,
-                    ) +
-                    _c_j1Temp.set(j1x, j1y, j1z)._mul(bodyAInverseInertia).dot(j1x, j1y, j1z) +
-                    _c_j2.set(
-                        _norm.x * _norm.x,
-                        _norm.y * _norm.y,
-                        _norm.z * _norm.z
-                    ).dot(
-                        bodyBInverseMass,
-                        bodyBInverseMass,
-                        bodyBInverseMass,
-                    ) +
-                    _c_j3Temp.set(j3x, j3y, j3z)._mul(bodyBInverseInertia).dot(j3x, j3y, j3z)
-
+                    ima +
+                    iia.transform(j1x, j1y, j1z, _c_j1Temp).dot(j1x, j1y, j1z) +
+                    imb +
+                    iib.transform(j3x, j3y, j3z, _c_j3Temp).dot(j3x, j3y, j3z)
 
                 n.put(den) // den
 
@@ -232,12 +211,20 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
                     }
                 ) // lambda
 
-                val dva = _c_im.set(bodyAInverseMass).mul(_c_vec3.set(_norm).negate())
-                n.putVector3f(dva) // DVA
-                n.putVector3f(_c_j1Temp.set(j1x, j1y, j1z)._mul(bodyAInverseInertia)) // DOA
-                val dvb = _c_im.set(bodyBInverseMass).mul(_norm)
-                n.putVector3f(dvb) // DVB
-                n.putVector3f(_c_j3Temp.set(j3x, j3y, j3z)._mul(bodyBInverseInertia)) // DOB
+                n.put(-_norm.x * ima)
+                n.put(-_norm.y * ima)
+                n.put(-_norm.z * ima)
+                iia.transform(j1x, j1y, j1z, _c_j1Temp)
+                n.put(_c_j1Temp.x)
+                n.put(_c_j1Temp.y)
+                n.put(_c_j1Temp.z)
+                n.put(_norm.x * imb)
+                n.put(_norm.y * imb)
+                n.put(_norm.z * imb)
+                iib.transform(j3x, j3y, j3z, _c_j3Temp)
+                n.put(_c_j3Temp.x)
+                n.put(_c_j3Temp.y)
+                n.put(_c_j3Temp.z)
 
                 n.put(Float.fromBits(manifolds.bodyAIdx(i))) // my id
                 n.put(Float.fromBits(manifolds.bodyBIdx(i))) // other id
@@ -316,18 +303,10 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
                     n.put(0f)
                 }
 
-                val bodyAInverseMass = envManifolds.bodyIM(ns)
-                val bodyAInverseInertia = envManifolds.bodyII(ns, _c_tempMatrix3f1)
+                val ima = envManifolds.bodyIM(ns)
+                val iia = envManifolds.bodyII(ns, _c_tempMatrix3f1)
 
-                val den = _c_j0.set(
-                    _norm.x * _norm.x,
-                    _norm.y * _norm.y,
-                    _norm.z * _norm.z
-                ).dot(
-                    bodyAInverseMass,
-                    bodyAInverseMass,
-                    bodyAInverseMass,
-                ) + _c_j1Temp.set(_c_j1)._mul(bodyAInverseInertia).dot(_c_j1)
+                val den = ima + _c_j1Temp.set(_c_j1)._mul(iia).dot(_c_j1)
                 n.put(den)
 
                 n.put(
@@ -338,8 +317,10 @@ class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
                     }
                 ) // lambda
 
-                n.putVector3f(_c_im.set(bodyAInverseMass).mul(_c_vec3.set(_norm).negate())) // DVA
-                n.putVector3f(_c_j1Temp.set(_c_j1)._mul(bodyAInverseInertia)) // DOA
+                n.put(-_norm.x * ima)
+                n.put(-_norm.y * ima)
+                n.put(-_norm.z * ima)
+                n.putVector3f(_c_j1Temp.set(_c_j1)._mul(iia)) // DOA
 
                 n.put(Float.fromBits(envManifolds.bodyIdx(ns))) // my id
                 val cID = envManifolds.manifoldID(ns)

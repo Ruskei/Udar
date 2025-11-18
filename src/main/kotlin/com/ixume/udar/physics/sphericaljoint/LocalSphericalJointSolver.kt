@@ -14,6 +14,7 @@ import java.nio.FloatBuffer
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sqrt
+import kotlin.system.exitProcess
 
 class LocalSphericalJointSolver(val constraintSolver: LocalConstraintSolver) {
     private var timeStep = Udar.Companion.CONFIG.timeStep.toFloat()
@@ -291,7 +292,9 @@ class LocalSphericalJointSolver(val constraintSolver: LocalConstraintSolver) {
                 constraintSolver.flatBodyData,
                 jointAxisData,
                 i
-            ) { existing, calculated -> existing + calculated }
+            ) { existing, calculated -> 
+                existing + calculated 
+            }
 
             i += OFFSET_12_AA_DATA_SIZE
         }
@@ -420,6 +423,7 @@ private inline fun solveLinearConstraint(
 
     constraintData[idx + OFFSET_12_AA_LAMBDA] = lambdaTransform(existing, lambda)
     val effective = constraintData[idx + OFFSET_12_AA_LAMBDA] - existing
+    
 
     bodyData[aIdx + 0] -= v0x * effective
     bodyData[aIdx + 1] -= v0y * effective

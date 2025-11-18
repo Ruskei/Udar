@@ -1,0 +1,1 @@
+rework of constraint solver needed... perhaps add extra position-solve step, or try more stuff like mass-splitting. definitely need to add more telemetry to be able to track improvements more accurately
