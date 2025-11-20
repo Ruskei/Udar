@@ -2,7 +2,7 @@ package com.ixume.udar.physics.contact
 
 import com.ixume.udar.Udar
 import com.ixume.udar.physics.constraint.BODY_DATA_FLOATS
-import com.ixume.udar.physics.constraint.LocalConstraintSolver
+import com.ixume.udar.physics.constraint.LocalConstraintData
 import com.ixume.udar.physics.constraint.O_OFFSET
 import com.ixume.udar.physics.constraint.V_OFFSET
 import com.ixume.udar.physics.constraint._mul
@@ -19,7 +19,7 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
-class LocalContactSolver(val constraintSolver: LocalConstraintSolver) {
+class LocalContactSolver(val constraintSolver: LocalConstraintData) {
     private val physicsWorld = constraintSolver.physicsWorld
 
     private var timeStep = Udar.CONFIG.timeStep.toFloat()

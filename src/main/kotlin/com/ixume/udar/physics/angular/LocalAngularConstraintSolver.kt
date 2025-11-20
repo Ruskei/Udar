@@ -2,7 +2,7 @@ package com.ixume.udar.physics.angular
 
 import com.ixume.udar.Udar
 import com.ixume.udar.physics.constraint.BODY_DATA_FLOATS
-import com.ixume.udar.physics.constraint.LocalConstraintSolver
+import com.ixume.udar.physics.constraint.LocalConstraintData
 import com.ixume.udar.physics.constraint.O_OFFSET
 import org.joml.Matrix3d
 import org.joml.Vector3d
@@ -11,7 +11,7 @@ import java.lang.Math.fma
 import java.nio.FloatBuffer
 import kotlin.math.*
 
-class LocalAngularConstraintSolver(val constraintSolver: LocalConstraintSolver) {
+class LocalAngularConstraintSolver(val constraintSolver: LocalConstraintData) {
     private var timeStep = Udar.Companion.CONFIG.timeStep.toFloat()
     private var bias = Udar.Companion.CONFIG.angularConstraint.bias.toFloat()
     private var slop = Udar.Companion.CONFIG.angularConstraint.slop.toFloat()

@@ -4,14 +4,17 @@ import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.physics.angular.LocalAngularConstraintSolver
 import com.ixume.udar.physics.contact.LocalContactSolver
 import com.ixume.udar.physics.sphericaljoint.LocalSphericalJointSolver
+import com.ixume.udar.physics.splitting.MassSplittingConstraintSolver
 import org.joml.*
 import java.lang.Math.fma
 import java.nio.FloatBuffer
 import kotlin.math.max
 
-class LocalConstraintSolver(
+class LocalConstraintData(
     val physicsWorld: PhysicsWorld,
 ) {
+    private val massSplittingConstraintSolver = MassSplittingConstraintSolver(this)
+
     private val contactSolver = LocalContactSolver(this)
     private val sphericalJointSolver = LocalSphericalJointSolver(this)
     private val angularConstraintSolver = LocalAngularConstraintSolver(this)
@@ -29,9 +32,11 @@ class LocalConstraintSolver(
         bodyCount = physicsWorld.activeBodies.size()
         buildFlatBodyData()
 
-        contactSolver.setup()
-        sphericalJointSolver.setup()
-        angularConstraintSolver.setup()
+        massSplittingConstraintSolver.setup()
+
+//        contactSolver.setup()
+//        sphericalJointSolver.setup()
+//        angularConstraintSolver.setup()
     }
 
     private fun buildFlatBodyData() {
@@ -55,14 +60,15 @@ class LocalConstraintSolver(
 
 
     fun solve() {
-        angularConstraintSolver.solve()
-        sphericalJointSolver.solve()
-        contactSolver.solveNormal()
+        massSplittingConstraintSolver.solve()
+//        angularConstraintSolver.solve()
+//        sphericalJointSolver.solve()
+//        contactSolver.solveNormal()
     }
 
     fun solvePost() {
-        contactSolver.solveFriction()
-        sphericalJointSolver.solveFriction()
+//        contactSolver.solveFriction()
+//        sphericalJointSolver.solveFriction()
     }
 
     fun write() {
@@ -137,9 +143,54 @@ inline fun Vector3f._mul(mat: Matrix3f): Vector3f {
     return this
 }
 
-
-private const val DATA_OUTPUT_INTERVAL = 250
-
 const val BODY_DATA_FLOATS = 6
 const val V_OFFSET = 0
 const val O_OFFSET = 3
+
+fun FloatArray.vx(idx: Int): Float {
+    return this[idx * BODY_DATA_FLOATS]
+}
+
+fun FloatArray.vy(idx: Int): Float {
+    return this[idx * BODY_DATA_FLOATS + 1]
+}
+
+fun FloatArray.vz(idx: Int): Float {
+    return this[idx * BODY_DATA_FLOATS + 2]
+}
+
+fun FloatArray.ox(idx: Int): Float {
+    return this[idx * BODY_DATA_FLOATS + 3]
+}
+
+fun FloatArray.oy(idx: Int): Float {
+    return this[idx * BODY_DATA_FLOATS + 4]
+}
+
+fun FloatArray.oz(idx: Int): Float {
+    return this[idx * BODY_DATA_FLOATS + 5]
+}
+
+fun FloatArray.vx(idx: Int, value: Float) {
+    this[idx * BODY_DATA_FLOATS] = value
+}
+
+fun FloatArray.vy(idx: Int, value: Float) {
+    this[idx * BODY_DATA_FLOATS + 1] = value
+}
+
+fun FloatArray.vz(idx: Int, value: Float) {
+    this[idx * BODY_DATA_FLOATS + 2] = value
+}
+
+fun FloatArray.ox(idx: Int, value: Float) {
+    this[idx * BODY_DATA_FLOATS + 3] = value
+}
+
+fun FloatArray.oy(idx: Int, value: Float) {
+    this[idx * BODY_DATA_FLOATS + 4] = value
+}
+
+fun FloatArray.oz(idx: Int, value: Float) {
+    this[idx * BODY_DATA_FLOATS + 5] = value
+}

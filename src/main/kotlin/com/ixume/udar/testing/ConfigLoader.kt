@@ -77,6 +77,7 @@ data class Config(
     val collision: CollisionConfig = CollisionConfig(),
     val sphericalJoint: SphericalJointConfig = SphericalJointConfig(),
     val angularConstraint: AngularConstraintConfig = AngularConstraintConfig(),
+    val massSplittingConfig: MassSplittingConfig = MassSplittingConfig(),
     val debug: DebugConfig = DebugConfig(),
     val sleepLinearVelocity: Double = 1e-3,
     val sleepAngularVelocity: Double = 1e-3,
@@ -91,6 +92,17 @@ data class Config(
     companion object : InstanceCreator<Config> {
         override fun createInstance(type: Type?): Config? {
             return Config()
+        }
+    }
+    
+    data class MassSplittingConfig(
+        val threads: Int = 3,
+        val bias: Float = 0.05f,
+    ) {
+        companion object : InstanceCreator<MassSplittingConfig> {
+            override fun createInstance(type: Type?): MassSplittingConfig? {
+                return MassSplittingConfig()
+            }
         }
     }
 

@@ -4,7 +4,7 @@ import com.ixume.udar.Udar
 import com.ixume.udar.physics.angular.OFFSET_6_AA_DATA_SIZE
 import com.ixume.udar.physics.angular.solveAngleConstraint
 import com.ixume.udar.physics.constraint.BODY_DATA_FLOATS
-import com.ixume.udar.physics.constraint.LocalConstraintSolver
+import com.ixume.udar.physics.constraint.LocalConstraintData
 import com.ixume.udar.physics.constraint.O_OFFSET
 import com.ixume.udar.physics.constraint.V_OFFSET
 import org.joml.Vector3d
@@ -14,9 +14,8 @@ import java.nio.FloatBuffer
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sqrt
-import kotlin.system.exitProcess
 
-class LocalSphericalJointSolver(val constraintSolver: LocalConstraintSolver) {
+class LocalSphericalJointSolver(val constraintSolver: LocalConstraintData) {
     private var timeStep = Udar.Companion.CONFIG.timeStep.toFloat()
     private var bias = Udar.Companion.CONFIG.sphericalJoint.bias.toFloat()
     private var slop = Udar.Companion.CONFIG.sphericalJoint.slop.toFloat()
