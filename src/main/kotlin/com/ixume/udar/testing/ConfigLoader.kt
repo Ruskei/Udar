@@ -98,6 +98,10 @@ data class Config(
     data class MassSplittingConfig(
         val threads: Int = 3,
         val bias: Float = 0.05f,
+        val slop: Float = 0.01f,
+        val friction: Float = 0.3f,
+        val posIterations: Int = 2,
+        val erp: Float = 1f,
     ) {
         companion object : InstanceCreator<MassSplittingConfig> {
             override fun createInstance(type: Type?): MassSplittingConfig? {

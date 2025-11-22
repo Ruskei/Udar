@@ -9,21 +9,26 @@ class ConstraintSolverManager(val physicsWorld: PhysicsWorld) {
     fun solve() {
         if (physicsWorld.activeBodies.size() == 0) return
         constraintSolver.setup()
+        constraintSolver.massSplittingConstraintSolver.warm()
 
-        var normalItrs = 1
-        while (normalItrs <= Udar.CONFIG.collision.normalIterations) {
-            constraintSolver.solve()
-
-            normalItrs++
+        for (i in 1..Udar.CONFIG.collision.normalIterations) {
+            constraintSolver.solve(i)
         }
 
-        var frictionItrs = 1
-        while (frictionItrs <= Udar.CONFIG.collision.frictionIterations) {
-            constraintSolver.solvePost()
+        constraintSolver.massSplittingConstraintSolver.reportLambdas()
 
-            frictionItrs++
+        for (i in 1..Udar.CONFIG.collision.frictionIterations) {
+            constraintSolver.solvePost()
         }
 
         constraintSolver.write()
+
+    }
+
+    fun solvePositions() {
+        if (physicsWorld.activeBodies.size() == 0) return
+        for (i in 1..Udar.CONFIG.collision.frictionIterations) {
+            constraintSolver.massSplittingConstraintSolver.solvePositions()
+        }
     }
 }

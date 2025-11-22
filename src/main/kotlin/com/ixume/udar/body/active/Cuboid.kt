@@ -489,5 +489,5 @@ class Cuboid(
 }
 
 fun Vector3d.toStringFull(): String {
-    return "( $x, $y, $z )"
+    return "($x $y $z)"
 }

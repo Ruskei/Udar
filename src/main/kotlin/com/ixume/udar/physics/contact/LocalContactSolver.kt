@@ -1,16 +1,11 @@
 package com.ixume.udar.physics.contact
 
 import com.ixume.udar.Udar
-import com.ixume.udar.physics.constraint.BODY_DATA_FLOATS
-import com.ixume.udar.physics.constraint.LocalConstraintData
-import com.ixume.udar.physics.constraint.O_OFFSET
-import com.ixume.udar.physics.constraint.V_OFFSET
-import com.ixume.udar.physics.constraint._mul
-import com.ixume.udar.physics.constraint.putVector3f
-import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldArray
-import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldBuffer
+import com.ixume.udar.physics.constraint.*
 import com.ixume.udar.physics.contact.a2a.A2APrevContactDataBuffer
+import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldArray
 import com.ixume.udar.physics.contact.a2s.A2SPrevContactDataBuffer
+import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldBuffer
 import org.joml.Matrix3f
 import org.joml.Vector3f
 import java.lang.Math.fma
@@ -338,7 +333,6 @@ class LocalContactSolver(val constraintSolver: LocalConstraintData) {
     }
 
 
-
 //    private var maxLambda = -Float.MAX_VALUE
 //    private var runningMaxLambda = FloatArray(0)
 
@@ -561,7 +555,7 @@ class LocalContactSolver(val constraintSolver: LocalConstraintData) {
             j += A2S_N_CONTACT_DATA_FLOATS
         }
     }
-    
+
     fun solveFriction() {
         if (!any) return
 

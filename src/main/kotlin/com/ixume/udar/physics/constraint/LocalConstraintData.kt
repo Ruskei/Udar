@@ -13,7 +13,7 @@ import kotlin.math.max
 class LocalConstraintData(
     val physicsWorld: PhysicsWorld,
 ) {
-    private val massSplittingConstraintSolver = MassSplittingConstraintSolver(this)
+    val massSplittingConstraintSolver = MassSplittingConstraintSolver(this)
 
     private val contactSolver = LocalContactSolver(this)
     private val sphericalJointSolver = LocalSphericalJointSolver(this)
@@ -59,14 +59,15 @@ class LocalConstraintData(
     }
 
 
-    fun solve() {
-        massSplittingConstraintSolver.solve()
+    fun solve(iteration: Int) {
+        massSplittingConstraintSolver.solveNormals(iteration)
 //        angularConstraintSolver.solve()
 //        sphericalJointSolver.solve()
 //        contactSolver.solveNormal()
     }
 
     fun solvePost() {
+        massSplittingConstraintSolver.solveFriction()
 //        contactSolver.solveFriction()
 //        sphericalJointSolver.solveFriction()
     }
@@ -92,6 +93,7 @@ class LocalConstraintData(
         }
 
         contactSolver.write()
+        massSplittingConstraintSolver.after()
     }
 
 }

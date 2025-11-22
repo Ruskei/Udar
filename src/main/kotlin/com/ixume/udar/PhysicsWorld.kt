@@ -223,6 +223,10 @@ class PhysicsWorld(
                         }
                     }
                 }
+                
+                val positionSolvingDuration = measureNanoTime { 
+                    constraintSolverManager.solvePositions()
+                }
 
                 if (untilCollision.get() && (!manifoldBuffer.isEmpty() || !envManifoldBuffer.isEmpty())) {
                     untilCollision.set(false)
@@ -245,6 +249,7 @@ class PhysicsWorld(
                 rollingStepAverage += stepDuration / dataInterval.toDouble()
 
                 rollingParallelContactAverage += parallelConstraintDuration / dataInterval.toDouble()
+                rollingParallelContactAverage += positionSolvingDuration / dataInterval.toDouble()
 
                 if (physicsTime % dataInterval == 0) {
                     if (Udar.CONFIG.debug.timings) {

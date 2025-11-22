@@ -6,7 +6,7 @@ import it.unimi.dsi.fastutil.floats.FloatArrayList
 import java.lang.Math.fma
 
 class A2SPrevManifoldData {
-    private val ls = FloatArrayList()
+    val ls = FloatArrayList()
 
     fun clear() {
         ls.clear()
@@ -33,6 +33,12 @@ class A2SPrevManifoldData {
             i++
         }
 
+        return idx
+    }
+    
+    fun start(numContacts: Int): Int {
+        val idx = ls.size
+        ls.add(Float.fromBits(numContacts))
         return idx
     }
 
@@ -90,7 +96,7 @@ class A2SPrevManifoldData {
 
             val d = fma(cx - x, cx - x, fma(cy - y, cy - y, (cz - z) * (cz - z)))
 
-            if (d < Udar.CONFIG.collision.sameContactThreshold &&  d < minDistance) {
+            if (d < Udar.CONFIG.collision.sameContactThreshold && d < minDistance) {
                 minDistance = d
                 minIdx = i
             }

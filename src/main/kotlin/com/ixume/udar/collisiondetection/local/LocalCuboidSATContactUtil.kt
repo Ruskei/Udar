@@ -4,6 +4,7 @@ import com.ixume.udar.body.Body
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.Edge
 import com.ixume.udar.body.active.Face
+import com.ixume.udar.body.active.toStringFull
 import com.ixume.udar.collisiondetection.ManifoldIDGenerator
 import com.ixume.udar.physics.contact.a2a.A2AContactDataBuffer
 import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldCollection
@@ -14,9 +15,9 @@ import kotlin.math.max
 import kotlin.math.min
 
 class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
-    private val _myBodyAxiss = Array(3) { Vector3d() }
-    private val _otherBodyAxiss = Array(3) { Vector3d() }
-    private val _crossAxiss = Array(9) { Vector3d() }
+    private val _myBodyAxes = Array(3) { Vector3d() }
+    private val _otherBodyAxes = Array(3) { Vector3d() }
+    private val _crossAxes = Array(9) { Vector3d() }
 
     private val _output = DoubleArrayList()
     private val _incidentVertices = DoubleArrayList()
@@ -43,7 +44,7 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
     private val _faceManifold = A2AContactDataBuffer(8)
 
     fun collides(activeBody: ActiveBody, other: ActiveBody, out: A2AManifoldCollection): Boolean {
-        if (!setupAxiss(activeBody, other)) return false
+        setupAxes(activeBody, other)
 
         val myVertices = activeBody.vertices
         if (myVertices.isEmpty()) return false
@@ -63,8 +64,12 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
         var minCrossInDirOfAxis = true
 
         var i = 0
-        while (i < _myBodyAxiss.size) {
-            val axis = _myBodyAxiss[i]
+        while (i < _myBodyAxes.size) {
+            val axis = _myBodyAxes[i]
+            if (!axis.isFinite) {
+                i++
+                continue
+            }
 
             var myMin = Double.MAX_VALUE
             var myMax = -Double.MAX_VALUE
@@ -119,8 +124,12 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
         }
 
         var j = 0
-        while (j < _otherBodyAxiss.size) {
-            val axis = _otherBodyAxiss[j]
+        while (j < _otherBodyAxes.size) {
+            val axis = _otherBodyAxes[j]
+            if (!axis.isFinite) {
+                j++
+                continue
+            }
 
             var myMin = Double.MAX_VALUE
             var myMax = -Double.MAX_VALUE
@@ -175,8 +184,12 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
         }
 
         var k = 0
-        while (k < _crossAxiss.size) {
-            val axis = _crossAxiss[k]
+        while (k < _crossAxes.size) {
+            val axis = _crossAxes[k]
+            if (!axis.isFinite) {
+                k++
+                continue
+            }
 
             var myMin = Double.MAX_VALUE
             var myMax = -Double.MAX_VALUE
@@ -232,12 +245,14 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
 
         if (minCrossOverlap < minMyBodyOverlap && minCrossOverlap < minOtherBodyOverlap) {
             // edge-edge!
-            if (minCrossAxis == null) return false
+            if (minCrossAxis == null) {
+                return false
+            }
 
             if (minCrossInDirOfAxis) {
-                _norm.set(minCrossAxis).normalize()
+                _norm.set(minCrossAxis)
             } else {
-                _norm.set(minCrossAxis).negate().normalize()
+                _norm.set(minCrossAxis).negate()
             }
 
             check(abs(_norm.length() - 1.0) < 1e-5)
@@ -268,7 +283,9 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                 m++
             }
 
-            checkNotNull(myEdge)
+            if (myEdge == null) {
+                return false
+            }
 
             var otherMax = -Double.MAX_VALUE
             var otherEdge: Edge? = null
@@ -290,7 +307,9 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                 n++
             }
 
-            checkNotNull(otherEdge)
+            if (otherEdge == null) {
+                return false
+            }
 
             math.closestPointsBetweenSegments(
                 a0 = myEdge.start,
@@ -319,6 +338,10 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
             """.trimIndent()
             }
 
+            val nl = activeBody.physicsWorld.prevContactData.normalLambda(rawManifoldIdx, 0)
+            val t1l = activeBody.physicsWorld.prevContactData.t1Lambda(rawManifoldIdx, 0)
+            val t2l = activeBody.physicsWorld.prevContactData.t2Lambda(rawManifoldIdx, 0)
+
             out.addSingleManifold(
                 first = activeBody,
                 second = other,
@@ -339,9 +362,9 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                 contactID = manifoldID,
                 math = math,
 
-                normalLambda = activeBody.physicsWorld.prevContactData.normalLambda(rawManifoldIdx, 0),
-                t1Lambda = activeBody.physicsWorld.prevContactData.t1Lambda(rawManifoldIdx, 0),
-                t2Lambda = activeBody.physicsWorld.prevContactData.t2Lambda(rawManifoldIdx, 0),
+                normalLambda = nl,
+                t1Lambda = t1l,
+                t2Lambda = t2l,
             )
 
             return true
@@ -355,7 +378,9 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
              */
 
             val axis = if (minMyBodyOverlap < minOtherBodyOverlap) minMyBodyAxis else minOtherBodyAxis
-            if (axis == null) return false
+            if (axis == null) {
+                return false
+            }
 
 //            println("FACE-FACE")
 
@@ -363,9 +388,9 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                 if (minMyBodyOverlap < minOtherBodyOverlap) minMyBodyInDirOfAxis else minOtherBodyInDirOfAxis
 
             if (inDirOfAxis) {
-                _norm.set(axis).normalize()
+                _norm.set(axis)
             } else {
-                _norm.set(axis).negate().normalize()
+                _norm.set(axis).negate()
             }
 
 //            println("| norm: $_norm")
@@ -404,7 +429,6 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
             var incidentIdx = -1
 
 //            println("FINDING MIN INC")
-
 
             var l = 0
             while (l < otherFaces.size) {
@@ -526,23 +550,30 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                     _output.getDouble(p * 3 + 2),
                 )
 
-                val d = -_tpProjected.set(_tp).sub(refFace.point()).dot(refFace.normal) // distance from ref face
+                val d = _tpProjected.set(_tp).sub(refFace.point()).dot(refFace.normal) // distance from ref face
 
-                if (d < 0.0) {
+                if (d > 0.0) {
                     val closestIdx = activeBody.physicsWorld.prevContactData.closestB(
                         rawManifoldIdx = rawManifoldIdx,
                         x = _tp.x.toFloat(),
                         y = _tp.y.toFloat(),
                         z = _tp.z.toFloat(),
                     )
+                    
+//                    println(" * MANIFOLD")
+//                    println(" | refp: ${refFace.point().x} ${refFace.point().y} ${refFace.point().z}")
+//                    println(" | refn: ${refFace.normal.x} ${refFace.normal.y} ${refFace.normal.z}")
 
                     _tp2.set(_tp).sub(d * refFace.normal.x, d * refFace.normal.y, d * refFace.normal.z)
 
-//                    println(" * MANIFOLD")
-//                    println(" | a: (${_tp2.x}, ${_tp2.y}, ${_tp2.z})")
-//                    println(" | b: (${_tp.x}, ${_tp.y}, ${_tp.z})")
-//                    println(" | norm: (${_norm.x}, ${_norm.y}, ${_norm.z})")
-//                    println(" | depth: ${-d.toFloat()}")
+//                    println(" | a: (${_tp2.x} ${_tp2.y} ${_tp2.z})")
+//                    println(" | b: (${_tp.x} ${_tp.y} ${_tp.z})")
+//                    println(" | n: (${_norm.x} ${_norm.y} ${_norm.z})")
+//                    println(" | d: ${d.toFloat()}")
+                    
+                    val nl = activeBody.physicsWorld.prevContactData.normalLambda(rawManifoldIdx, closestIdx)
+                    val t1l = activeBody.physicsWorld.prevContactData.t1Lambda(rawManifoldIdx, closestIdx)
+                    val t2l = activeBody.physicsWorld.prevContactData.t2Lambda(rawManifoldIdx, closestIdx)
 
                     collided = true
                     _faceManifold.loadInto(
@@ -558,12 +589,12 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                         normY = _norm.y.toFloat(),
                         normZ = _norm.z.toFloat(),
 
-                        depth = -d.toFloat(),
+                        depth = d.toFloat(),
                         math = math,
 
-                        normalLambda = activeBody.physicsWorld.prevContactData.normalLambda(rawManifoldIdx, closestIdx),
-                        t1Lambda = activeBody.physicsWorld.prevContactData.t1Lambda(rawManifoldIdx, closestIdx),
-                        t2Lambda = activeBody.physicsWorld.prevContactData.t2Lambda(rawManifoldIdx, closestIdx),
+                        normalLambda = nl,
+                        t1Lambda = t1l,
+                        t2Lambda = t2l,
                     )
                 }
 
@@ -605,36 +636,25 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
         start.fma(t, _lineDir, out)
     }
 
-    private fun setupAxiss(activeBody: ActiveBody, other: Body): Boolean {
-        _myBodyAxiss[0].set(1.0, 0.0, 0.0).rotate(activeBody.q).normalize()
-        _myBodyAxiss[1].set(0.0, 1.0, 0.0).rotate(activeBody.q).normalize()
-        _myBodyAxiss[2].set(0.0, 0.0, 1.0).rotate(activeBody.q).normalize()
+    private fun setupAxes(activeBody: ActiveBody, other: Body) {
+        _myBodyAxes[0].set(1.0, 0.0, 0.0).rotate(activeBody.q).normalize()
+        _myBodyAxes[1].set(0.0, 1.0, 0.0).rotate(activeBody.q).normalize()
+        _myBodyAxes[2].set(0.0, 0.0, 1.0).rotate(activeBody.q).normalize()
 
-        _otherBodyAxiss[0].set(1.0, 0.0, 0.0).rotate(other.q).normalize()
-        _otherBodyAxiss[1].set(0.0, 1.0, 0.0).rotate(other.q).normalize()
-        _otherBodyAxiss[2].set(0.0, 0.0, 1.0).rotate(other.q).normalize()
+        _otherBodyAxes[0].set(1.0, 0.0, 0.0).rotate(other.q).normalize()
+        _otherBodyAxes[1].set(0.0, 1.0, 0.0).rotate(other.q).normalize()
+        _otherBodyAxes[2].set(0.0, 0.0, 1.0).rotate(other.q).normalize()
 
-        _crossAxiss[0].set(_myBodyAxiss[0]).cross(_otherBodyAxiss[0]).normalize()
-        if (!_crossAxiss[0].isFinite) {
-            return false
-        }
-        _crossAxiss[1].set(_myBodyAxiss[0]).cross(_otherBodyAxiss[1]).normalize()
-        if (!_crossAxiss[1].isFinite) return false
-        _crossAxiss[2].set(_myBodyAxiss[0]).cross(_otherBodyAxiss[2]).normalize()
-        if (!_crossAxiss[2].isFinite) return false
-        _crossAxiss[3].set(_myBodyAxiss[1]).cross(_otherBodyAxiss[0]).normalize()
-        if (!_crossAxiss[3].isFinite) return false
-        _crossAxiss[4].set(_myBodyAxiss[1]).cross(_otherBodyAxiss[1]).normalize()
-        if (!_crossAxiss[4].isFinite) return false
-        _crossAxiss[5].set(_myBodyAxiss[1]).cross(_otherBodyAxiss[2]).normalize()
-        if (!_crossAxiss[5].isFinite) return false
-        _crossAxiss[6].set(_myBodyAxiss[2]).cross(_otherBodyAxiss[0]).normalize()
-        if (!_crossAxiss[6].isFinite) return false
-        _crossAxiss[7].set(_myBodyAxiss[2]).cross(_otherBodyAxiss[1]).normalize()
-        if (!_crossAxiss[7].isFinite) return false
-        _crossAxiss[8].set(_myBodyAxiss[2]).cross(_otherBodyAxiss[2]).normalize()
-        return _crossAxiss[8].isFinite
+        _crossAxes[0].set(_myBodyAxes[0]).cross(_otherBodyAxes[0]).normalize()
+        _crossAxes[1].set(_myBodyAxes[0]).cross(_otherBodyAxes[1]).normalize()
+        _crossAxes[2].set(_myBodyAxes[0]).cross(_otherBodyAxes[2]).normalize()
+        _crossAxes[3].set(_myBodyAxes[1]).cross(_otherBodyAxes[0]).normalize()
+        _crossAxes[4].set(_myBodyAxes[1]).cross(_otherBodyAxes[1]).normalize()
+        _crossAxes[5].set(_myBodyAxes[1]).cross(_otherBodyAxes[2]).normalize()
+        _crossAxes[6].set(_myBodyAxes[2]).cross(_otherBodyAxes[0]).normalize()
+        _crossAxes[7].set(_myBodyAxes[2]).cross(_otherBodyAxes[1]).normalize()
+        _crossAxes[8].set(_myBodyAxes[2]).cross(_otherBodyAxes[2]).normalize()
     }
 }
 
-private const val EDGE_EPSILON = 1e-11
+private const val EDGE_EPSILON = 1e-1

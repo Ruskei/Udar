@@ -5,7 +5,7 @@ import it.unimi.dsi.fastutil.floats.FloatArrayList
 import java.lang.Math.fma
 
 class A2APrevManifoldData {
-    private val ls = FloatArrayList()
+    val ls = FloatArrayList()
 
     fun clear() {
         ls.clear()
@@ -36,6 +36,12 @@ class A2APrevManifoldData {
             i++
         }
 
+        return idx
+    }
+
+    fun start(numContacts: Int): Int {
+        val idx = ls.size
+        ls.add(Float.fromBits(numContacts))
         return idx
     }
 
