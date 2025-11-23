@@ -96,6 +96,7 @@ class FlattenedBodyAABBTree(
                     val bb = b.body()
 
                     if (ab.overlaps(bb)) {
+                        if (!ab.awake.get() && !bb.awake.get()) return
                         var arr = out.get(ab.idx)
                         if (arr == null) {
                             arr = IntArrayList()
