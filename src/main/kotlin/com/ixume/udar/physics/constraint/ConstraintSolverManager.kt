@@ -15,7 +15,9 @@ class ConstraintSolverManager(val physicsWorld: PhysicsWorld) {
             constraintSolver.solve(i)
         }
 
-        constraintSolver.massSplittingConstraintSolver.reportLambdas()
+        if (Udar.CONFIG.debug.reportLambdas) {
+            constraintSolver.massSplittingConstraintSolver.reportLambdas()
+        }
 
         for (i in 1..Udar.CONFIG.collision.frictionIterations) {
             constraintSolver.solvePost()
@@ -27,7 +29,7 @@ class ConstraintSolverManager(val physicsWorld: PhysicsWorld) {
 
     fun solvePositions() {
         if (physicsWorld.activeBodies.size() == 0) return
-        for (i in 1..Udar.CONFIG.collision.frictionIterations) {
+        for (i in 1..Udar.CONFIG.massSplittingConfig.posIterations) {
             constraintSolver.massSplittingConstraintSolver.solvePositions()
         }
     }

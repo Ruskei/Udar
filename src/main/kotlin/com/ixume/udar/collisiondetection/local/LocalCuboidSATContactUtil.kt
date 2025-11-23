@@ -574,6 +574,8 @@ class LocalCuboidSATContactUtil(val math: LocalMathUtil) {
                     val nl = activeBody.physicsWorld.prevContactData.normalLambda(rawManifoldIdx, closestIdx)
                     val t1l = activeBody.physicsWorld.prevContactData.t1Lambda(rawManifoldIdx, closestIdx)
                     val t2l = activeBody.physicsWorld.prevContactData.t2Lambda(rawManifoldIdx, closestIdx)
+                    
+//                    if (rawManifoldIdx == -1 || closestIdx == -1) println("cold a2a!")
 
                     collided = true
                     _faceManifold.loadInto(

@@ -2,7 +2,6 @@ package com.ixume.udar.physics.constraint
 
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.physics.angular.LocalAngularConstraintSolver
-import com.ixume.udar.physics.contact.LocalContactSolver
 import com.ixume.udar.physics.sphericaljoint.LocalSphericalJointSolver
 import com.ixume.udar.physics.splitting.MassSplittingConstraintSolver
 import org.joml.*
@@ -15,7 +14,6 @@ class LocalConstraintData(
 ) {
     val massSplittingConstraintSolver = MassSplittingConstraintSolver(this)
 
-    private val contactSolver = LocalContactSolver(this)
     private val sphericalJointSolver = LocalSphericalJointSolver(this)
     private val angularConstraintSolver = LocalAngularConstraintSolver(this)
     private val _vec3 = Vector3f()
@@ -73,12 +71,6 @@ class LocalConstraintData(
     }
 
     fun write() {
-        physicsWorld.prevContactMap.clear()
-        physicsWorld.prevContactData.clear()
-
-        physicsWorld.prevEnvContactMap.clear()
-        physicsWorld.prevEnvContactData.clear()
-
         var i = 0
         val n = bodyCount * BODY_DATA_FLOATS
         while (i < n) {
@@ -92,8 +84,7 @@ class LocalConstraintData(
             i += BODY_DATA_FLOATS
         }
 
-        contactSolver.write()
-        massSplittingConstraintSolver.after()
+        massSplittingConstraintSolver.heatUp()
     }
 
 }

@@ -102,6 +102,8 @@ data class Config(
         val friction: Float = 0.3f,
         val posIterations: Int = 2,
         val erp: Float = 1f,
+        val relaxation: Float = 1f,
+        val lambdaStay: Int = 5,
     ) {
         companion object : InstanceCreator<MassSplittingConfig> {
             override fun createInstance(type: Type?): MassSplittingConfig? {
@@ -167,6 +169,8 @@ data class Config(
         val timings: Boolean = false,
         val timingsSimReportInterval: Int = 500,
         val timingsWorldReportInterval: Int = 40,
+        
+        val reportLambdas: Boolean = false,
     ) {
         companion object : InstanceCreator<DebugConfig> {
             override fun createInstance(type: Type?): DebugConfig? {

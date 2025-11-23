@@ -400,7 +400,10 @@ class A2SManifoldBuffer(maxContactNum: Int) : A2SManifoldCollection {
         arr[baseIdx + A2S_T2_LAMBDA_OFFSET] = value
     }
 
-    inline fun forEach(manifoldIdx: Int, block: (contactIdx: Int, pointAX: Float, pointAY: Float, pointAZ: Float, normX: Float, normY: Float, normZ: Float, t1X: Float, t1Y: Float, t1Z: Float, t2X: Float, t2Y: Float, t2Z: Float, depth: Float, normalLambda: Float, t1Lambda: Float, t2Lambda: Float) -> Unit) {
+    inline fun forEach(
+        manifoldIdx: Int,
+        block: (contactIdx: Int, pointAX: Float, pointAY: Float, pointAZ: Float, normX: Float, normY: Float, normZ: Float, t1X: Float, t1Y: Float, t1Z: Float, t2X: Float, t2Y: Float, t2Z: Float, depth: Float, normalLambda: Float, t1Lambda: Float, t2Lambda: Float) -> Unit,
+    ) {
         val numContacts = numContacts(manifoldIdx)
         var i = 0
         while (i < numContacts) {
@@ -428,7 +431,25 @@ class A2SManifoldBuffer(maxContactNum: Int) : A2SManifoldCollection {
             val t1Lambda = arr[baseIdx + A2S_T1_LAMBDA_OFFSET]
             val t2Lambda = arr[baseIdx + A2S_T2_LAMBDA_OFFSET]
 
-            block(i, pointAX, pointAY, pointAZ, normX, normY, normZ, t1X, t1Y, t1Z, t2X, t2Y, t2Z, depth, normalLambda, t1Lambda, t2Lambda)
+            block(
+                i,
+                pointAX,
+                pointAY,
+                pointAZ,
+                normX,
+                normY,
+                normZ,
+                t1X,
+                t1Y,
+                t1Z,
+                t2X,
+                t2Y,
+                t2Z,
+                depth,
+                normalLambda,
+                t1Lambda,
+                t2Lambda
+            )
 
             i++
         }
