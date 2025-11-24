@@ -450,20 +450,111 @@ class LocalContactSolver(val parent: LocalConstraintSolver) {
         }
 
         latch.await()
+
+        warm()
+    }
+   
+    private fun warm() {
+        warm(a2aNormalManifoldData, a2aNumManifolds)
+        warm(a2sNormalManifoldData, a2sNumManifolds)
+
+        warm(a2aT1ManifoldData, a2aNumManifolds)
+        warm(a2sT1ManifoldData, a2sNumManifolds)
+
+        warm(a2aT2ManifoldData, a2aNumManifolds)
+        warm(a2sT2ManifoldData, a2sNumManifolds)
+    }
+
+    private fun warm(
+        manifolds: A2AManifoldData,
+        num: Int,
+    ) {
+        val bodyData = parent.flatBodyData
+        manifolds.forEachConstraint(
+            numManifolds = num,
+        ) { b1Idx, b2Idx, im1, im2, rawIdx ->
+            val t = manifolds[rawIdx + A2A_LAMBDA_OFFSET]
+
+            val j10 = manifolds[rawIdx + 0]
+            val j11 = manifolds[rawIdx + 1]
+            val j12 = manifolds[rawIdx + 2]
+
+            val j20 = -j10
+            val j21 = -j11
+            val j22 = -j12
+
+            val ej10 = j10 * im1
+            val ej11 = j11 * im1
+            val ej12 = j12 * im1
+            val ej13 = manifolds[rawIdx + 9]
+            val ej14 = manifolds[rawIdx + 10]
+            val ej15 = manifolds[rawIdx + 11]
+
+            val ej20 = j20 * im2
+            val ej21 = j21 * im2
+            val ej22 = j22 * im2
+            val ej23 = manifolds[rawIdx + 12]
+            val ej24 = manifolds[rawIdx + 13]
+            val ej25 = manifolds[rawIdx + 14]
+
+            bodyData[b1Idx * 6 + 0] += ej10 * t
+            bodyData[b1Idx * 6 + 1] += ej11 * t
+            bodyData[b1Idx * 6 + 2] += ej12 * t
+            bodyData[b1Idx * 6 + 3] += ej13 * t
+            bodyData[b1Idx * 6 + 4] += ej14 * t
+            bodyData[b1Idx * 6 + 5] += ej15 * t
+
+            bodyData[b2Idx * 6 + 0] += ej20 * t
+            bodyData[b2Idx * 6 + 1] += ej21 * t
+            bodyData[b2Idx * 6 + 2] += ej22 * t
+            bodyData[b2Idx * 6 + 3] += ej23 * t
+            bodyData[b2Idx * 6 + 4] += ej24 * t
+            bodyData[b2Idx * 6 + 5] += ej25 * t
+        }
+    }
+
+    private fun warm(
+        manifolds: A2SManifoldData,
+        num: Int,
+    ) {
+        val bodyData = parent.flatBodyData
+        manifolds.forEachConstraint(
+            numManifolds = num,
+        ) { b1Idx, im1, rawIdx ->
+            val t = manifolds[rawIdx + A2S_LAMBDA_OFFSET]
+
+            val j10 = manifolds[rawIdx + 0]
+            val j11 = manifolds[rawIdx + 1]
+            val j12 = manifolds[rawIdx + 2]
+
+            val ej10 = j10 * im1
+            val ej11 = j11 * im1
+            val ej12 = j12 * im1
+            val ej13 = manifolds[rawIdx + 6]
+            val ej14 = manifolds[rawIdx + 7]
+            val ej15 = manifolds[rawIdx + 8]
+
+            bodyData[b1Idx * 6 + 0] += ej10 * t
+            bodyData[b1Idx * 6 + 1] += ej11 * t
+            bodyData[b1Idx * 6 + 2] += ej12 * t
+            bodyData[b1Idx * 6 + 3] += ej13 * t
+            bodyData[b1Idx * 6 + 4] += ej14 * t
+            bodyData[b1Idx * 6 + 5] += ej15 * t
+        }
     }
 
     private inline fun solve(
-        blocks: A2AManifoldData,
+        manifolds: A2AManifoldData,
         num: Int,
 
         lambdaTransform: (l: Float, lIdx: Int) -> Float,
     ) {
         val bodyData = parent.flatBodyData
-        blocks.forEachConstraint(
+        manifolds.forEachConstraint(
             numManifolds = num,
         ) { b1Idx, b2Idx, im1, im2, rawIdx ->
             val lambdaIdx = rawIdx + A2A_LAMBDA_OFFSET
-            val t = blocks[lambdaIdx]
+            val t = manifolds[lambdaIdx]
 
             val v10 = bodyData[b1Idx * 6 + 0]
             val v11 = bodyData[b1Idx * 6 + 1]
@@ -479,36 +570,36 @@ class LocalContactSolver(val parent: LocalConstraintSolver) {
             val v24 = bodyData[b2Idx * 6 + 4]
             val v25 = bodyData[b2Idx * 6 + 5]
 
-            val bias = blocks[rawIdx + A2A_BIAS_OFFSET]
-            val iden = blocks[rawIdx + A2A_IDEN_OFFSET]
+            val bias = manifolds[rawIdx + A2A_BIAS_OFFSET]
+            val iden = manifolds[rawIdx + A2A_IDEN_OFFSET]
 
-            val j10 = blocks[rawIdx + 0]
-            val j11 = blocks[rawIdx + 1]
-            val j12 = blocks[rawIdx + 2]
-            val j13 = blocks[rawIdx + 3]
-            val j14 = blocks[rawIdx + 4]
-            val j15 = blocks[rawIdx + 5]
+            val j10 = manifolds[rawIdx + 0]
+            val j11 = manifolds[rawIdx + 1]
+            val j12 = manifolds[rawIdx + 2]
+            val j13 = manifolds[rawIdx + 3]
+            val j14 = manifolds[rawIdx + 4]
+            val j15 = manifolds[rawIdx + 5]
 
             val j20 = -j10
             val j21 = -j11
             val j22 = -j12
-            val j23 = blocks[rawIdx + 6]
-            val j24 = blocks[rawIdx + 7]
-            val j25 = blocks[rawIdx + 8]
+            val j23 = manifolds[rawIdx + 6]
+            val j24 = manifolds[rawIdx + 7]
+            val j25 = manifolds[rawIdx + 8]
 
             val ej10 = j10 * im1
             val ej11 = j11 * im1
             val ej12 = j12 * im1
-            val ej13 = blocks[rawIdx + 9]
-            val ej14 = blocks[rawIdx + 10]
-            val ej15 = blocks[rawIdx + 11]
+            val ej13 = manifolds[rawIdx + 9]
+            val ej14 = manifolds[rawIdx + 10]
+            val ej15 = manifolds[rawIdx + 11]
 
             val ej20 = j20 * im2
             val ej21 = j21 * im2
             val ej22 = j22 * im2
-            val ej23 = blocks[rawIdx + 12]
-            val ej24 = blocks[rawIdx + 13]
-            val ej25 = blocks[rawIdx + 14]
+            val ej23 = manifolds[rawIdx + 12]
+            val ej24 = manifolds[rawIdx + 13]
+            val ej25 = manifolds[rawIdx + 14]
 
             val l = lambdaTransform(
                 t - iden * fma(
@@ -551,7 +642,7 @@ class LocalContactSolver(val parent: LocalConstraintSolver) {
                 lambdaIdx
             )
 
-            blocks[lambdaIdx] = l
+            manifolds[lambdaIdx] = l
 
             bodyData[b1Idx * 6 + 0] += ej10 * (l - t)
             bodyData[b1Idx * 6 + 1] += ej11 * (l - t)
