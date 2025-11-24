@@ -5,10 +5,7 @@ import com.ixume.udar.physics.constraint.LocalConstraintSolver
 import java.lang.Math.fma
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
-import kotlin.math.abs
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.sqrt
+import kotlin.math.*
 
 class LocalContactSolver(val parent: LocalConstraintSolver) {
     val world = parent.physicsWorld
@@ -17,6 +14,8 @@ class LocalContactSolver(val parent: LocalConstraintSolver) {
     private var friction = Udar.CONFIG.collision.friction.toFloat()
     private var bias = Udar.CONFIG.collision.bias.toFloat()
     private var slop = Udar.CONFIG.collision.passiveSlop.toFloat()
+    private var carryover = Udar.CONFIG.collision.lambdaCarryover
+    private var relaxation = Udar.CONFIG.collision.relaxation
 
     private var a2aNumManifolds = 0
     private var a2aNormalManifoldData = A2AManifoldData(0)
@@ -30,16 +29,26 @@ class LocalContactSolver(val parent: LocalConstraintSolver) {
 
     private val setupExecutor = Executors.newFixedThreadPool(3)
 
+    var normalDeltaLambdas = FloatArray(Udar.CONFIG.collision.normalIterations)
+
     fun setup() {
         dt = Udar.CONFIG.timeStep.toFloat()
         friction = Udar.CONFIG.collision.friction.toFloat()
         bias = Udar.CONFIG.collision.bias.toFloat()
         slop = Udar.CONFIG.collision.passiveSlop.toFloat()
+        carryover = Udar.CONFIG.collision.lambdaCarryover
+        relaxation = Udar.CONFIG.collision.relaxation
 
         val a2aManifolds = world.manifoldBuffer
         val a2sManifolds = world.envManifoldBuffer
         a2aNumManifolds = a2aManifolds.size()
         a2sNumManifolds = a2sManifolds.size()
+
+        if (normalDeltaLambdas.size != Udar.CONFIG.collision.normalIterations) {
+            normalDeltaLambdas = FloatArray(Udar.CONFIG.collision.normalIterations)
+        } else {
+            normalDeltaLambdas.fill(0f)
+        }
 
         if (a2aNormalManifoldData.sizeFor(
                 a2aNumManifolds,
@@ -451,9 +460,9 @@ class LocalContactSolver(val parent: LocalConstraintSolver) {
 
         latch.await()
 
-        warm()
+        if (carryover > 0f) warm()
     }
-   
+
     private fun warm() {
         warm(a2aNormalManifoldData, a2aNumManifolds)
         warm(a2sNormalManifoldData, a2sNumManifolds)
@@ -497,19 +506,19 @@ class LocalContactSolver(val parent: LocalConstraintSolver) {
             val ej24 = manifolds[rawIdx + 13]
             val ej25 = manifolds[rawIdx + 14]
 
-            bodyData[b1Idx * 6 + 0] += ej10 * t
-            bodyData[b1Idx * 6 + 1] += ej11 * t
-            bodyData[b1Idx * 6 + 2] += ej12 * t
-            bodyData[b1Idx * 6 + 3] += ej13 * t
-            bodyData[b1Idx * 6 + 4] += ej14 * t
-            bodyData[b1Idx * 6 + 5] += ej15 * t
-
-            bodyData[b2Idx * 6 + 0] += ej20 * t
-            bodyData[b2Idx * 6 + 1] += ej21 * t
-            bodyData[b2Idx * 6 + 2] += ej22 * t
-            bodyData[b2Idx * 6 + 3] += ej23 * t
-            bodyData[b2Idx * 6 + 4] += ej24 * t
-            bodyData[b2Idx * 6 + 5] += ej25 * t
+            bodyData[b1Idx * 6 + 0] += ej10 * t * relaxation
+            bodyData[b1Idx * 6 + 1] += ej11 * t * relaxation
+            bodyData[b1Idx * 6 + 2] += ej12 * t * relaxation
+            bodyData[b1Idx * 6 + 3] += ej13 * t * relaxation
+            bodyData[b1Idx * 6 + 4] += ej14 * t * relaxation
+            bodyData[b1Idx * 6 + 5] += ej15 * t * relaxation
+            
+            bodyData[b2Idx * 6 + 0] += ej20 * t * relaxation
+            bodyData[b2Idx * 6 + 1] += ej21 * t * relaxation
+            bodyData[b2Idx * 6 + 2] += ej22 * t * relaxation
+            bodyData[b2Idx * 6 + 3] += ej23 * t * relaxation
+            bodyData[b2Idx * 6 + 4] += ej24 * t * relaxation
+            bodyData[b2Idx * 6 + 5] += ej25 * t * relaxation
         }
     }
 
@@ -534,12 +543,12 @@ class LocalContactSolver(val parent: LocalConstraintSolver) {
             val ej14 = manifolds[rawIdx + 7]
             val ej15 = manifolds[rawIdx + 8]
 
-            bodyData[b1Idx * 6 + 0] += ej10 * t
-            bodyData[b1Idx * 6 + 1] += ej11 * t
-            bodyData[b1Idx * 6 + 2] += ej12 * t
-            bodyData[b1Idx * 6 + 3] += ej13 * t
-            bodyData[b1Idx * 6 + 4] += ej14 * t
-            bodyData[b1Idx * 6 + 5] += ej15 * t
+            bodyData[b1Idx * 6 + 0] += ej10 * t * relaxation
+            bodyData[b1Idx * 6 + 1] += ej11 * t * relaxation
+            bodyData[b1Idx * 6 + 2] += ej12 * t * relaxation
+            bodyData[b1Idx * 6 + 3] += ej13 * t * relaxation
+            bodyData[b1Idx * 6 + 4] += ej14 * t * relaxation
+            bodyData[b1Idx * 6 + 5] += ej15 * t * relaxation
         }
     }
 
@@ -644,19 +653,19 @@ class LocalContactSolver(val parent: LocalConstraintSolver) {
 
             manifolds[lambdaIdx] = l
 
-            bodyData[b1Idx * 6 + 0] += ej10 * (l - t)
-            bodyData[b1Idx * 6 + 1] += ej11 * (l - t)
-            bodyData[b1Idx * 6 + 2] += ej12 * (l - t)
-            bodyData[b1Idx * 6 + 3] += ej13 * (l - t)
-            bodyData[b1Idx * 6 + 4] += ej14 * (l - t)
-            bodyData[b1Idx * 6 + 5] += ej15 * (l - t)
-
-            bodyData[b2Idx * 6 + 0] += ej20 * (l - t)
-            bodyData[b2Idx * 6 + 1] += ej21 * (l - t)
-            bodyData[b2Idx * 6 + 2] += ej22 * (l - t)
-            bodyData[b2Idx * 6 + 3] += ej23 * (l - t)
-            bodyData[b2Idx * 6 + 4] += ej24 * (l - t)
-            bodyData[b2Idx * 6 + 5] += ej25 * (l - t)
+            bodyData[b1Idx * 6 + 0] += ej10 * (l - t) * relaxation
+            bodyData[b1Idx * 6 + 1] += ej11 * (l - t) * relaxation
+            bodyData[b1Idx * 6 + 2] += ej12 * (l - t) * relaxation
+            bodyData[b1Idx * 6 + 3] += ej13 * (l - t) * relaxation
+            bodyData[b1Idx * 6 + 4] += ej14 * (l - t) * relaxation
+            bodyData[b1Idx * 6 + 5] += ej15 * (l - t) * relaxation
+            
+            bodyData[b2Idx * 6 + 0] += ej20 * (l - t) * relaxation
+            bodyData[b2Idx * 6 + 1] += ej21 * (l - t) * relaxation
+            bodyData[b2Idx * 6 + 2] += ej22 * (l - t) * relaxation
+            bodyData[b2Idx * 6 + 3] += ej23 * (l - t) * relaxation
+            bodyData[b2Idx * 6 + 4] += ej24 * (l - t) * relaxation
+            bodyData[b2Idx * 6 + 5] += ej25 * (l - t) * relaxation
         }
     }
 
@@ -722,23 +731,25 @@ class LocalContactSolver(val parent: LocalConstraintSolver) {
 
             blocks[lambdaIdx] = l
 
-            bodyData[b1Idx * 6 + 0] += ej10 * (l - t)
-            bodyData[b1Idx * 6 + 1] += ej11 * (l - t)
-            bodyData[b1Idx * 6 + 2] += ej12 * (l - t)
-            bodyData[b1Idx * 6 + 3] += ej13 * (l - t)
-            bodyData[b1Idx * 6 + 4] += ej14 * (l - t)
-            bodyData[b1Idx * 6 + 5] += ej15 * (l - t)
+            bodyData[b1Idx * 6 + 0] += ej10 * (l - t) * relaxation
+            bodyData[b1Idx * 6 + 1] += ej11 * (l - t) * relaxation
+            bodyData[b1Idx * 6 + 2] += ej12 * (l - t) * relaxation
+            bodyData[b1Idx * 6 + 3] += ej13 * (l - t) * relaxation
+            bodyData[b1Idx * 6 + 4] += ej14 * (l - t) * relaxation
+            bodyData[b1Idx * 6 + 5] += ej15 * (l - t) * relaxation
         }
     }
 
-    fun solveNormals() {
+    fun solveNormals(iteration: Int) {
         solve(a2aNormalManifoldData, a2aNumManifolds) { l, lIdx ->
             val r = max(0f, l)
+            normalDeltaLambdas[iteration - 1] += abs(r - a2aNormalManifoldData[lIdx])
             r
         }
 
         solve(a2sNormalManifoldData, a2sNumManifolds) { l, lIdx ->
             val r = max(0f, l)
+            normalDeltaLambdas[iteration - 1] += abs(r - a2sNormalManifoldData[lIdx])
             r
         }
     }
@@ -778,8 +789,7 @@ class LocalContactSolver(val parent: LocalConstraintSolver) {
     }
 
     fun heatUp() {
-        val carryover = Udar.CONFIG.collision.lambdaCarryover
-
+        if (carryover <= 0f) return
         val a2aNumManifolds = world.manifoldBuffer.size()
         val a2aManifolds = world.manifoldBuffer
         val a2aPrevData = world.prevContactData
@@ -882,6 +892,29 @@ class LocalContactSolver(val parent: LocalConstraintSolver) {
                 )
 
                 j++
+            }
+        }
+    }
+
+    fun reportLambdas() {
+        val iterations = Udar.CONFIG.collision.normalIterations
+        if (iterations <= 0) return
+        val n =
+            world.manifoldBuffer.numContacts + world.envManifoldBuffer.numContacts.get()
+        if (n == 0) return
+        for (i in 0..<normalDeltaLambdas.size) {
+            normalDeltaLambdas[i] /= n
+        }
+
+        val first = normalDeltaLambdas[0]
+        println("Δlambdas:")
+        println("  %4d: %8.2e ".format(1, first) + "*".repeat(10))
+        for (i in 2..normalDeltaLambdas.size) {
+            val v = normalDeltaLambdas[i - 1]
+            if (first == 0f) {
+                println("  %4d: %8.2e ".format(i, v))
+            } else {
+                println("  %4d: %8.2e ".format(i, v) + "*".repeat(abs(v / first * 10.0).roundToInt()))
             }
         }
     }

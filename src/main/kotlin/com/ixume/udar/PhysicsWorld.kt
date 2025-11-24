@@ -149,7 +149,7 @@ class PhysicsWorld(
         val tickStartTime = System.nanoTime()
 
         time++
-        repeat((0.05 / Udar.CONFIG.timeStep).roundToInt()) {
+        repeat((TICK_DURATION / Udar.CONFIG.timeStep).roundToInt()) {
             var doTick = true
             if (frozen.get()) {
                 if (!untilCollision.get() && steps.decrementAndGet() < 0) doTick = false
@@ -470,3 +470,4 @@ class PhysicsWorld(
 
 private const val SUBTICK_DUR_ROLLOVER = 0.5
 private const val MAX_TIME_PER_TICK = 48_000_000
+private const val TICK_DURATION = 0.05

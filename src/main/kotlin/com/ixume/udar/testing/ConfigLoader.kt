@@ -104,6 +104,7 @@ data class Config(
         val frictionIterations: Int = 3,
         val sameContactThreshold: Double = 0.5,
         val stay: Int = 5,
+        val relaxation: Float = 1f,
     ) {
         companion object : InstanceCreator<CollisionConfig> {
             override fun createInstance(type: Type?): CollisionConfig? {
@@ -152,6 +153,8 @@ data class Config(
         val timings: Boolean = false,
         val timingsSimReportInterval: Int = 500,
         val timingsWorldReportInterval: Int = 40,
+        
+        val reportLambdas: Boolean = false,
     ) {
         companion object : InstanceCreator<DebugConfig> {
             override fun createInstance(type: Type?): DebugConfig? {

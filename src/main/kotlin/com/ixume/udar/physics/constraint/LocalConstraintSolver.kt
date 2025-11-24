@@ -12,7 +12,7 @@ import kotlin.math.max
 class LocalConstraintSolver(
     val physicsWorld: PhysicsWorld,
 ) {
-    private val contactSolver = LocalContactSolver(this)
+    val contactSolver = LocalContactSolver(this)
     private val sphericalJointSolver = LocalSphericalJointSolver(this)
     private val angularConstraintSolver = LocalAngularConstraintSolver(this)
     private val _vec3 = Vector3f()
@@ -54,10 +54,10 @@ class LocalConstraintSolver(
     }
 
 
-    fun solve() {
+    fun solve(iteration: Int) {
         angularConstraintSolver.solve()
         sphericalJointSolver.solve()
-        contactSolver.solveNormals()
+        contactSolver.solveNormals(iteration)
     }
 
     fun solvePost() {
