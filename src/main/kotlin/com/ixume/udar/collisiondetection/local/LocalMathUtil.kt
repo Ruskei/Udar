@@ -102,11 +102,20 @@ class LocalMathUtil(
                         t1Lambda = world.prevEnvContactData.t1Lambda(rawManifoldIdx, closest)
                         t2Lambda = world.prevEnvContactData.t2Lambda(rawManifoldIdx, closest)
                     }
+                    
+//                    if (rawManifoldIdx == -1 || closest == -1) println("cold a2s!")
 
 //                    println("  * CONTACT (POS)")
 //                    println("  | p: (${v.x} ${v.y} ${v.z})")
 //                    println("  | p: $p")
 //                    println("  | n: ${axis.vec}")
+
+//                    if (axis == LocalMesher.AxisD.Y) {
+//                        println("col:")
+//                        println("  p: ${v.x} ${v.y} ${v.z}")
+//                        println("  n: ${axis.vec.x} ${axis.vec.y} ${axis.vec.z}")
+//                        println("  d: $level - $p = ${level - p}")
+//                    }
 
                     any = true
                     out.loadInto(
@@ -150,9 +159,8 @@ class LocalMathUtil(
                         rawManifoldIdx,
                         v.x.toFloat(),
                         v.y.toFloat(),
-                        v.z.toFloat()
+                        v.z.toFloat(),
                     )
-
 
                     var normalLambda = 0f
                     var t1Lambda = 0f
@@ -468,12 +476,17 @@ class LocalMathUtil(
             )
 
             val rawManifoldIdx = activeBody.physicsWorld.prevEnvContactMap.get(manifoldID)
-
-            check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx, 1) == 1)
+            if (rawManifoldIdx != -1) {
+                check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx) == 1)
+            }
 
 //            println("  * COLLIDED")
 //            println("  | edgeIdx: $closestEdgeIdx")
 //            println("  | p: (${closestA.x} ${closestA.y} ${closestA.z})")
+            
+            val nl = activeBody.physicsWorld.prevEnvContactData.normalLambda(rawManifoldIdx, 0)
+            val t1l = activeBody.physicsWorld.prevEnvContactData.t1Lambda(rawManifoldIdx, 0)
+            val t2l = activeBody.physicsWorld.prevEnvContactData.t2Lambda(rawManifoldIdx, 0)
 
             out.addEdgeManifold(
                 activeBody = activeBody,
@@ -490,9 +503,9 @@ class LocalMathUtil(
                 contactID = manifoldID,
                 math = this,
 
-                normalLambda = activeBody.physicsWorld.prevEnvContactData.normalLambda(rawManifoldIdx, 0),
-                t1Lambda = activeBody.physicsWorld.prevEnvContactData.t1Lambda(rawManifoldIdx, 0),
-                t2Lambda = activeBody.physicsWorld.prevEnvContactData.t2Lambda(rawManifoldIdx, 0),
+                normalLambda = nl,
+                t1Lambda = t1l,
+                t2Lambda = t2l,
             )
 
             return
@@ -527,30 +540,33 @@ class LocalMathUtil(
             val es1 = edgeStart.dot(minBodyAxis)
             val es2 = edgeEnd.dot(minBodyAxis)
 
+            val manifoldID = ManifoldIDGenerator.constructA2SEdgeManifoldID(
+                activeBody = activeBody,
+                edgeAxis = edgeAxis,
+                meshEdgeIdx = meshEdgeIdx,
+                meshEdgePointIdx = meshEdgePointIdx,
+                mesh = mesh,
+                envContactUtil = envContactUtil,
+            )
+
+            val rawManifoldIdx = activeBody.physicsWorld.prevEnvContactMap.get(manifoldID)
+            
+            val nl = activeBody.physicsWorld.prevEnvContactData.normalLambda(rawManifoldIdx, 0)
+            val t1l = activeBody.physicsWorld.prevEnvContactData.t1Lambda(rawManifoldIdx, 0)
+            val t2l = activeBody.physicsWorld.prevEnvContactData.t2Lambda(rawManifoldIdx, 0)
+
             if (es1 < es2) {
                 // edgeStart is min, edgeEnd is max
                 if (minBodyInDirOfAxis) {
                     check(abs(norm.length() - 1.0) < 1e-5)
 
-                    val manifoldID = ManifoldIDGenerator.constructA2SEdgeManifoldID(
-                        activeBody = activeBody,
-                        edgeAxis = edgeAxis,
-                        meshEdgeIdx = meshEdgeIdx,
-                        meshEdgePointIdx = meshEdgePointIdx,
-                        mesh = mesh,
-                        envContactUtil = envContactUtil,
-                    )
-
-                    val rawManifoldIdx = activeBody.physicsWorld.prevEnvContactMap.get(manifoldID)
-
                     val pointAX = (edgeEnd.x - minBodyAxis.x * minBodyOverlap).toFloat()
                     val pointAY = (edgeEnd.y - minBodyAxis.y * minBodyOverlap).toFloat()
                     val pointAZ = (edgeEnd.z - minBodyAxis.z * minBodyOverlap).toFloat()
 
-                    check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx, 1) == 1)
-
-//                    println("  * COLLIDED")
-//                    println("  | p: ($pointAX $pointAY $pointAZ)")
+                    if (rawManifoldIdx != -1) {
+                        check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx) == 1)
+                    }
 
                     out.addEdgeManifold(
                         activeBody = activeBody,
@@ -567,33 +583,22 @@ class LocalMathUtil(
                         contactID = manifoldID,
                         math = this,
 
-                        normalLambda = activeBody.physicsWorld.prevEnvContactData.normalLambda(rawManifoldIdx, 0),
-                        t1Lambda = activeBody.physicsWorld.prevEnvContactData.t1Lambda(rawManifoldIdx, 0),
-                        t2Lambda = activeBody.physicsWorld.prevEnvContactData.t2Lambda(rawManifoldIdx, 0),
+                        normalLambda = nl,
+                        t1Lambda = t1l,
+                        t2Lambda = t2l,
                     )
 
                     return
                 } else {
                     check(abs(norm.length() - 1.0) < 1e-5)
-                    val manifoldID = ManifoldIDGenerator.constructA2SEdgeManifoldID(
-                        activeBody = activeBody,
-                        edgeAxis = edgeAxis,
-                        meshEdgeIdx = meshEdgeIdx,
-                        meshEdgePointIdx = meshEdgePointIdx,
-                        mesh = mesh,
-                        envContactUtil = envContactUtil,
-                    )
-
-                    val rawManifoldIdx = activeBody.physicsWorld.prevEnvContactMap.get(manifoldID)
 
                     val pointAX = (edgeStart.x + minBodyAxis.x * minBodyOverlap).toFloat()
                     val pointAY = (edgeStart.y + minBodyAxis.y * minBodyOverlap).toFloat()
                     val pointAZ = (edgeStart.z + minBodyAxis.z * minBodyOverlap).toFloat()
 
-                    check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx, 1) == 1)
-
-//                    println("  * COLLIDED")
-//                    println("  | p: ($pointAX $pointAY $pointAZ)")
+                    if (rawManifoldIdx != -1) {
+                        check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx) == 1)
+                    }
 
                     out.addEdgeManifold(
                         activeBody = activeBody,
@@ -610,9 +615,9 @@ class LocalMathUtil(
                         contactID = manifoldID,
                         math = this,
 
-                        normalLambda = activeBody.physicsWorld.prevEnvContactData.normalLambda(rawManifoldIdx, 0),
-                        t1Lambda = activeBody.physicsWorld.prevEnvContactData.t1Lambda(rawManifoldIdx, 0),
-                        t2Lambda = activeBody.physicsWorld.prevEnvContactData.t2Lambda(rawManifoldIdx, 0),
+                        normalLambda = nl,
+                        t1Lambda = t1l,
+                        t2Lambda = t2l,
                     )
                 }
 
@@ -621,24 +626,14 @@ class LocalMathUtil(
                 // edgeStart is max, edgeEnd is min
                 if (minBodyInDirOfAxis) {
                     check(abs(norm.length() - 1.0) < 1e-5)
-                    val manifoldID = ManifoldIDGenerator.constructA2SEdgeManifoldID(
-                        activeBody = activeBody,
-                        edgeAxis = edgeAxis,
-                        meshEdgeIdx = meshEdgeIdx,
-                        meshEdgePointIdx = meshEdgePointIdx,
-                        mesh = mesh,
-                        envContactUtil = envContactUtil,
-                    )
-                    val rawManifoldIdx = activeBody.physicsWorld.prevEnvContactMap.get(manifoldID)
-
+                    
                     val pointAX = (edgeStart.x - minBodyAxis.x * minBodyOverlap).toFloat()
                     val pointAY = (edgeStart.y - minBodyAxis.y * minBodyOverlap).toFloat()
                     val pointAZ = (edgeStart.z - minBodyAxis.z * minBodyOverlap).toFloat()
 
-                    check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx, 1) == 1)
-
-//                    println("  * COLLIDED")
-//                    println("  | p: ($pointAX $pointAY $pointAZ)")
+                    if (rawManifoldIdx != -1) {
+                        check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx) == 1)
+                    }
 
                     out.addEdgeManifold(
                         activeBody = activeBody,
@@ -655,33 +650,22 @@ class LocalMathUtil(
                         contactID = manifoldID,
                         math = this,
 
-                        normalLambda = activeBody.physicsWorld.prevEnvContactData.normalLambda(rawManifoldIdx, 0),
-                        t1Lambda = activeBody.physicsWorld.prevEnvContactData.t1Lambda(rawManifoldIdx, 0),
-                        t2Lambda = activeBody.physicsWorld.prevEnvContactData.t2Lambda(rawManifoldIdx, 0),
+                        normalLambda = nl,
+                        t1Lambda = t1l,
+                        t2Lambda = t2l,
                     )
 
                     return
                 } else {
                     check(abs(norm.length() - 1.0) < 1e-5)
-                    val manifoldID = ManifoldIDGenerator.constructA2SEdgeManifoldID(
-                        activeBody = activeBody,
-                        edgeAxis = edgeAxis,
-                        meshEdgeIdx = meshEdgeIdx,
-                        meshEdgePointIdx = meshEdgePointIdx,
-                        mesh = mesh,
-                        envContactUtil = envContactUtil,
-                    )
-
-                    val rawManifoldIdx = activeBody.physicsWorld.prevEnvContactMap.get(manifoldID)
 
                     val pointAX = (edgeEnd.x + minBodyAxis.x * minBodyOverlap).toFloat()
                     val pointAY = (edgeEnd.y + minBodyAxis.y * minBodyOverlap).toFloat()
                     val pointAZ = (edgeEnd.z + minBodyAxis.z * minBodyOverlap).toFloat()
 
-                    check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx, 1) == 1)
-
-//                    println("  * COLLIDED")
-//                    println("  | p: ($pointAX $pointAY $pointAZ)")
+                    if (rawManifoldIdx != -1) {
+                        check(activeBody.physicsWorld.prevEnvContactData.numContacts(rawManifoldIdx) == 1)
+                    }
 
                     out.addEdgeManifold(
                         activeBody = activeBody,
@@ -698,9 +682,9 @@ class LocalMathUtil(
                         contactID = manifoldID,
                         math = this,
 
-                        normalLambda = activeBody.physicsWorld.prevEnvContactData.normalLambda(rawManifoldIdx, 0),
-                        t1Lambda = activeBody.physicsWorld.prevEnvContactData.t1Lambda(rawManifoldIdx, 0),
-                        t2Lambda = activeBody.physicsWorld.prevEnvContactData.t2Lambda(rawManifoldIdx, 0),
+                        normalLambda = nl,
+                        t1Lambda = t1l,
+                        t2Lambda = t2l,
                     )
 
                     return

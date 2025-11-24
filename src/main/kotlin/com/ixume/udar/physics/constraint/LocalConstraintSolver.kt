@@ -2,7 +2,7 @@ package com.ixume.udar.physics.constraint
 
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.physics.angular.LocalAngularConstraintSolver
-import com.ixume.udar.physics.contact.LocalContactSolver
+import com.ixume.udar.physics.contact.v2.LocalContactSolver
 import com.ixume.udar.physics.sphericaljoint.LocalSphericalJointSolver
 import org.joml.*
 import java.lang.Math.fma
@@ -57,21 +57,15 @@ class LocalConstraintSolver(
     fun solve() {
         angularConstraintSolver.solve()
         sphericalJointSolver.solve()
-        contactSolver.solveNormal()
+        contactSolver.solveNormals()
     }
 
     fun solvePost() {
-        contactSolver.solveFriction()
+        contactSolver.solveFrictions()
         sphericalJointSolver.solveFriction()
     }
 
     fun write() {
-        physicsWorld.prevContactMap.clear()
-        physicsWorld.prevContactData.clear()
-
-        physicsWorld.prevEnvContactMap.clear()
-        physicsWorld.prevEnvContactData.clear()
-
         var i = 0
         val n = bodyCount * BODY_DATA_FLOATS
         while (i < n) {
@@ -85,7 +79,7 @@ class LocalConstraintSolver(
             i += BODY_DATA_FLOATS
         }
 
-        contactSolver.write()
+        contactSolver.heatUp()
     }
 
 }

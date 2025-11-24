@@ -57,12 +57,12 @@ class PhysicsWorld(
     val manifoldBuffer = A2AManifoldArray(4)
 
     val prevContactMap = Long2IntOpenHashMap()
-    val prevContactData = A2APrevManifoldData()
+    val prevContactData = A2APrevManifoldData(8)
 
     val envManifoldBuffer = A2SManifoldBuffer(8)
 
     val prevEnvContactMap = Long2IntOpenHashMap()
-    val prevEnvContactData = A2SPrevManifoldData()
+    val prevEnvContactData = A2SPrevManifoldData(8)
 
     val sphericalJointConstraints = SphericalJointConstraintManager(this)
     val angularConstraints = AngularConstraintManager(this)
@@ -223,6 +223,9 @@ class PhysicsWorld(
                         }
                     }
                 }
+                
+                prevContactData.tick(prevContactMap)
+                prevEnvContactData.tick(prevEnvContactMap)
 
                 if (untilCollision.get() && (!manifoldBuffer.isEmpty() || !envManifoldBuffer.isEmpty())) {
                     untilCollision.set(false)

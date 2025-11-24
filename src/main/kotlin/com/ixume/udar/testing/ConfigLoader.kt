@@ -103,6 +103,7 @@ data class Config(
         val normalIterations: Int = 6,
         val frictionIterations: Int = 3,
         val sameContactThreshold: Double = 0.5,
+        val stay: Int = 5,
     ) {
         companion object : InstanceCreator<CollisionConfig> {
             override fun createInstance(type: Type?): CollisionConfig? {

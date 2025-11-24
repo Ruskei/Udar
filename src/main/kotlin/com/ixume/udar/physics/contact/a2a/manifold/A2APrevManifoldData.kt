@@ -1,71 +1,137 @@
 package com.ixume.udar.physics.contact.a2a.manifold
 
-import com.ixume.udar.physics.contact.a2a.A2APrevContactDataBuffer
-import it.unimi.dsi.fastutil.floats.FloatArrayList
+import it.unimi.dsi.fastutil.ints.IntArrayList
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap
 import java.lang.Math.fma
+import kotlin.math.max
 
-class A2APrevManifoldData {
-    private val ls = FloatArrayList()
+class A2APrevManifoldData(maxNumContacts: Int) {
+    private val totalManifoldSize = MANIFOLD_DATA_SIZE + maxNumContacts * CONTACT_DATA_SIZE
+    var arr = FloatArray(0)
+    val freeList = IntArrayList()
 
-    fun clear() {
-        ls.clear()
+    fun ensureCapacity(numManifolds: Int) {
+        if (freeList.size < numManifolds) {
+            val c = arr.size
+            val toAdd = max(freeList.size / 2, numManifolds)
+            val newArraySize = arr.size + toAdd * totalManifoldSize
+            arr = arr.copyOf(newArraySize)
+            var i = newArraySize - totalManifoldSize
+            while (i >= c) {
+                free(i)
+                i -= totalManifoldSize
+            }
+        }
+    }
+
+    fun popFree(): Int {
+        return freeList.popInt()
+    }
+
+    fun free(rawManifoldIdx: Int) {
+        freeList.add(rawManifoldIdx)
+        arr[rawManifoldIdx + NUM_CONTACTS_OFFSET] = Float.fromBits(0)
+    }
+
+    fun start(
+        cursor: Int,
+        numContacts: Int,
+        stay: Int,
+        manifoldID: Long,
+    ): Int {
+        arr[cursor + NUM_CONTACTS_OFFSET] = Float.fromBits(numContacts)
+        arr[cursor + STAY_OFFSET] = Float.fromBits(stay)
+        arr[cursor + ID_OFFSET] = Float.fromBits(manifoldID.toInt())
+        arr[cursor + ID_OFFSET + 1] = Float.fromBits((manifoldID ushr 32).toInt())
+        return cursor + MANIFOLD_DATA_SIZE
     }
 
     fun add(
-        numContacts: Int,
-        buf: A2APrevContactDataBuffer,
+        cursor: Int,
+
+        x1: Float,
+        y1: Float,
+        z1: Float,
+
+        x2: Float,
+        y2: Float,
+        z2: Float,
+
+        nl: Float,
+        t1l: Float,
+        t2l: Float,
     ): Int {
-        val idx = ls.size
+        arr[cursor + 0] = x1
+        arr[cursor + 1] = y1
+        arr[cursor + 2] = z1
 
-        ls.add(Float.fromBits(numContacts))
+        arr[cursor + 3] = x2
+        arr[cursor + 4] = y2
+        arr[cursor + 5] = z2
 
+        arr[cursor + 6] = nl
+        arr[cursor + 7] = t1l
+        arr[cursor + 8] = t2l
+
+        return cursor + CONTACT_DATA_SIZE
+    }
+
+    fun tick(map: Long2IntOpenHashMap) {
+        check(arr.size % totalManifoldSize == 0)
         var i = 0
-        while (i < numContacts) {
-            ls.add(buf.ax(i))
-            ls.add(buf.ay(i))
-            ls.add(buf.az(i))
+        while (i < arr.size) {
+            val num = arr[i + NUM_CONTACTS_OFFSET].toRawBits()
+            if (num > 0) {
+                arr[i + STAY_OFFSET] = Float.fromBits(arr[i + STAY_OFFSET].toRawBits() - 1)
+                val s = arr[i + STAY_OFFSET].toRawBits()
+                if (s <= 0) {
+                    val id = manifoldID(i)
+                    free(i)
+                    map.remove(id)
+                }
+            }
 
-            ls.add(buf.bx(i))
-            ls.add(buf.by(i))
-            ls.add(buf.bz(i))
-
-            ls.add(buf.normalLambda(i))
-            ls.add(buf.t1Lambda(i))
-            ls.add(buf.t2Lambda(i))
-
-            i++
+            i += totalManifoldSize
         }
-
-        return idx
     }
 
     fun numContacts(rawManifoldIdx: Int, default: Int): Int {
         if (rawManifoldIdx == -1) return default
-        return ls.getFloat(rawManifoldIdx + NUM_CONTACTS_OFFSET).toRawBits()
+        return arr[rawManifoldIdx + NUM_CONTACTS_OFFSET].toRawBits()
+    }
+
+    fun stay(rawManifoldIdx: Int, value: Int) {
+        arr[rawManifoldIdx + STAY_OFFSET] = Float.fromBits(value)
+    }
+
+    fun manifoldID(rawManifoldIdx: Int): Long {
+        val low = arr[rawManifoldIdx + ID_OFFSET].toRawBits().toLong()
+        val high = arr[rawManifoldIdx + ID_OFFSET + 1].toRawBits().toLong()
+        return (high shl 32) or (low and 0xFFFFFFFFL)
     }
 
     private fun ax(rawManifoldIdx: Int, contactIdx: Int): Float {
-        return ls.getFloat(rawManifoldIdx + CONTACT_DATA_OFFSET + contactIdx * CONTACT_DATA_SIZE + POINT_A_X_OFFSET)
+        return arr[rawManifoldIdx + MANIFOLD_DATA_SIZE + contactIdx * CONTACT_DATA_SIZE + POINT_A_X_OFFSET]
     }
 
     private fun ay(rawManifoldIdx: Int, contactIdx: Int): Float {
-        return ls.getFloat(rawManifoldIdx + CONTACT_DATA_OFFSET + contactIdx * CONTACT_DATA_SIZE + POINT_A_Y_OFFSET)
+        return arr[rawManifoldIdx + MANIFOLD_DATA_SIZE + contactIdx * CONTACT_DATA_SIZE + POINT_A_Y_OFFSET]
     }
 
     private fun az(rawManifoldIdx: Int, contactIdx: Int): Float {
-        return ls.getFloat(rawManifoldIdx + CONTACT_DATA_OFFSET + contactIdx * CONTACT_DATA_SIZE + POINT_A_Z_OFFSET)
+        return arr[rawManifoldIdx + MANIFOLD_DATA_SIZE + contactIdx * CONTACT_DATA_SIZE + POINT_A_Z_OFFSET]
     }
 
     private fun bx(rawManifoldIdx: Int, contactIdx: Int): Float {
-        return ls.getFloat(rawManifoldIdx + CONTACT_DATA_OFFSET + contactIdx * CONTACT_DATA_SIZE + POINT_B_X_OFFSET)
+        return arr[rawManifoldIdx + MANIFOLD_DATA_SIZE + contactIdx * CONTACT_DATA_SIZE + POINT_B_X_OFFSET]
     }
 
     private fun by(rawManifoldIdx: Int, contactIdx: Int): Float {
-        return ls.getFloat(rawManifoldIdx + CONTACT_DATA_OFFSET + contactIdx * CONTACT_DATA_SIZE + POINT_B_Y_OFFSET)
+        return arr[rawManifoldIdx + MANIFOLD_DATA_SIZE + contactIdx * CONTACT_DATA_SIZE + POINT_B_Y_OFFSET]
     }
 
     private fun bz(rawManifoldIdx: Int, contactIdx: Int): Float {
-        return ls.getFloat(rawManifoldIdx + CONTACT_DATA_OFFSET + contactIdx * CONTACT_DATA_SIZE + POINT_B_Z_OFFSET)
+        return arr[rawManifoldIdx + MANIFOLD_DATA_SIZE + contactIdx * CONTACT_DATA_SIZE + POINT_B_Z_OFFSET]
     }
 
     fun normalLambda(rawManifoldIdx: Int, contactIdx: Int): Float {
@@ -73,19 +139,19 @@ class A2APrevManifoldData {
             return 0f
         }
 
-        val idx = rawManifoldIdx + CONTACT_DATA_OFFSET + contactIdx * CONTACT_DATA_SIZE + NORMAL_LAMBDA_OFFSET
-        val l = ls.getFloat(idx)
+        val idx = rawManifoldIdx + MANIFOLD_DATA_SIZE + contactIdx * CONTACT_DATA_SIZE + NORMAL_LAMBDA_OFFSET
+        val l = arr[idx]
         return l
     }
 
     fun t1Lambda(rawManifoldIdx: Int, contactIdx: Int): Float {
         if (rawManifoldIdx == -1) return 0f
-        return ls.getFloat(rawManifoldIdx + CONTACT_DATA_OFFSET + contactIdx * CONTACT_DATA_SIZE + T1_LAMBDA_OFFSET)
+        return arr[rawManifoldIdx + MANIFOLD_DATA_SIZE + contactIdx * CONTACT_DATA_SIZE + T1_LAMBDA_OFFSET]
     }
 
     fun t2Lambda(rawManifoldIdx: Int, contactIdx: Int): Float {
         if (rawManifoldIdx == -1) return 0f
-        return ls.getFloat(rawManifoldIdx + CONTACT_DATA_OFFSET + contactIdx * CONTACT_DATA_SIZE + T2_LAMBDA_OFFSET)
+        return arr[rawManifoldIdx + MANIFOLD_DATA_SIZE + contactIdx * CONTACT_DATA_SIZE + T2_LAMBDA_OFFSET]
     }
 
     /**
@@ -156,8 +222,10 @@ class A2APrevManifoldData {
 }
 
 private const val NUM_CONTACTS_OFFSET = 0
-private const val CONTACT_DATA_OFFSET = 1
+private const val STAY_OFFSET = 1
+private const val ID_OFFSET = 2
 
+private const val MANIFOLD_DATA_SIZE = 4
 private const val CONTACT_DATA_SIZE = 9
 
 private const val POINT_A_X_OFFSET = 0
