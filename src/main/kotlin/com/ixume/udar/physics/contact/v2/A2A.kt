@@ -1,8 +1,8 @@
 package com.ixume.udar.physics.contact.v2
 
 import com.ixume.udar.body.active.ActiveBody
+import com.ixume.udar.physics.constraint.ConstraintMath
 import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldArray
-import java.lang.Math.fma
 import kotlin.math.max
 
 @JvmInline
@@ -60,12 +60,6 @@ internal value class A2AManifoldData(val value: FloatArray) {
 
         manifolds: A2AManifoldArray,
     ) {
-        val im1 = b1.inverseMass.toFloat()
-        val im2 = b2.inverseMass.toFloat()
-
-        val ii1 = b1.inverseInertia
-        val ii2 = b2.inverseInertia
-
         val rax = manifolds.pointAX(manifoldIdx, constraintIdx) - manifolds.bodyAX(manifoldIdx)
         val ray = manifolds.pointAY(manifoldIdx, constraintIdx) - manifolds.bodyAY(manifoldIdx)
         val raz = manifolds.pointAZ(manifoldIdx, constraintIdx) - manifolds.bodyAZ(manifoldIdx)
@@ -74,68 +68,48 @@ internal value class A2AManifoldData(val value: FloatArray) {
         val rby = manifolds.pointBY(manifoldIdx, constraintIdx) - manifolds.bodyBY(manifoldIdx)
         val rbz = manifolds.pointBZ(manifoldIdx, constraintIdx) - manifolds.bodyBZ(manifoldIdx)
 
-        val j10 = nx
-        val j11 = ny
-        val j12 = nz
-        val j13 = fma(ray, nz, -raz * ny)
-        val j14 = fma(raz, nx, -rax * nz)
-        val j15 = fma(rax, ny, -ray * nx)
-
-        val j20 = -nx
-        val j21 = -ny
-        val j22 = -nz
-        val j23 = -fma(rby, nz, -rbz * ny)
-        val j24 = -fma(rbz, nx, -rbx * nz)
-        val j25 = -fma(rbx, ny, -rby * nx)
-
-        val ej10 = nx * im1
-        val ej11 = ny * im1
-        val ej12 = nz * im1
-        val ej13 = fma(ii1.m00.toFloat(), j13, fma(ii1.m10.toFloat(), j14, ii1.m20.toFloat() * j15))
-        val ej14 = fma(ii1.m01.toFloat(), j13, fma(ii1.m11.toFloat(), j14, ii1.m21.toFloat() * j15))
-        val ej15 = fma(ii1.m02.toFloat(), j13, fma(ii1.m12.toFloat(), j14, ii1.m22.toFloat() * j15))
-
-        val ej20 = -nx * im2
-        val ej21 = -ny * im2
-        val ej22 = -nz * im2
-        val ej23 = fma(ii2.m00.toFloat(), j23, fma(ii2.m10.toFloat(), j24, ii2.m20.toFloat() * j25))
-        val ej24 = fma(ii2.m01.toFloat(), j23, fma(ii2.m11.toFloat(), j24, ii2.m21.toFloat() * j25))
-        val ej25 = fma(ii2.m02.toFloat(), j23, fma(ii2.m12.toFloat(), j24, ii2.m22.toFloat() * j25))
-
-        val iden =
-            1f / (
-                    ej10 * j10 + ej11 * j11 + ej12 * j12 +
-                    j13 * ej13 + j14 * ej14 + j15 * ej15 +
-                    ej20 * j20 + ej21 * j21 + ej22 * j22 +
-                    j23 * ej23 + j24 * ej24 + j25 * ej25
-                 )
-
-        set(
-            baseIdx = baseIdx,
-
-            j10 = j10,
-            j11 = j11,
-            j12 = j12,
-            j13 = j13,
-            j14 = j14,
-            j15 = j15,
-
-            j23 = j23,
-            j24 = j24,
-            j25 = j25,
-
-            ej13 = ej13,
-            ej14 = ej14,
-            ej15 = ej15,
-
-            ej23 = ej23,
-            ej24 = ej24,
-            ej25 = ej25,
-
-            lambda = lambda,
-            iden = iden,
+        ConstraintMath.addData(
+            b1 = b1,
+            b2 = b2,
+            r1x = rax,
+            r1y = ray,
+            r1z = raz,
+            r2x = rbx,
+            r2y = rby,
+            r2z = rbz,
+            nx = nx,
+            ny = ny,
+            nz = nz,
             bias = bias,
-        )
+            lambda = lambda,
+        ) { j10, j11, j12, j13, j14, j15, j23, j24, j25, ej13, ej14, ej15, ej23, ej24, ej25, lambda, iden, bias ->
+            set(
+                baseIdx = baseIdx,
+
+                j10 = j10,
+                j11 = j11,
+                j12 = j12,
+                j13 = j13,
+                j14 = j14,
+                j15 = j15,
+
+                j23 = j23,
+                j24 = j24,
+                j25 = j25,
+
+                ej13 = ej13,
+                ej14 = ej14,
+                ej15 = ej15,
+
+                ej23 = ej23,
+                ej24 = ej24,
+                ej25 = ej25,
+
+                lambda = lambda,
+                iden = iden,
+                bias = bias,
+            )
+        }
     }
 
     internal fun set(

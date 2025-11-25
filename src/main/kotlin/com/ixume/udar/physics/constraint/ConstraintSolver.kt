@@ -2,17 +2,19 @@ package com.ixume.udar.physics.constraint
 
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.physics.angular.LocalAngularConstraintSolver
-import com.ixume.udar.physics.contact.v2.LocalContactSolver
+import com.ixume.udar.physics.contact.v2.ContactSolver
+import com.ixume.udar.physics.position.PointConstraint
+import com.ixume.udar.physics.position.PointConstraintSolver
 import com.ixume.udar.physics.sphericaljoint.LocalSphericalJointSolver
 import org.joml.*
-import java.lang.Math.fma
 import java.nio.FloatBuffer
 import kotlin.math.max
 
-class LocalConstraintSolver(
+class ConstraintSolver(
     val physicsWorld: PhysicsWorld,
 ) {
-    val contactSolver = LocalContactSolver(this)
+    val contactSolver = ContactSolver(this)
+    val pointConstraintSolver = PointConstraintSolver(this)
     private val sphericalJointSolver = LocalSphericalJointSolver(this)
     private val angularConstraintSolver = LocalAngularConstraintSolver(this)
     private val _vec3 = Vector3f()
@@ -25,13 +27,16 @@ class LocalConstraintSolver(
 
     private val _quatd = Quaterniond()
 
-    fun setup() {
+    fun setup(
+        pointConstraints: List<PointConstraint>,
+    ) {
         bodyCount = physicsWorld.activeBodies.size()
         buildFlatBodyData()
 
         contactSolver.setup()
         sphericalJointSolver.setup()
         angularConstraintSolver.setup()
+        pointConstraintSolver.setup(pointConstraints)
     }
 
     private fun buildFlatBodyData() {
@@ -57,6 +62,7 @@ class LocalConstraintSolver(
     fun solve(iteration: Int) {
         angularConstraintSolver.solve()
         sphericalJointSolver.solve()
+        pointConstraintSolver.solveNormals()
         contactSolver.solveNormals(iteration)
     }
 
@@ -107,32 +113,6 @@ inline fun Vector3d.from(idx: Int, arr: FloatArray): Vector3d {
 
     return this
 }
-
-
-inline fun Vector3f._mul(mat: Matrix3d): Vector3f {
-    val lx: Float = x
-    val ly: Float = y
-    val lz: Float = z
-    this.x = fma(mat.m00.toFloat(), lx, fma(mat.m10.toFloat(), ly, mat.m20.toFloat() * lz))
-    this.y = fma(mat.m01.toFloat(), lx, fma(mat.m11.toFloat(), ly, mat.m21.toFloat() * lz))
-    this.z = fma(mat.m02.toFloat(), lx, fma(mat.m12.toFloat(), ly, mat.m22.toFloat() * lz))
-
-    return this
-}
-
-inline fun Vector3f._mul(mat: Matrix3f): Vector3f {
-    val lx: Float = x
-    val ly: Float = y
-    val lz: Float = z
-    this.x = fma(mat.m00, lx, fma(mat.m10, ly, mat.m20 * lz))
-    this.y = fma(mat.m01, lx, fma(mat.m11, ly, mat.m21 * lz))
-    this.z = fma(mat.m02, lx, fma(mat.m12, ly, mat.m22 * lz))
-
-    return this
-}
-
-
-private const val DATA_OUTPUT_INTERVAL = 250
 
 const val BODY_DATA_FLOATS = 6
 const val V_OFFSET = 0

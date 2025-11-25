@@ -1,16 +1,15 @@
 package com.ixume.udar.testing.commands
 
-import com.ixume.udar.Udar
 import com.ixume.udar.body.active.BlockEntityCuboid
 import com.ixume.udar.body.active.Cuboid
 import com.ixume.udar.body.active.tag.Tag
+import com.ixume.udar.physics.position.PointConstraint
 import com.ixume.udar.physicsWorld
 import org.bukkit.Material
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 import org.joml.Quaterniond
 import org.joml.Vector3d
-import org.joml.Vector3f
 import kotlin.random.Random
 
 object JointCommand : Command {
@@ -63,14 +62,31 @@ object JointCommand : Command {
 
         val ph = sender.world.physicsWorld ?: return false
 
-        ph.registerBody(BlockEntityCuboid(spinner, Material.GLASS))
-        ph.registerBody(BlockEntityCuboid(holder, Material.GLASS))
-        ph.sphericalJointConstraints.addConstraint(
-            a = holder,
-            ra = Vector3d(0.75, 0.0, 0.0),
-            b = spinner,
-            rb = Vector3d(-0.25, 0.0, 0.0),
+        val b1 = BlockEntityCuboid(spinner, Material.GLASS)
+        val b2 = BlockEntityCuboid(holder, Material.GLASS)
+
+        ph.registerBody(b1)
+        ph.registerBody(b2)
+        ph.constraintManager.constrain(
+            PointConstraint(
+                b1 = b1,
+                b2 = b2,
+
+                r1x = -0.25f,
+                r1y = 0f,
+                r1z = 0f,
+
+                r2x = 0.75f,
+                r2y = 0f,
+                r2z = 0f,
+            )
         )
+//        ph.sphericalJointConstraints.addConstraint(
+//            a = holder,
+//            ra = Vector3d(0.75, 0.0, 0.0),
+//            b = spinner,
+//            rb = Vector3d(-0.25, 0.0, 0.0),
+//        )
 //        ph.angularConstraints.addConstraint(
 //            a = holder,
 //            bodyAAxis = Vector3f(0f, 0f, 1f),

@@ -1,6 +1,6 @@
 package com.ixume.udar.physics.angular
 
-import com.ixume.udar.AtomicList
+import com.ixume.udar.util.AtomicList
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.body.active.ActiveBody
 import it.unimi.dsi.fastutil.ints.IntArrayList

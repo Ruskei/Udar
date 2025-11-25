@@ -12,7 +12,7 @@ import com.ixume.udar.dynamicaabb.FlattenedBodyAABBTree
 import com.ixume.udar.physics.EntityUpdater
 import com.ixume.udar.physics.StatusUpdater
 import com.ixume.udar.physics.angular.AngularConstraintManager
-import com.ixume.udar.physics.constraint.ConstraintSolverManager
+import com.ixume.udar.physics.constraint.ConstraintManager
 import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldArray
 import com.ixume.udar.physics.contact.a2a.manifold.A2APrevManifoldData
 import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldBuffer
@@ -21,6 +21,8 @@ import com.ixume.udar.physics.sphericaljoint.SphericalJointConstraintManager
 import com.ixume.udar.testing.PhysicsWorldTestDebugData
 import com.ixume.udar.testing.debugConnect
 import com.ixume.udar.testing.listener.PlayerInteractListener
+import com.ixume.udar.util.ActiveBodiesCollection
+import com.ixume.udar.util.AtomicList
 import it.unimi.dsi.fastutil.ints.Int2ObjectMaps
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 import it.unimi.dsi.fastutil.ints.IntArrayList
@@ -88,7 +90,7 @@ class PhysicsWorld(
     private val narrowPhaseHandler = NarrowPhaseHandler(this)
     private val envPhaseHandler = EnvPhaseHandler(this)
 
-    private val constraintSolverManager = ConstraintSolverManager(this)
+    val constraintManager = ConstraintManager(this)
 
     private var rollingAverage = 0.0
     private var rollingBroadAverage = 0.0
@@ -109,10 +111,6 @@ class PhysicsWorld(
         val t = measureNanoTime {
             tick()
         }
-
-//        if (Udar.CONFIG.debug.timings) {
-//            println("Tick took ${t.toDuration(DurationUnit.NANOSECONDS)}!")
-//        }
     }, 1, 1)
 
     fun registerBody(body: ActiveBody) {
@@ -204,7 +202,7 @@ class PhysicsWorld(
                 }
 
                 val parallelConstraintDuration = measureNanoTime {
-                    constraintSolverManager.solve()
+                    constraintManager.solve()
                 }
 
                 val stepDuration = measureNanoTime {
@@ -223,7 +221,7 @@ class PhysicsWorld(
                         }
                     }
                 }
-                
+
                 prevContactData.tick(prevContactMap)
                 prevEnvContactData.tick(prevEnvContactMap)
 
@@ -449,6 +447,9 @@ class PhysicsWorld(
         if (activeBodies.remove(obj.uuid) != null) {
             bodyAABBTree.remove(obj.fatBB)
         }
+
+        constraintManager.onKill(obj)
+
         if (obj is Composite) {
             for (body in obj.parts) {
                 activeBodies.remove(body.uuid)

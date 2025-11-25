@@ -1,14 +1,14 @@
 package com.ixume.udar.physics.contact.v2
 
 import com.ixume.udar.Udar
-import com.ixume.udar.physics.constraint.LocalConstraintSolver
+import com.ixume.udar.physics.constraint.ConstraintSolver
 import java.lang.Math.fma
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import kotlin.math.*
 
-class LocalContactSolver(val parent: LocalConstraintSolver) {
-    val world = parent.physicsWorld
+class ContactSolver(val parent: ConstraintSolver) {
+    private val world = parent.physicsWorld
 
     private var dt = Udar.CONFIG.timeStep.toFloat()
     private var friction = Udar.CONFIG.collision.friction.toFloat()
@@ -29,7 +29,7 @@ class LocalContactSolver(val parent: LocalConstraintSolver) {
 
     private val setupExecutor = Executors.newFixedThreadPool(3)
 
-    var normalDeltaLambdas = FloatArray(Udar.CONFIG.collision.normalIterations)
+    private var normalDeltaLambdas = FloatArray(Udar.CONFIG.collision.normalIterations)
 
     fun setup() {
         dt = Udar.CONFIG.timeStep.toFloat()

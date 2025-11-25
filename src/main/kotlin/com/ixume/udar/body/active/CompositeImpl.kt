@@ -8,7 +8,7 @@ import com.ixume.udar.body.active.tag.Tag
 import com.ixume.udar.collisiondetection.contactgeneration.CompositeCompositeContactGenerator
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.dynamicaabb.AABB
-import com.ixume.udar.jacobiEigenDecomposition
+import com.ixume.udar.util.jacobiEigenDecomposition
 import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldCollection
 import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldCollection
 import com.ixume.udar.physicsWorld

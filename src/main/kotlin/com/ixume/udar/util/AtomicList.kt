@@ -1,9 +1,9 @@
-package com.ixume.udar
+package com.ixume.udar.util
 
 import java.util.concurrent.atomic.AtomicReference
 
 class AtomicList<T> {
-    private val items = AtomicReference<List<T>>(emptyList())
+    val items = AtomicReference<List<T>>(emptyList())
 
     fun add(element: T) {
         do {
@@ -54,6 +54,13 @@ class AtomicList<T> {
 
     fun get(): List<T> {
         return items.get()
+    }
+
+    inline fun removeAll(filter: (T) -> Boolean) {
+        do {
+            val curr = items.get()
+            val n = curr.filterNot(filter)
+        } while (!items.compareAndSet(curr, n))
     }
 
     fun getAndClear(): List<T> {
