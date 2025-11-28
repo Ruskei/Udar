@@ -78,6 +78,7 @@ data class Config(
     val sphericalJoint: SphericalJointConfig = SphericalJointConfig(),
     val angularConstraint: AngularConstraintConfig = AngularConstraintConfig(),
     val positionConstraint: PositionConstraintConfig = PositionConstraintConfig(),
+    val hingeConstraint: HingeConstraintConfig = HingeConstraintConfig(),
     val debug: DebugConfig = DebugConfig(),
     val sleepLinearVelocity: Double = 1e-3,
     val sleepAngularVelocity: Double = 1e-3,
@@ -123,6 +124,20 @@ data class Config(
         companion object : InstanceCreator<PositionConstraintConfig> {
             override fun createInstance(type: Type?): PositionConstraintConfig? {
                 return PositionConstraintConfig()
+            }
+        }
+    }
+
+    data class HingeConstraintConfig(
+        val bias: Float = 0.1f,
+        val slop: Float = 0.001f,
+        val carryover: Float = 0f,
+        val relaxation: Float = 1f,
+        val frictionTorque: Float = 1f,
+    ) {
+        companion object : InstanceCreator<HingeConstraintConfig> {
+            override fun createInstance(type: Type?): HingeConstraintConfig? {
+                return HingeConstraintConfig()
             }
         }
     }

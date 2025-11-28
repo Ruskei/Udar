@@ -3,10 +3,15 @@ package com.ixume.udar.physics.constraint
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.physics.angular.LocalAngularConstraintSolver
 import com.ixume.udar.physics.contact.v2.ContactSolver
+import com.ixume.udar.physics.hinge.HingeConstraint
+import com.ixume.udar.physics.hinge.HingeConstraintSolver
 import com.ixume.udar.physics.position.PointConstraint
 import com.ixume.udar.physics.position.PointConstraintSolver
 import com.ixume.udar.physics.sphericaljoint.LocalSphericalJointSolver
-import org.joml.*
+import org.joml.Quaterniond
+import org.joml.Quaternionf
+import org.joml.Vector3d
+import org.joml.Vector3f
 import java.nio.FloatBuffer
 import kotlin.math.max
 
@@ -15,6 +20,7 @@ class ConstraintSolver(
 ) {
     val contactSolver = ContactSolver(this)
     val pointConstraintSolver = PointConstraintSolver(this)
+    val hingeConstraintSolver = HingeConstraintSolver(this)
     private val sphericalJointSolver = LocalSphericalJointSolver(this)
     private val angularConstraintSolver = LocalAngularConstraintSolver(this)
     private val _vec3 = Vector3f()
@@ -29,6 +35,7 @@ class ConstraintSolver(
 
     fun setup(
         pointConstraints: List<PointConstraint>,
+        hingeConstraints: List<HingeConstraint>,
     ) {
         bodyCount = physicsWorld.activeBodies.size()
         buildFlatBodyData()
@@ -36,7 +43,9 @@ class ConstraintSolver(
         contactSolver.setup()
         sphericalJointSolver.setup()
         angularConstraintSolver.setup()
+
         pointConstraintSolver.setup(pointConstraints)
+        hingeConstraintSolver.setup(hingeConstraints)
     }
 
     private fun buildFlatBodyData() {
@@ -63,6 +72,7 @@ class ConstraintSolver(
         angularConstraintSolver.solve()
         sphericalJointSolver.solve()
         pointConstraintSolver.solveNormals()
+        hingeConstraintSolver.solve()
         contactSolver.solveNormals(iteration)
     }
 

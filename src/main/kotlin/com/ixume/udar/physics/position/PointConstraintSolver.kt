@@ -253,10 +253,6 @@ class PointConstraintSolver(val parent: ConstraintSolver) {
     fun solveNormals() {
         solve(constraintData, numConstraints) { l, _ -> l }
     }
-
-    fun solveFriction() {
-
-    }
 }
 
 @JvmInline

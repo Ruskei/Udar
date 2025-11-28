@@ -5,7 +5,7 @@ import com.ixume.udar.body.active.ActiveBody
 data class PointConstraint(
     val b1: ActiveBody,
     val b2: ActiveBody,
-    
+
     val r1x: Float,
     val r1y: Float,
     val r1z: Float,

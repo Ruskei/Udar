@@ -512,7 +512,7 @@ class ContactSolver(val parent: ConstraintSolver) {
             bodyData[b1Idx * 6 + 3] += ej13 * t * relaxation
             bodyData[b1Idx * 6 + 4] += ej14 * t * relaxation
             bodyData[b1Idx * 6 + 5] += ej15 * t * relaxation
-            
+
             bodyData[b2Idx * 6 + 0] += ej20 * t * relaxation
             bodyData[b2Idx * 6 + 1] += ej21 * t * relaxation
             bodyData[b2Idx * 6 + 2] += ej22 * t * relaxation
@@ -659,7 +659,7 @@ class ContactSolver(val parent: ConstraintSolver) {
             bodyData[b1Idx * 6 + 3] += ej13 * (l - t) * relaxation
             bodyData[b1Idx * 6 + 4] += ej14 * (l - t) * relaxation
             bodyData[b1Idx * 6 + 5] += ej15 * (l - t) * relaxation
-            
+
             bodyData[b2Idx * 6 + 0] += ej20 * (l - t) * relaxation
             bodyData[b2Idx * 6 + 1] += ej21 * (l - t) * relaxation
             bodyData[b2Idx * 6 + 2] += ej22 * (l - t) * relaxation
