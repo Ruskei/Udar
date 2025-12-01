@@ -56,8 +56,8 @@ object JointCommand : Command {
             length = 1.0,
             q = Quaterniond(q),
             omega = Vector3d(o),
-            density = 1.0,
-            hasGravity = true,
+            density = 1_000.0,
+            hasGravity = false,
         )
 
         holder.tags += tag
@@ -69,53 +69,53 @@ object JointCommand : Command {
 
         ph.registerBody(b1)
         ph.registerBody(b2)
-//        ph.constraintManager.constrain(
-//            PointConstraint(
-//                b1 = b1,
-//                b2 = b2,
-//
-//                r1x = -0.25f,
-//                r1y = 0f,
-//                r1z = 0f,
-//
-//                r2x = 0.75f,
-//                r2y = 0f,
-//                r2z = 0f
-//            )
-//        )
         ph.constraintManager.constrain(
-            HingeConstraint(
+            PointConstraint(
                 b1 = b1,
                 b2 = b2,
 
-                a1x = 0f,
-                a1y = 0f,
-                a1z = 1f,
+                r1x = -0.25f,
+                r1y = 0f,
+                r1z = 0f,
 
-                a2x = 0f,
-                a2y = 0f,
-                a2z = 1f,
-
-                n1x = 0f,
-                n1y = 1f,
-                n1z = 0f,
-
-                n2x = 0f,
-                n2y = 1f,
-                n2z = 0f,
-
-                min = -45f * PI.toFloat() / 180f,
-                max = 45f * PI.toFloat() / 180f,
-
-                p1x = -0.25f,
-                p1y = 0f,
-                p1z = 0f,
-
-                p2x = 0.75f,
-                p2y = 0f,
-                p2z = 0f,
+                r2x = 0.75f,
+                r2y = 0f,
+                r2z = 0f
             )
         )
+//        ph.constraintManager.constrain(
+//            HingeConstraint(
+//                b1 = b1,
+//                b2 = b2,
+//
+//                a1x = 0f,
+//                a1y = 0f,
+//                a1z = 1f,
+//
+//                a2x = 0f,
+//                a2y = 0f,
+//                a2z = 1f,
+//
+//                n1x = 0f,
+//                n1y = 1f,
+//                n1z = 0f,
+//
+//                n2x = 0f,
+//                n2y = 1f,
+//                n2z = 0f,
+//
+//                min = -45f * PI.toFloat() / 180f,
+//                max = 45f * PI.toFloat() / 180f,
+//
+//                p1x = -0.25f,
+//                p1y = 0f,
+//                p1z = 0f,
+//
+//                p2x = 0.75f,
+//                p2y = 0f,
+//                p2z = 0f,
+//            )
+//        )
 //        ph.sphericalJointConstraints.addConstraint(
 //            a = holder,
 //            ra = Vector3d(0.75, 0.0, 0.0),

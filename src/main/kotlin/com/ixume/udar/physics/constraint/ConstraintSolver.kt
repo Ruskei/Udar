@@ -98,7 +98,7 @@ class ConstraintSolver(
 
         contactSolver.heatUp()
     }
-    
+
     fun solvePositions() {
         pointConstraintSolver.solvePosition()
         hingeConstraintSolver.solvePosition()

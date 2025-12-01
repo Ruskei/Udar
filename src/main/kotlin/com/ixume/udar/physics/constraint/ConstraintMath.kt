@@ -126,6 +126,89 @@ object ConstraintMath {
         )
     }
 
+    inline fun solveSymmetric3x3(
+        m11: Float, m12: Float, m13: Float,
+        m22: Float, m23: Float,
+        m33: Float,
+
+        v1: Float, v2: Float, v3: Float,
+
+        after: (s1: Float, s2: Float, s3: Float) -> Unit,
+    ) {
+        contract {
+            callsInPlace(after, InvocationKind.EXACTLY_ONCE)
+        }
+
+        val l00 = sqrt(m11)
+
+        val l10 = m12 / l00
+        val l11 = sqrt(m22 - l10 * l10)
+
+        val l20 = m13 / l00
+        val l21 = (m23 - l20 * l10) / l11
+        val l22 = sqrt(m33 - (l20 * l20 + l21 * l21))
+
+        val y0 = v1 / l00
+        val y1 = (v2 - l10 * y0) / l11
+        val y2 = (v3 - (l20 * y0 + l21 * y1)) / l22
+
+        val s3 = y2 / l22
+        val s2 = (y1 - y2 * l21) / l11
+        val s1 = (y0 - y1 * l10 - y2 * l20) / l00
+
+        after(s1, s2, s3)
+    }
+
+    inline fun solveSymmetric5x5(
+        m11: Float, m12: Float, m13: Float, m14: Float, m15: Float,
+        m22: Float, m23: Float, m24: Float, m25: Float,
+        m33: Float, m34: Float, m35: Float,
+        m44: Float, m45: Float,
+        m55: Float,
+
+        v1: Float, v2: Float, v3: Float, v4: Float, v5: Float,
+
+        after: (s1: Float, s2: Float, s3: Float, s4: Float, s5: Float) -> Unit,
+    ) {
+        contract {
+            callsInPlace(after, InvocationKind.EXACTLY_ONCE)
+        }
+
+        val l00 = sqrt(m11)
+
+        val l10 = m12 / l00
+        val l11 = sqrt(m22 - l10 * l10)
+
+        val l20 = m13 / l00
+        val l21 = (m23 - l20 * l10) / l11
+        val l22 = sqrt(m33 - (l20 * l20 + l21 * l21))
+
+        val l30 = m14 / l00
+        val l31 = (m24 - l30 * l10) / l11
+        val l32 = (m34 - (l30 * l20 + l31 * l21)) / l22
+        val l33 = sqrt(m44 - (l30 * l30 + l31 * l31 + l32 * l32))
+
+        val l40 = m15 / l00
+        val l41 = (m25 - l40 * l10) / l11
+        val l42 = (m35 - (l40 * l20 + l41 * l21)) / l22
+        val l43 = (m45 - (l40 * l30 + l41 * l31 + l42 * l32)) / l33
+        val l44 = sqrt(m55 - (l40 * l40 + l41 * l41 + l42 * l42 + l43 * l43))
+
+        val y0 = v1 / l00
+        val y1 = (v2 - l10 * y0) / l11
+        val y2 = (v3 - (l20 * y0 + l21 * y1)) / l22
+        val y3 = (v4 - (l30 * y0 + l31 * y1 + l32 * y2)) / l33
+        val y4 = (v5 - (l40 * y0 + l41 * y1 + l42 * y2 + l43 * y3)) / l44
+
+        val s4 = y4 / l44
+        val s3 = (y3 - l43 * s4) / l33
+        val s2 = (y2 - (l32 * s3 + l42 * s4)) / l22
+        val s1 = (y1 - (l21 * s2 + l31 * s3 + l41 * s4)) / l11
+        val s0 = (y0 - (l10 * s1 + l20 * s2 + l30 * s3 + l40 * s4)) / l00
+
+        after(s0, s1, s2, s3, s4)
+    }
+
     inline fun solveSymmetric6x6(
         m11: Float, m12: Float, m13: Float, m14: Float, m15: Float, m16: Float,
         m22: Float, m23: Float, m24: Float, m25: Float, m26: Float,
@@ -184,55 +267,5 @@ object ConstraintMath {
         val s1 = (y0 - (l10 * s2 + l20 * s3 + l30 * s4 + l40 * s5 + l50 * s6)) / l00
 
         after(s1, s2, s3, s4, s5, s6)
-    }
-
-    inline fun solveSymmetric5x5(
-        m11: Float, m12: Float, m13: Float, m14: Float, m15: Float,
-        m22: Float, m23: Float, m24: Float, m25: Float,
-        m33: Float, m34: Float, m35: Float,
-        m44: Float, m45: Float,
-        m55: Float,
-
-        v1: Float, v2: Float, v3: Float, v4: Float, v5: Float,
-
-        after: (s1: Float, s2: Float, s3: Float, s4: Float, s5: Float) -> Unit,
-    ) {
-        contract {
-            callsInPlace(after, InvocationKind.EXACTLY_ONCE)
-        }
-
-        val l00 = sqrt(m11)
-
-        val l10 = m12 / l00
-        val l11 = sqrt(m22 - l10 * l10)
-
-        val l20 = m13 / l00
-        val l21 = (m23 - l20 * l10) / l11
-        val l22 = sqrt(m33 - (l20 * l20 + l21 * l21))
-
-        val l30 = m14 / l00
-        val l31 = (m24 - l30 * l10) / l11
-        val l32 = (m34 - (l30 * l20 + l31 * l21)) / l22
-        val l33 = sqrt(m44 - (l30 * l30 + l31 * l31 + l32 * l32))
-
-        val l40 = m15 / l00
-        val l41 = (m25 - l40 * l10) / l11
-        val l42 = (m35 - (l40 * l20 + l41 * l21)) / l22
-        val l43 = (m45 - (l40 * l30 + l41 * l31 + l42 * l32)) / l33
-        val l44 = sqrt(m55 - (l40 * l40 + l41 * l41 + l42 * l42 + l43 * l43))
-
-        val y0 = v1 / l00
-        val y1 = (v2 - l10 * y0) / l11
-        val y2 = (v3 - (l20 * y0 + l21 * y1)) / l22
-        val y3 = (v4 - (l30 * y0 + l31 * y1 + l32 * y2)) / l33
-        val y4 = (v5 - (l40 * y0 + l41 * y1 + l42 * y2 + l43 * y3)) / l44
-
-        val s4 = y4 / l44
-        val s3 = (y3 - l43 * s4) / l33
-        val s2 = (y2 - (l32 * s3 + l42 * s4)) / l22
-        val s1 = (y1 - (l21 * s2 + l31 * s3 + l41 * s4)) / l11
-        val s0 = (y0 - (l10 * s1 + l20 * s2 + l30 * s3 + l40 * s4)) / l00
-
-        after(s0, s1, s2, s3, s4)
     }
 }
