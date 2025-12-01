@@ -73,4 +73,6 @@ class AtomicList<T> {
             if (curr.isEmpty()) return
         } while (!items.compareAndSet(curr, emptyList()))
     }
+
+    override fun toString() = items.toString()
 }

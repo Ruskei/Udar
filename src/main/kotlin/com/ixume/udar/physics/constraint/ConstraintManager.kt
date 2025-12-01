@@ -44,4 +44,12 @@ class ConstraintManager(val physicsWorld: PhysicsWorld) {
 
         constraintSolver.write()
     }
+
+    fun solvePositions() {
+        if (physicsWorld.activeBodies.size() == 0) return
+
+        for (iteration in 1..Udar.CONFIG.collision.posIterations) {
+            constraintSolver.solvePositions()
+        }
+    }
 }

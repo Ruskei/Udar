@@ -224,7 +224,7 @@ class Cuboid(
         prevQ.set(q)
         prevP.set(pos)
 
-        pos.add(Vector3d(velocity).mul(Udar.CONFIG.timeStep))
+        pos.add(velocity.x * Udar.CONFIG.timeStep, velocity.y * Udar.CONFIG.timeStep, velocity.z * Udar.CONFIG.timeStep)
         rotationIntegrator.process()
 
         torque.set(0.0)

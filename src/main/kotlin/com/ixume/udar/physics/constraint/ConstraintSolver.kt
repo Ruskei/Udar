@@ -4,6 +4,7 @@ import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.physics.angular.LocalAngularConstraintSolver
 import com.ixume.udar.physics.contact.v2.ContactSolver
 import com.ixume.udar.physics.hinge.HingeConstraint
+
 import com.ixume.udar.physics.hinge.HingeConstraintSolver
 import com.ixume.udar.physics.position.PointConstraint
 import com.ixume.udar.physics.position.PointConstraintSolver
@@ -71,8 +72,8 @@ class ConstraintSolver(
     fun solve(iteration: Int) {
         angularConstraintSolver.solve()
         sphericalJointSolver.solve()
-        pointConstraintSolver.solveNormals()
-        hingeConstraintSolver.solve()
+        pointConstraintSolver.solveVelocity()
+        hingeConstraintSolver.solveVelocity()
         contactSolver.solveNormals(iteration)
     }
 
@@ -97,7 +98,11 @@ class ConstraintSolver(
 
         contactSolver.heatUp()
     }
-
+    
+    fun solvePositions() {
+        pointConstraintSolver.solvePosition()
+        hingeConstraintSolver.solvePosition()
+    }
 }
 
 fun FloatBuffer.putVector3f(v: Vector3f): FloatBuffer {

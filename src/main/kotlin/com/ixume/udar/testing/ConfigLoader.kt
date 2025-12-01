@@ -104,6 +104,7 @@ data class Config(
         val lambdaCarryover: Float = 0.99f,
         val normalIterations: Int = 6,
         val frictionIterations: Int = 3,
+        val posIterations: Int = 2,
         val sameContactThreshold: Double = 0.5,
         val stay: Int = 5,
         val relaxation: Float = 1f,
@@ -120,6 +121,7 @@ data class Config(
         val slop: Float = 0.001f,
         val carryover: Float = 0f,
         val relaxation: Float = 1f,
+        val erp: Float = 0.2f,
     ) {
         companion object : InstanceCreator<PositionConstraintConfig> {
             override fun createInstance(type: Type?): PositionConstraintConfig? {
@@ -134,6 +136,7 @@ data class Config(
         val carryover: Float = 0f,
         val relaxation: Float = 1f,
         val frictionTorque: Float = 1f,
+        val erp: Float = 0.2f,
     ) {
         companion object : InstanceCreator<HingeConstraintConfig> {
             override fun createInstance(type: Type?): HingeConstraintConfig? {

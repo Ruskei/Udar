@@ -3,9 +3,11 @@ package com.ixume.udar.physics.position
 import com.ixume.udar.Udar
 import com.ixume.udar.physics.constraint.ConstraintMath
 import com.ixume.udar.physics.constraint.ConstraintSolver
+import org.joml.Quaterniond
 import org.joml.Vector3d
 import java.lang.Math.fma
 import kotlin.math.max
+import kotlin.math.pow
 import kotlin.math.sqrt
 
 class PointConstraintSolver(val parent: ConstraintSolver) {
@@ -17,15 +19,25 @@ class PointConstraintSolver(val parent: ConstraintSolver) {
     private var slop = Udar.CONFIG.positionConstraint.slop
     private var carryover = Udar.CONFIG.positionConstraint.carryover
     private var relaxation = Udar.CONFIG.positionConstraint.relaxation
+    private fun effectiveERP() =
+        1f - (1.0 - Udar.CONFIG.positionConstraint.erp.toDouble()).pow(1.0 / Udar.CONFIG.collision.posIterations.toDouble())
+            .toFloat()
+
+    private var erp = effectiveERP()
 
     private val _tempV = Vector3d()
+    private val _tempQ = Quaterniond()
+    private lateinit var rawConstraints: List<PointConstraint>
 
     fun setup(constraints: List<PointConstraint>) {
+        rawConstraints = constraints
+
         dt = Udar.CONFIG.timeStep.toFloat()
         bias = Udar.CONFIG.positionConstraint.bias
         slop = Udar.CONFIG.positionConstraint.slop
         carryover = Udar.CONFIG.positionConstraint.carryover
         relaxation = Udar.CONFIG.positionConstraint.relaxation
+        erp = effectiveERP()
 
         numConstraints = constraints.size
 
@@ -45,7 +57,7 @@ class PointConstraintSolver(val parent: ConstraintSolver) {
             val lr1x = _tempV.x.toFloat()
             val lr1y = _tempV.y.toFloat()
             val lr1z = _tempV.z.toFloat()
-            
+
             val r1x = lr1x + b1.pos.x.toFloat()
             val r1y = lr1y + b1.pos.y.toFloat()
             val r1z = lr1z + b1.pos.z.toFloat()
@@ -233,7 +245,7 @@ class PointConstraintSolver(val parent: ConstraintSolver) {
             )
 
             data[lambdaIdx] = l
-            
+
             bodyData[b1Idx * 6 + 0] += ej10 * (l - t) * relaxation
             bodyData[b1Idx * 6 + 1] += ej11 * (l - t) * relaxation
             bodyData[b1Idx * 6 + 2] += ej12 * (l - t) * relaxation
@@ -250,8 +262,102 @@ class PointConstraintSolver(val parent: ConstraintSolver) {
         }
     }
 
-    fun solveNormals() {
+    fun solveVelocity() {
         solve(constraintData, numConstraints) { l, _ -> l }
+    }
+
+    fun solvePosition() {
+        constraintData.forEach(
+            numConstraints = numConstraints,
+        ) { b1Idx, b2Idx, im1, im2, rawIdx ->
+            val b1 = parent.physicsWorld.activeBodies.fastGet(b1Idx)!!
+            val b2 = parent.physicsWorld.activeBodies.fastGet(b2Idx)!!
+
+            val constraint = rawConstraints[rawIdx / CONSTRAINT_DATA_SIZE]
+            b1.q.transform(constraint.r1x.toDouble(), constraint.r1y.toDouble(), constraint.r1z.toDouble(), _tempV)
+            val lr1x = _tempV.x.toFloat()
+            val lr1y = _tempV.y.toFloat()
+            val lr1z = _tempV.z.toFloat()
+
+            val r1x = lr1x + b1.pos.x.toFloat()
+            val r1y = lr1y + b1.pos.y.toFloat()
+            val r1z = lr1z + b1.pos.z.toFloat()
+
+            b2.q.transform(constraint.r2x.toDouble(), constraint.r2y.toDouble(), constraint.r2z.toDouble(), _tempV)
+            val lr2x = _tempV.x.toFloat()
+            val lr2y = _tempV.y.toFloat()
+            val lr2z = _tempV.z.toFloat()
+
+            val r2x = lr2x + b2.pos.x.toFloat()
+            val r2y = lr2y + b2.pos.y.toFloat()
+            val r2z = lr2z + b2.pos.z.toFloat()
+
+            val dx = r1x - r2x
+            val dy = r1y - r2y
+            val dz = r1z - r2z
+
+            val error = sqrt(fma(dx, dx, fma(dy, dy, dz * dz)))
+            if (error < slop) return@forEach
+            val iden = constraintData[rawIdx + IDEN_OFFSET]
+
+            val lambda = (-error * iden * erp).toDouble()
+
+            val j10 = constraintData[rawIdx + 4]
+            val j11 = constraintData[rawIdx + 5]
+            val j12 = constraintData[rawIdx + 6]
+
+            val j20 = -j10
+            val j21 = -j11
+            val j22 = -j12
+
+            val ej10 = j10 * im1
+            val ej11 = j11 * im1
+            val ej12 = j12 * im1
+            val ej13 = constraintData[rawIdx + 13]
+            val ej14 = constraintData[rawIdx + 14]
+            val ej15 = constraintData[rawIdx + 15]
+
+            val ej20 = j20 * im2
+            val ej21 = j21 * im2
+            val ej22 = j22 * im2
+            val ej23 = constraintData[rawIdx + 16]
+            val ej24 = constraintData[rawIdx + 17]
+            val ej25 = constraintData[rawIdx + 18]
+
+            b1.pos.add(
+                ej10 * lambda,
+                ej11 * lambda,
+                ej12 * lambda,
+            )
+
+            _tempQ.set(b1.q).conjugate().transform(
+                ej13 * lambda,
+                ej14 * lambda,
+                ej15 * lambda,
+                _tempV
+            )
+
+            _tempQ.set(b1.q).mul(_tempV.x, _tempV.y, _tempV.z, 0.0).mul(0.5)
+
+            b1.q.add(_tempQ).normalize()
+
+            b2.pos.add(
+                ej20 * lambda,
+                ej21 * lambda,
+                ej22 * lambda,
+            )
+
+            _tempQ.set(b2.q).conjugate().transform(
+                ej23 * lambda,
+                ej24 * lambda,
+                ej25 * lambda,
+                _tempV
+            )
+
+            _tempQ.set(b2.q).mul(_tempV.x, _tempV.y, _tempV.z, 0.0).mul(0.5)
+
+            b2.q.add(_tempQ).normalize()
+        }
     }
 }
 

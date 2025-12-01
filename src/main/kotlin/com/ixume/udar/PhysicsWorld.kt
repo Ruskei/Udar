@@ -186,7 +186,6 @@ class PhysicsWorld(
 
                 val endNarrowTime = System.nanoTime()
 
-//                println("TICK")
                 val envDuration = measureNanoTime {
                     if (bodiesSnapshot.isNotEmpty()) {
                         envPhaseHandler.process(bodiesSnapshot)
@@ -201,7 +200,7 @@ class PhysicsWorld(
                     )
                 }
 
-                val parallelConstraintDuration = measureNanoTime {
+                var parallelConstraintDuration = measureNanoTime {
                     constraintManager.solve()
                 }
 
@@ -220,6 +219,10 @@ class PhysicsWorld(
                             body.step()
                         }
                     }
+                }
+
+                parallelConstraintDuration += measureNanoTime {
+                    constraintManager.solvePositions()
                 }
 
                 prevContactData.tick(prevContactMap)

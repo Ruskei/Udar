@@ -4,12 +4,14 @@ import com.ixume.udar.body.active.BlockEntityCuboid
 import com.ixume.udar.body.active.Cuboid
 import com.ixume.udar.body.active.tag.Tag
 import com.ixume.udar.physics.hinge.HingeConstraint
+import com.ixume.udar.physics.position.PointConstraint
 import com.ixume.udar.physicsWorld
 import org.bukkit.Material
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 import org.joml.Quaterniond
 import org.joml.Vector3d
+import kotlin.math.PI
 import kotlin.random.Random
 
 object JointCommand : Command {
@@ -54,8 +56,8 @@ object JointCommand : Command {
             length = 1.0,
             q = Quaterniond(q),
             omega = Vector3d(o),
-            density = 100_000.0,
-            hasGravity = false,
+            density = 1.0,
+            hasGravity = true,
         )
 
         holder.tags += tag
@@ -67,6 +69,20 @@ object JointCommand : Command {
 
         ph.registerBody(b1)
         ph.registerBody(b2)
+//        ph.constraintManager.constrain(
+//            PointConstraint(
+//                b1 = b1,
+//                b2 = b2,
+//
+//                r1x = -0.25f,
+//                r1y = 0f,
+//                r1z = 0f,
+//
+//                r2x = 0.75f,
+//                r2y = 0f,
+//                r2z = 0f
+//            )
+//        )
         ph.constraintManager.constrain(
             HingeConstraint(
                 b1 = b1,
@@ -88,8 +104,8 @@ object JointCommand : Command {
                 n2y = 1f,
                 n2z = 0f,
 
-                min = -Math.toRadians(45.0).toFloat(),
-                max = Math.toRadians(45.0).toFloat(),
+                min = -45f * PI.toFloat() / 180f,
+                max = 45f * PI.toFloat() / 180f,
 
                 p1x = -0.25f,
                 p1y = 0f,
