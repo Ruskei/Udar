@@ -17,7 +17,6 @@ import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldArray
 import com.ixume.udar.physics.contact.a2a.manifold.A2APrevManifoldData
 import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldBuffer
 import com.ixume.udar.physics.contact.a2s.manifold.A2SPrevManifoldData
-import com.ixume.udar.physics.sphericaljoint.SphericalJointConstraintManager
 import com.ixume.udar.testing.PhysicsWorldTestDebugData
 import com.ixume.udar.testing.debugConnect
 import com.ixume.udar.testing.listener.PlayerInteractListener
@@ -66,7 +65,6 @@ class PhysicsWorld(
     val prevEnvContactMap = Long2IntOpenHashMap()
     val prevEnvContactData = A2SPrevManifoldData(8)
 
-    val sphericalJointConstraints = SphericalJointConstraintManager(this)
     val angularConstraints = AngularConstraintManager(this)
 
     init {
@@ -160,7 +158,6 @@ class PhysicsWorld(
 
                 processToAdd()
                 processToRemove()
-                sphericalJointConstraints.tick()
                 angularConstraints.tick()
 
                 physicsTime++

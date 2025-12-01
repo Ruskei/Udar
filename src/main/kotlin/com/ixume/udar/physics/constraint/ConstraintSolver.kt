@@ -8,7 +8,6 @@ import com.ixume.udar.physics.hinge.HingeConstraint
 import com.ixume.udar.physics.hinge.HingeConstraintSolver
 import com.ixume.udar.physics.position.PointConstraint
 import com.ixume.udar.physics.position.PointConstraintSolver
-import com.ixume.udar.physics.sphericaljoint.LocalSphericalJointSolver
 import org.joml.Quaterniond
 import org.joml.Quaternionf
 import org.joml.Vector3d
@@ -22,7 +21,6 @@ class ConstraintSolver(
     val contactSolver = ContactSolver(this)
     val pointConstraintSolver = PointConstraintSolver(this)
     val hingeConstraintSolver = HingeConstraintSolver(this)
-    private val sphericalJointSolver = LocalSphericalJointSolver(this)
     private val angularConstraintSolver = LocalAngularConstraintSolver(this)
     private val _vec3 = Vector3f()
     private val _quat = Quaternionf()
@@ -42,7 +40,6 @@ class ConstraintSolver(
         buildFlatBodyData()
 
         contactSolver.setup()
-        sphericalJointSolver.setup()
         angularConstraintSolver.setup()
 
         pointConstraintSolver.setup(pointConstraints)
@@ -71,7 +68,6 @@ class ConstraintSolver(
 
     fun solve(iteration: Int) {
         angularConstraintSolver.solve()
-        sphericalJointSolver.solve()
         pointConstraintSolver.solveVelocity()
         hingeConstraintSolver.solveVelocity()
         contactSolver.solveNormals(iteration)
@@ -79,7 +75,6 @@ class ConstraintSolver(
 
     fun solvePost() {
         contactSolver.solveFrictions()
-        sphericalJointSolver.solveFriction()
     }
 
     fun write() {
