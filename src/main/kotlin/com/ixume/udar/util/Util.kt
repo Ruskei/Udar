@@ -1,5 +1,7 @@
-package com.ixume.udar
+package com.ixume.udar.util
 
+import net.minecraft.world.level.ChunkPos
+import org.bukkit.Location
 import org.joml.Matrix3d
 import org.joml.Vector3d
 import kotlin.math.abs
@@ -10,6 +12,11 @@ fun <T> T.applyIf(condition: Boolean, action: T.() -> Unit): T {
     return this
 }
 
+private val REASONABLE_POS = ChunkPos.MAX_COORDINATE_VALUE * 16.0
+fun Location.isReasonable() = 
+    x in -REASONABLE_POS..REASONABLE_POS &&
+    y in -REASONABLE_POS..REASONABLE_POS &&
+    z in -REASONABLE_POS..REASONABLE_POS
 
 /**
  * Mutates 'matrix'

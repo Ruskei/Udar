@@ -2,6 +2,7 @@ package com.ixume.udar.body.active
 
 import com.ixume.udar.collisiondetection.capability.GJKCapable
 import com.ixume.udar.collisiondetection.capability.SDFCapable
+import com.ixume.udar.util.isReasonable
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.entity.BlockDisplay
@@ -47,7 +48,9 @@ class BlockEntityCuboid(
         display.interpolationDelay = 0
         display.teleportDuration = 2
         display.transformation = createTransformation()
-        display.teleport(Location(world, pos.x, pos.y, pos.z))
+        val loc = Location(world, pos.x, pos.y, pos.z)
+        if (!loc.isReasonable()) return
+        display.teleport(loc)
     }
 
     override fun project(axis: Vector3d): Vector2d {

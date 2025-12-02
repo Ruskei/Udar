@@ -11,7 +11,8 @@ import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.dynamicaabb.FlattenedBodyAABBTree
 import com.ixume.udar.physics.EntityUpdater
 import com.ixume.udar.physics.StatusUpdater
-import com.ixume.udar.physics.constraint.ConstraintSolverManager
+import com.ixume.udar.physics.angular.AngularConstraintManager
+import com.ixume.udar.physics.constraint.ConstraintManager
 import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldArray
 import com.ixume.udar.physics.contact.a2a.manifold.A2APrevManifoldData
 import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldBuffer
@@ -19,6 +20,8 @@ import com.ixume.udar.physics.contact.a2s.manifold.A2SPrevManifoldData
 import com.ixume.udar.testing.PhysicsWorldTestDebugData
 import com.ixume.udar.testing.debugConnect
 import com.ixume.udar.testing.listener.PlayerInteractListener
+import com.ixume.udar.util.ActiveBodiesCollection
+import com.ixume.udar.util.AtomicList
 import it.unimi.dsi.fastutil.ints.Int2ObjectMaps
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 import it.unimi.dsi.fastutil.ints.IntArrayList
@@ -55,12 +58,14 @@ class PhysicsWorld(
     val manifoldBuffer = A2AManifoldArray(4)
 
     val prevContactMap = Long2IntOpenHashMap()
-    val prevContactData = A2APrevManifoldData()
+    val prevContactData = A2APrevManifoldData(8)
 
     val envManifoldBuffer = A2SManifoldBuffer(8)
 
     val prevEnvContactMap = Long2IntOpenHashMap()
-    val prevEnvContactData = A2SPrevManifoldData()
+    val prevEnvContactData = A2SPrevManifoldData(8)
+
+    val angularConstraints = AngularConstraintManager(this)
 
     init {
         prevEnvContactMap.defaultReturnValue(-1)
@@ -83,7 +88,7 @@ class PhysicsWorld(
     private val narrowPhaseHandler = NarrowPhaseHandler(this)
     private val envPhaseHandler = EnvPhaseHandler(this)
 
-    private val constraintSolverManager = ConstraintSolverManager(this)
+    val constraintManager = ConstraintManager(this)
 
     private var rollingAverage = 0.0
     private var rollingBroadAverage = 0.0
@@ -94,7 +99,7 @@ class PhysicsWorld(
 
     val bodyAABBTree = FlattenedBodyAABBTree(this, 0)
 
-    private val entityTask = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { entityUpdater.tick() }, 2, 2)
+    private val entityTask = Bukkit.getScheduler().runTaskTimer(Udar.INSTANCE, Runnable { entityUpdater.tick() }, 1, 1)
     val worldMeshesManager = WorldMeshesManager(this, Udar.CONFIG.worldDiffingProcessors, Udar.CONFIG.meshingProcessors)
 
     private val entityUpdater = EntityUpdater(this)
@@ -104,10 +109,6 @@ class PhysicsWorld(
         val t = measureNanoTime {
             tick()
         }
-
-//        if (Udar.CONFIG.debug.timings) {
-//            println("Tick took ${t.toDuration(DurationUnit.NANOSECONDS)}!")
-//        }
     }, 1, 1)
 
     fun registerBody(body: ActiveBody) {
@@ -144,7 +145,7 @@ class PhysicsWorld(
         val tickStartTime = System.nanoTime()
 
         time++
-        repeat((0.05 / Udar.CONFIG.timeStep).roundToInt()) {
+        repeat((TICK_DURATION / Udar.CONFIG.timeStep).roundToInt()) {
             var doTick = true
             if (frozen.get()) {
                 if (!untilCollision.get() && steps.decrementAndGet() < 0) doTick = false
@@ -157,6 +158,7 @@ class PhysicsWorld(
 
                 processToAdd()
                 processToRemove()
+                angularConstraints.tick()
 
                 physicsTime++
 
@@ -167,7 +169,6 @@ class PhysicsWorld(
                 val bodiesSnapshot = activeBodies.activeBodies()
 
                 statusUpdater.updateBodies(bodiesSnapshot)
-                constraintSolverManager.prepare()
 
                 val startBroadTime = System.nanoTime()
                 val activePairs = broadPhase(bodiesSnapshot)
@@ -182,7 +183,6 @@ class PhysicsWorld(
 
                 val endNarrowTime = System.nanoTime()
 
-//                println("TICK")
                 val envDuration = measureNanoTime {
                     if (bodiesSnapshot.isNotEmpty()) {
                         envPhaseHandler.process(bodiesSnapshot)
@@ -197,8 +197,8 @@ class PhysicsWorld(
                     )
                 }
 
-                val parallelConstraintDuration = measureNanoTime {
-                    constraintSolverManager.solve()
+                var parallelConstraintDuration = measureNanoTime {
+                    constraintManager.solve()
                 }
 
                 val stepDuration = measureNanoTime {
@@ -217,6 +217,13 @@ class PhysicsWorld(
                         }
                     }
                 }
+
+                parallelConstraintDuration += measureNanoTime {
+                    constraintManager.solvePositions()
+                }
+
+                prevContactData.tick(prevContactMap)
+                prevEnvContactData.tick(prevEnvContactMap)
 
                 if (untilCollision.get() && (!manifoldBuffer.isEmpty() || !envManifoldBuffer.isEmpty())) {
                     untilCollision.set(false)
@@ -281,7 +288,7 @@ class PhysicsWorld(
 
                     while (k < num) {
                         world.spawnParticle(
-                            Particle.REDSTONE,
+                            Particle.DUST,
                             Location(
                                 world,
                                 manifoldBuffer.pointAX(i, k).toDouble(),
@@ -293,7 +300,7 @@ class PhysicsWorld(
                         )
 
                         world.spawnParticle(
-                            Particle.REDSTONE,
+                            Particle.DUST,
                             Location(
                                 world,
                                 manifoldBuffer.pointBX(i, k).toDouble(),
@@ -305,7 +312,7 @@ class PhysicsWorld(
                         )
 
                         world.spawnParticle(
-                            Particle.REDSTONE,
+                            Particle.DUST,
                             Location(
                                 world,
                                 manifoldBuffer.pointAX(i, k).toDouble(),
@@ -347,7 +354,7 @@ class PhysicsWorld(
                     var k = 0
                     while (k < num) {
                         world.spawnParticle(
-                            Particle.REDSTONE,
+                            Particle.DUST,
                             Location(
                                 world,
                                 envManifoldBuffer.pointAX(j, k).toDouble(),
@@ -440,6 +447,9 @@ class PhysicsWorld(
         if (activeBodies.remove(obj.uuid) != null) {
             bodyAABBTree.remove(obj.fatBB)
         }
+
+        constraintManager.onKill(obj)
+
         if (obj is Composite) {
             for (body in obj.parts) {
                 activeBodies.remove(body.uuid)
@@ -461,3 +471,4 @@ class PhysicsWorld(
 
 private const val SUBTICK_DUR_ROLLOVER = 0.5
 private const val MAX_TIME_PER_TICK = 48_000_000
+private const val TICK_DURATION = 0.05

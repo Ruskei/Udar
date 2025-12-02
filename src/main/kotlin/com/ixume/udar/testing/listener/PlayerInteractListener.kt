@@ -55,7 +55,7 @@ object PlayerInteractListener : Listener {
                 } ?: return
 
                 e.player.world.spawnParticle(
-                    Particle.REDSTONE, Location(
+                    Particle.DUST, Location(
                         e.player.world,
                         intersection.x,
                         intersection.y,

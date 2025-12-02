@@ -1,6 +1,6 @@
 package com.ixume.udar.collisiondetection.contactgeneration
 
-import com.ixume.udar.AtomicList
+import com.ixume.udar.util.AtomicList
 import com.ixume.udar.collisiondetection.contactgeneration.worldmesh.MeshPosition
 import com.ixume.udar.collisiondetection.mesh.mesh2.LocalMesher
 

@@ -4,6 +4,7 @@ import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.Udar
 import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.body.active.hook.HookManager
+import com.ixume.udar.body.active.tag.Tag
 import com.ixume.udar.collisiondetection.capability.GJKCapable
 import com.ixume.udar.collisiondetection.capability.SDFCapable
 import com.ixume.udar.collisiondetection.contactgeneration.CuboidSATContactGenerator
@@ -20,6 +21,7 @@ import org.joml.Matrix3d
 import org.joml.Quaterniond
 import org.joml.Vector3d
 import java.util.*
+import java.util.concurrent.CopyOnWriteArraySet
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.*
 
@@ -42,6 +44,7 @@ class Cuboid(
     override var idx: Int = -1
     override val physicsWorld: PhysicsWorld = world.physicsWorld!!
     override val id: Long = physicsWorld.createID()
+    override val tags: CopyOnWriteArraySet<Tag> = CopyOnWriteArraySet()
 
     override val dead: AtomicBoolean = AtomicBoolean(false)
     override var isChild: Boolean = false
@@ -196,7 +199,6 @@ class Cuboid(
     override val localInertia: Vector3d = calcInertia()
     val localInverseInertia: Vector3d = Vector3d(1.0 / localInertia.x, 1.0 / localInertia.y, 1.0 / localInertia.z)
 
-
     override val inverseInertia: Matrix3d = Matrix3d()
 
     init {
@@ -222,7 +224,7 @@ class Cuboid(
         prevQ.set(q)
         prevP.set(pos)
 
-        pos.add(Vector3d(velocity).mul(Udar.CONFIG.timeStep))
+        pos.add(velocity.x * Udar.CONFIG.timeStep, velocity.y * Udar.CONFIG.timeStep, velocity.z * Udar.CONFIG.timeStep)
         rotationIntegrator.process()
 
         torque.set(0.0)

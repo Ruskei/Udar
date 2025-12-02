@@ -47,7 +47,7 @@ object StressGridCommand : Command {
                     omega = Vector3d(),
                     density = 1.0,
                     hasGravity = true,
-                ).blockEntity(Material.entries.filter { "LEAVES" in it.name }.random())
+                ).blockEntity(Material.entries.filter { "CONCRETE" in it.name && "POWDER" !in it.name }.random())
 
                 bodies += rb
             }

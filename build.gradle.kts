@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.ixume"
-version = "0.4.0.1"
+version = "0.7.0"
 
 repositories {
     mavenCentral()
@@ -19,12 +19,17 @@ repositories {
 }
 
 dependencies {
-    paperweight.paperDevBundle("1.20.4-R0.1-SNAPSHOT")
+    paperweight.paperDevBundle("1.21.4-R0.1-SNAPSHOT")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
 }
 
-val targetJavaVersion = 17
+val targetJavaVersion = 21
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+}
+
 kotlin {
     jvmToolchain(targetJavaVersion)
     compilerOptions {

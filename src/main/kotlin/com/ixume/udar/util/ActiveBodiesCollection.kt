@@ -1,4 +1,4 @@
-package com.ixume.udar
+package com.ixume.udar.util
 
 import com.ixume.udar.body.active.ActiveBody
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap

@@ -11,7 +11,7 @@ fun World.debugConnect(start: Vector3d, end: Vector3d, options: Particle.DustOpt
     var t = 0.0
     while (t < end.distance(start)) {
         spawnParticle(
-            Particle.REDSTONE,
+            Particle.DUST,
             Location(
                 this,
                 start.x + dir.x * t,
