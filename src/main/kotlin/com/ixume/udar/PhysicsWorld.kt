@@ -155,7 +155,6 @@ class PhysicsWorld(
 
                 processToAdd()
                 processToRemove()
-                angularConstraints.tick()
 
                 physicsTime++
 
