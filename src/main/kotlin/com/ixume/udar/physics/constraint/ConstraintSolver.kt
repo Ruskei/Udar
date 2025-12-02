@@ -1,7 +1,6 @@
 package com.ixume.udar.physics.constraint
 
 import com.ixume.udar.PhysicsWorld
-import com.ixume.udar.physics.angular.LocalAngularConstraintSolver
 import com.ixume.udar.physics.contact.v2.ContactSolver
 import com.ixume.udar.physics.hinge.HingeConstraint
 
@@ -21,7 +20,6 @@ class ConstraintSolver(
     val contactSolver = ContactSolver(this)
     val pointConstraintSolver = PointConstraintSolver(this)
     val hingeConstraintSolver = HingeConstraintSolver(this)
-    private val angularConstraintSolver = LocalAngularConstraintSolver(this)
     private val _vec3 = Vector3f()
     private val _quat = Quaternionf()
 
@@ -40,7 +38,6 @@ class ConstraintSolver(
         buildFlatBodyData()
 
         contactSolver.setup()
-        angularConstraintSolver.setup()
 
         pointConstraintSolver.setup(pointConstraints)
         hingeConstraintSolver.setup(hingeConstraints)
@@ -67,7 +64,6 @@ class ConstraintSolver(
 
 
     fun solve(iteration: Int) {
-        angularConstraintSolver.solve()
         pointConstraintSolver.solveVelocity()
         hingeConstraintSolver.solveVelocity()
         contactSolver.solveNormals(iteration)
