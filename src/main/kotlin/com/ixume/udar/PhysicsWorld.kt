@@ -11,7 +11,6 @@ import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.dynamicaabb.FlattenedBodyAABBTree
 import com.ixume.udar.physics.EntityUpdater
 import com.ixume.udar.physics.StatusUpdater
-import com.ixume.udar.physics.angular.AngularConstraintManager
 import com.ixume.udar.physics.constraint.ConstraintManager
 import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldArray
 import com.ixume.udar.physics.contact.a2a.manifold.A2APrevManifoldData
@@ -64,8 +63,6 @@ class PhysicsWorld(
 
     val prevEnvContactMap = Long2IntOpenHashMap()
     val prevEnvContactData = A2SPrevManifoldData(8)
-
-    val angularConstraints = AngularConstraintManager(this)
 
     init {
         prevEnvContactMap.defaultReturnValue(-1)
@@ -158,7 +155,6 @@ class PhysicsWorld(
 
                 processToAdd()
                 processToRemove()
-                angularConstraints.tick()
 
                 physicsTime++
 
