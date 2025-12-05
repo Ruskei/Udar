@@ -1,12 +1,18 @@
 package com.ixume.udar.physics.constraint
 
 import com.ixume.udar.body.active.ActiveBody
+import com.ixume.udar.physics.constraint.MatrixMath.solveSymmetric3x3
+import com.ixume.udar.physics.constraint.MatrixMath.solveSymmetric4x4
+import com.ixume.udar.physics.constraint.MatrixMath.solveSymmetric5x5
+import com.ixume.udar.physics.constraint.MatrixMath.solveSymmetric6x6
+import com.ixume.udar.physics.constraint.QuatMath.quatMul
+import com.ixume.udar.physics.constraint.QuatMath.quatTransform
+import com.ixume.udar.physics.constraint.QuatMath.transform
 import java.lang.Math.fma
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 import kotlin.math.abs
-import kotlin.math.sqrt
 
 @OptIn(ExperimentalContracts::class)
 object ConstraintMath {
@@ -126,146 +132,1730 @@ object ConstraintMath {
         )
     }
 
-    inline fun solveSymmetric3x3(
-        m11: Float, m12: Float, m13: Float,
-        m22: Float, m23: Float,
-        m33: Float,
 
-        v1: Float, v2: Float, v3: Float,
+    inline fun solve3p0rVelocity(
+        bodyData: FloatArray,
+        constraintData: ConstraintData3p0r,
+        numConstraints: Int,
 
-        after: (s1: Float, s2: Float, s3: Float) -> Unit,
+        l1Transform: (Float) -> Float = { f -> f },
+        l2Transform: (Float) -> Float = { f -> f },
+        l3Transform: (Float) -> Float = { f -> f },
     ) {
-        contract {
-            callsInPlace(after, InvocationKind.EXACTLY_ONCE)
+        val bOffset = ConstraintData3p0r.B_OFFSET
+        val jOffset = ConstraintData3p0r.J_OFFSET
+        val imOffset = ConstraintData3p0r.IM_OFFSET
+        val eOffset = ConstraintData3p0r.E_OFFSET
+        val kOffset = ConstraintData3p0r.K_OFFSET
+        val lOffset = ConstraintData3p0r.L_OFFSET
+
+        constraintData.forEach(numConstraints) { _, b1Idx, b2Idx, rawIdx ->
+            val v1 = bodyData[b1Idx * 6 + 0]
+            val v2 = bodyData[b1Idx * 6 + 1]
+            val v3 = bodyData[b1Idx * 6 + 2]
+            val v4 = bodyData[b1Idx * 6 + 3]
+            val v5 = bodyData[b1Idx * 6 + 4]
+            val v6 = bodyData[b1Idx * 6 + 5]
+
+            val v7 = bodyData[b2Idx * 6 + 0]
+            val v8 = bodyData[b2Idx * 6 + 1]
+            val v9 = bodyData[b2Idx * 6 + 2]
+            val v10 = bodyData[b2Idx * 6 + 3]
+            val v11 = bodyData[b2Idx * 6 + 4]
+            val v12 = bodyData[b2Idx * 6 + 5]
+
+            val b1 = constraintData[rawIdx + bOffset + 0]
+            val b2 = constraintData[rawIdx + bOffset + 1]
+            val b3 = constraintData[rawIdx + bOffset + 2]
+
+            val r1x = constraintData[rawIdx + jOffset + 0]
+            val r1y = constraintData[rawIdx + jOffset + 1]
+            val r1z = constraintData[rawIdx + jOffset + 2]
+
+            val r2x = constraintData[rawIdx + jOffset + 3]
+            val r2y = constraintData[rawIdx + jOffset + 4]
+            val r2z = constraintData[rawIdx + jOffset + 5]
+
+            val jv1 = -(-v1 + -r1z * v5 + r1y * v6 + v7 + r2z * v11 + -r2y * v12 + b1)
+            val jv2 = -(-v2 + r1z * v4 + -r1x * v6 + v8 + -r2z * v10 + r2x * v12 + b2)
+            val jv3 = -(-v3 + -r1y * v4 + r1x * v5 + v9 + r2y * v10 + -r2x * v11 + b3)
+
+            val im1 = constraintData[rawIdx + imOffset + 0]
+            val im2 = constraintData[rawIdx + imOffset + 1]
+
+            val e12x = constraintData[rawIdx + eOffset + 0]
+            val e12y = constraintData[rawIdx + eOffset + 1]
+            val e12z = constraintData[rawIdx + eOffset + 2]
+
+            val e22x = constraintData[rawIdx + eOffset + 3]
+            val e22y = constraintData[rawIdx + eOffset + 4]
+            val e22z = constraintData[rawIdx + eOffset + 5]
+
+            val e32x = constraintData[rawIdx + eOffset + 6]
+            val e32y = constraintData[rawIdx + eOffset + 7]
+            val e32z = constraintData[rawIdx + eOffset + 8]
+
+            val e14x = constraintData[rawIdx + eOffset + 9]
+            val e14y = constraintData[rawIdx + eOffset + 10]
+            val e14z = constraintData[rawIdx + eOffset + 11]
+
+            val e24x = constraintData[rawIdx + eOffset + 12]
+            val e24y = constraintData[rawIdx + eOffset + 13]
+            val e24z = constraintData[rawIdx + eOffset + 14]
+
+            val e34x = constraintData[rawIdx + eOffset + 15]
+            val e34y = constraintData[rawIdx + eOffset + 16]
+            val e34z = constraintData[rawIdx + eOffset + 17]
+
+            val k11 = constraintData[rawIdx + kOffset + 0]
+            val k12 = constraintData[rawIdx + kOffset + 1]
+            val k13 = constraintData[rawIdx + kOffset + 2]
+
+            val k22 = constraintData[rawIdx + kOffset + 3]
+            val k23 = constraintData[rawIdx + kOffset + 4]
+
+            val k33 = constraintData[rawIdx + kOffset + 5]
+
+            val t1 = constraintData[rawIdx + lOffset + 0]
+            val t2 = constraintData[rawIdx + lOffset + 1]
+            val t3 = constraintData[rawIdx + lOffset + 2]
+
+            val l1: Float
+            val l2: Float
+            val l3: Float
+
+            solveSymmetric3x3(
+                k11, k12, k13,
+                k22, k23,
+                k33,
+
+                jv1, jv2, jv3,
+            ) { s1, s2, s3 ->
+                l1 = l1Transform(t1 + s1)
+                l2 = l2Transform(t2 + s2)
+                l3 = l3Transform(t3 + s3)
+            }
+
+            constraintData[rawIdx + lOffset + 0] = l1
+            constraintData[rawIdx + lOffset + 1] = l2
+            constraintData[rawIdx + lOffset + 2] = l3
+
+            val d1 = l1 - t1
+            val d2 = l2 - t2
+            val d3 = l3 - t3
+
+            bodyData[b1Idx * 6 + 0] += -im1 * d1
+            bodyData[b1Idx * 6 + 1] += -im1 * d2
+            bodyData[b1Idx * 6 + 2] += -im1 * d3
+            bodyData[b1Idx * 6 + 3] += fma(e12x, d1, fma(e22x, d2, e32x * d3))
+            bodyData[b1Idx * 6 + 4] += fma(e12y, d1, fma(e22y, d2, e32y * d3))
+            bodyData[b1Idx * 6 + 5] += fma(e12z, d1, fma(e22z, d2, e32z * d3))
+
+            bodyData[b2Idx * 6 + 0] += im2 * d1
+            bodyData[b2Idx * 6 + 1] += im2 * d2
+            bodyData[b2Idx * 6 + 2] += im2 * d3
+            bodyData[b2Idx * 6 + 3] += fma(e14x, d1, fma(e24x, d2, e34x * d3))
+            bodyData[b2Idx * 6 + 4] += fma(e14y, d1, fma(e24y, d2, e34y * d3))
+            bodyData[b2Idx * 6 + 5] += fma(e14z, d1, fma(e24z, d2, e34z * d3))
         }
-
-        val l00 = sqrt(m11)
-
-        val l10 = m12 / l00
-        val l11 = sqrt(m22 - l10 * l10)
-
-        val l20 = m13 / l00
-        val l21 = (m23 - l20 * l10) / l11
-        val l22 = sqrt(m33 - (l20 * l20 + l21 * l21))
-
-        val y0 = v1 / l00
-        val y1 = (v2 - l10 * y0) / l11
-        val y2 = (v3 - (l20 * y0 + l21 * y1)) / l22
-
-        val s3 = y2 / l22
-        val s2 = (y1 - y2 * l21) / l11
-        val s1 = (y0 - y1 * l10 - y2 * l20) / l00
-
-        after(s1, s2, s3)
     }
 
-    inline fun solveSymmetric5x5(
-        m11: Float, m12: Float, m13: Float, m14: Float, m15: Float,
-        m22: Float, m23: Float, m24: Float, m25: Float,
-        m33: Float, m34: Float, m35: Float,
-        m44: Float, m45: Float,
-        m55: Float,
+    inline fun solve3p1rVelocity(
+        bodyData: FloatArray,
+        constraintData: ConstraintData3p1r,
+        numConstraints: Int,
 
-        v1: Float, v2: Float, v3: Float, v4: Float, v5: Float,
-
-        after: (s1: Float, s2: Float, s3: Float, s4: Float, s5: Float) -> Unit,
+        l1Transform: (Float) -> Float = { f -> f },
+        l2Transform: (Float) -> Float = { f -> f },
+        l3Transform: (Float) -> Float = { f -> f },
+        l4Transform: (Float) -> Float = { f -> f },
     ) {
-        contract {
-            callsInPlace(after, InvocationKind.EXACTLY_ONCE)
+        val bOffset = ConstraintData3p1r.B_OFFSET
+        val jOffset = ConstraintData3p1r.J_OFFSET
+        val imOffset = ConstraintData3p1r.IM_OFFSET
+        val eOffset = ConstraintData3p1r.E_OFFSET
+        val kOffset = ConstraintData3p1r.K_OFFSET
+        val lOffset = ConstraintData3p1r.L_OFFSET
+
+        constraintData.forEach(numConstraints) { _, b1Idx, b2Idx, rawIdx ->
+            val v1 = bodyData[b1Idx * 6 + 0]
+            val v2 = bodyData[b1Idx * 6 + 1]
+            val v3 = bodyData[b1Idx * 6 + 2]
+            val v4 = bodyData[b1Idx * 6 + 3]
+            val v5 = bodyData[b1Idx * 6 + 4]
+            val v6 = bodyData[b1Idx * 6 + 5]
+
+            val v7 = bodyData[b2Idx * 6 + 0]
+            val v8 = bodyData[b2Idx * 6 + 1]
+            val v9 = bodyData[b2Idx * 6 + 2]
+            val v10 = bodyData[b2Idx * 6 + 3]
+            val v11 = bodyData[b2Idx * 6 + 4]
+            val v12 = bodyData[b2Idx * 6 + 5]
+
+            val b1 = constraintData[rawIdx + bOffset + 0]
+            val b2 = constraintData[rawIdx + bOffset + 1]
+            val b3 = constraintData[rawIdx + bOffset + 2]
+            val b4 = constraintData[rawIdx + bOffset + 3]
+
+            val r1x = constraintData[rawIdx + jOffset + 0]
+            val r1y = constraintData[rawIdx + jOffset + 1]
+            val r1z = constraintData[rawIdx + jOffset + 2]
+
+            val r2x = constraintData[rawIdx + jOffset + 3]
+            val r2y = constraintData[rawIdx + jOffset + 4]
+            val r2z = constraintData[rawIdx + jOffset + 5]
+
+            val j42x = constraintData[rawIdx + jOffset + 6]
+            val j42y = constraintData[rawIdx + jOffset + 7]
+            val j42z = constraintData[rawIdx + jOffset + 8]
+
+            val jv1 = -(-v1 + -r1z * v5 + r1y * v6 + v7 + r2z * v11 + -r2y * v12 + b1)
+            val jv2 = -(-v2 + r1z * v4 + -r1x * v6 + v8 + -r2z * v10 + r2x * v12 + b2)
+            val jv3 = -(-v3 + -r1y * v4 + r1x * v5 + v9 + r2y * v10 + -r2x * v11 + b3)
+            val jv4 =
+                -fma(j42x, v4, fma(j42y, v5, fma(j42z, v6, fma(-j42x, v10, fma(-j42y, v11, fma(-j42z, v12, b4))))))
+
+            val im1 = constraintData[rawIdx + imOffset + 0]
+            val im2 = constraintData[rawIdx + imOffset + 1]
+
+            val e12x = constraintData[rawIdx + eOffset + 0]
+            val e12y = constraintData[rawIdx + eOffset + 1]
+            val e12z = constraintData[rawIdx + eOffset + 2]
+
+            val e22x = constraintData[rawIdx + eOffset + 3]
+            val e22y = constraintData[rawIdx + eOffset + 4]
+            val e22z = constraintData[rawIdx + eOffset + 5]
+
+            val e32x = constraintData[rawIdx + eOffset + 6]
+            val e32y = constraintData[rawIdx + eOffset + 7]
+            val e32z = constraintData[rawIdx + eOffset + 8]
+
+            val e42x = constraintData[rawIdx + eOffset + 9]
+            val e42y = constraintData[rawIdx + eOffset + 10]
+            val e42z = constraintData[rawIdx + eOffset + 11]
+
+            val e14x = constraintData[rawIdx + eOffset + 12]
+            val e14y = constraintData[rawIdx + eOffset + 13]
+            val e14z = constraintData[rawIdx + eOffset + 14]
+
+            val e24x = constraintData[rawIdx + eOffset + 15]
+            val e24y = constraintData[rawIdx + eOffset + 16]
+            val e24z = constraintData[rawIdx + eOffset + 17]
+
+            val e34x = constraintData[rawIdx + eOffset + 18]
+            val e34y = constraintData[rawIdx + eOffset + 19]
+            val e34z = constraintData[rawIdx + eOffset + 20]
+
+            val e44x = constraintData[rawIdx + eOffset + 21]
+            val e44y = constraintData[rawIdx + eOffset + 22]
+            val e44z = constraintData[rawIdx + eOffset + 23]
+
+            val k11 = constraintData[rawIdx + kOffset + 0]
+            val k12 = constraintData[rawIdx + kOffset + 1]
+            val k13 = constraintData[rawIdx + kOffset + 2]
+            val k14 = constraintData[rawIdx + kOffset + 3]
+
+            val k22 = constraintData[rawIdx + kOffset + 4]
+            val k23 = constraintData[rawIdx + kOffset + 5]
+            val k24 = constraintData[rawIdx + kOffset + 6]
+
+            val k33 = constraintData[rawIdx + kOffset + 7]
+            val k34 = constraintData[rawIdx + kOffset + 8]
+
+            val k44 = constraintData[rawIdx + kOffset + 9]
+
+            val t1 = constraintData[rawIdx + lOffset + 0]
+            val t2 = constraintData[rawIdx + lOffset + 1]
+            val t3 = constraintData[rawIdx + lOffset + 2]
+            val t4 = constraintData[rawIdx + lOffset + 3]
+
+            val l1: Float
+            val l2: Float
+            val l3: Float
+            val l4: Float
+
+            solveSymmetric4x4(
+                k11, k12, k13, k14,
+                k22, k23, k24,
+                k33, k34,
+                k44,
+
+                jv1, jv2, jv3, jv4,
+            ) { s1, s2, s3, s4 ->
+                l1 = l1Transform(t1 + s1)
+                l2 = l2Transform(t2 + s2)
+                l3 = l3Transform(t3 + s3)
+                l4 = l4Transform(t4 + s4)
+            }
+
+            constraintData[rawIdx + lOffset + 0] = l1
+            constraintData[rawIdx + lOffset + 1] = l2
+            constraintData[rawIdx + lOffset + 2] = l3
+            constraintData[rawIdx + lOffset + 3] = l4
+
+            val d1 = l1 - t1
+            val d2 = l2 - t2
+            val d3 = l3 - t3
+            val d4 = l4 - t4
+
+            bodyData[b1Idx * 6 + 0] += -im1 * d1
+            bodyData[b1Idx * 6 + 1] += -im1 * d2
+            bodyData[b1Idx * 6 + 2] += -im1 * d3
+            bodyData[b1Idx * 6 + 3] += fma(e12x, d1, fma(e22x, d2, fma(e32x, d3, e42x * d4)))
+            bodyData[b1Idx * 6 + 4] += fma(e12y, d1, fma(e22y, d2, fma(e32y, d3, e42y * d4)))
+            bodyData[b1Idx * 6 + 5] += fma(e12z, d1, fma(e22z, d2, fma(e32z, d3, e42z * d4)))
+
+            bodyData[b2Idx * 6 + 0] += im2 * d1
+            bodyData[b2Idx * 6 + 1] += im2 * d2
+            bodyData[b2Idx * 6 + 2] += im2 * d3
+            bodyData[b2Idx * 6 + 3] += fma(e14x, d1, fma(e24x, d2, fma(e34x, d3, e44x * d4)))
+            bodyData[b2Idx * 6 + 4] += fma(e14y, d1, fma(e24y, d2, fma(e34y, d3, e44y * d4)))
+            bodyData[b2Idx * 6 + 5] += fma(e14z, d1, fma(e24z, d2, fma(e34z, d3, e44z * d4)))
         }
-
-        val l00 = sqrt(m11)
-
-        val l10 = m12 / l00
-        val l11 = sqrt(m22 - l10 * l10)
-
-        val l20 = m13 / l00
-        val l21 = (m23 - l20 * l10) / l11
-        val l22 = sqrt(m33 - (l20 * l20 + l21 * l21))
-
-        val l30 = m14 / l00
-        val l31 = (m24 - l30 * l10) / l11
-        val l32 = (m34 - (l30 * l20 + l31 * l21)) / l22
-        val l33 = sqrt(m44 - (l30 * l30 + l31 * l31 + l32 * l32))
-
-        val l40 = m15 / l00
-        val l41 = (m25 - l40 * l10) / l11
-        val l42 = (m35 - (l40 * l20 + l41 * l21)) / l22
-        val l43 = (m45 - (l40 * l30 + l41 * l31 + l42 * l32)) / l33
-        val l44 = sqrt(m55 - (l40 * l40 + l41 * l41 + l42 * l42 + l43 * l43))
-
-        val y0 = v1 / l00
-        val y1 = (v2 - l10 * y0) / l11
-        val y2 = (v3 - (l20 * y0 + l21 * y1)) / l22
-        val y3 = (v4 - (l30 * y0 + l31 * y1 + l32 * y2)) / l33
-        val y4 = (v5 - (l40 * y0 + l41 * y1 + l42 * y2 + l43 * y3)) / l44
-
-        val s4 = y4 / l44
-        val s3 = (y3 - l43 * s4) / l33
-        val s2 = (y2 - (l32 * s3 + l42 * s4)) / l22
-        val s1 = (y1 - (l21 * s2 + l31 * s3 + l41 * s4)) / l11
-        val s0 = (y0 - (l10 * s1 + l20 * s2 + l30 * s3 + l40 * s4)) / l00
-
-        after(s0, s1, s2, s3, s4)
     }
 
-    inline fun solveSymmetric6x6(
-        m11: Float, m12: Float, m13: Float, m14: Float, m15: Float, m16: Float,
-        m22: Float, m23: Float, m24: Float, m25: Float, m26: Float,
-        m33: Float, m34: Float, m35: Float, m36: Float,
-        m44: Float, m45: Float, m46: Float,
-        m55: Float, m56: Float,
-        m66: Float,
+    inline fun solve3p2rVelocity(
+        bodyData: FloatArray,
+        constraintData: ConstraintData3p2r,
+        numConstraints: Int,
 
-        v1: Float, v2: Float, v3: Float, v4: Float, v5: Float, v6: Float,
-
-        after: (s1: Float, s2: Float, s3: Float, s4: Float, s5: Float, s6: Float) -> Unit,
+        l1Transform: (Float) -> Float = { f -> f },
+        l2Transform: (Float) -> Float = { f -> f },
+        l3Transform: (Float) -> Float = { f -> f },
+        l4Transform: (Float) -> Float = { f -> f },
+        l5Transform: (Float) -> Float = { f -> f },
     ) {
-        contract {
-            callsInPlace(after, InvocationKind.EXACTLY_ONCE)
+        val bOffset = ConstraintData3p2r.B_OFFSET
+        val jOffset = ConstraintData3p2r.J_OFFSET
+        val imOffset = ConstraintData3p2r.IM_OFFSET
+        val eOffset = ConstraintData3p2r.E_OFFSET
+        val kOffset = ConstraintData3p2r.K_OFFSET
+        val lOffset = ConstraintData3p2r.L_OFFSET
+
+        constraintData.forEach(numConstraints) { _, b1Idx, b2Idx, rawIdx ->
+            val v1 = bodyData[b1Idx * 6 + 0]
+            val v2 = bodyData[b1Idx * 6 + 1]
+            val v3 = bodyData[b1Idx * 6 + 2]
+            val v4 = bodyData[b1Idx * 6 + 3]
+            val v5 = bodyData[b1Idx * 6 + 4]
+            val v6 = bodyData[b1Idx * 6 + 5]
+
+            val v7 = bodyData[b2Idx * 6 + 0]
+            val v8 = bodyData[b2Idx * 6 + 1]
+            val v9 = bodyData[b2Idx * 6 + 2]
+            val v10 = bodyData[b2Idx * 6 + 3]
+            val v11 = bodyData[b2Idx * 6 + 4]
+            val v12 = bodyData[b2Idx * 6 + 5]
+
+            val b1 = constraintData[rawIdx + bOffset + 0]
+            val b2 = constraintData[rawIdx + bOffset + 1]
+            val b3 = constraintData[rawIdx + bOffset + 2]
+            val b4 = constraintData[rawIdx + bOffset + 3]
+            val b5 = constraintData[rawIdx + bOffset + 4]
+
+            val r1x = constraintData[rawIdx + jOffset + 0]
+            val r1y = constraintData[rawIdx + jOffset + 1]
+            val r1z = constraintData[rawIdx + jOffset + 2]
+
+            val r2x = constraintData[rawIdx + jOffset + 3]
+            val r2y = constraintData[rawIdx + jOffset + 4]
+            val r2z = constraintData[rawIdx + jOffset + 5]
+
+            val j42x = constraintData[rawIdx + jOffset + 6]
+            val j42y = constraintData[rawIdx + jOffset + 7]
+            val j42z = constraintData[rawIdx + jOffset + 8]
+
+            val j52x = constraintData[rawIdx + jOffset + 9]
+            val j52y = constraintData[rawIdx + jOffset + 10]
+            val j52z = constraintData[rawIdx + jOffset + 11]
+
+            val jv1 = -(-v1 + -r1z * v5 + r1y * v6 + v7 + r2z * v11 + -r2y * v12 + b1)
+            val jv2 = -(-v2 + r1z * v4 + -r1x * v6 + v8 + -r2z * v10 + r2x * v12 + b2)
+            val jv3 = -(-v3 + -r1y * v4 + r1x * v5 + v9 + r2y * v10 + -r2x * v11 + b3)
+            val jv4 =
+                -fma(j42x, v4, fma(j42y, v5, fma(j42z, v6, fma(-j42x, v10, fma(-j42y, v11, fma(-j42z, v12, b4))))))
+            val jv5 =
+                -fma(j52x, v4, fma(j52y, v5, fma(j52z, v6, fma(-j52x, v10, fma(-j52y, v11, fma(-j52z, v12, b5))))))
+
+            val im1 = constraintData[rawIdx + imOffset + 0]
+            val im2 = constraintData[rawIdx + imOffset + 1]
+
+            val e12x = constraintData[rawIdx + eOffset + 0]
+            val e12y = constraintData[rawIdx + eOffset + 1]
+            val e12z = constraintData[rawIdx + eOffset + 2]
+
+            val e22x = constraintData[rawIdx + eOffset + 3]
+            val e22y = constraintData[rawIdx + eOffset + 4]
+            val e22z = constraintData[rawIdx + eOffset + 5]
+
+            val e32x = constraintData[rawIdx + eOffset + 6]
+            val e32y = constraintData[rawIdx + eOffset + 7]
+            val e32z = constraintData[rawIdx + eOffset + 8]
+
+            val e42x = constraintData[rawIdx + eOffset + 9]
+            val e42y = constraintData[rawIdx + eOffset + 10]
+            val e42z = constraintData[rawIdx + eOffset + 11]
+
+            val e52x = constraintData[rawIdx + eOffset + 12]
+            val e52y = constraintData[rawIdx + eOffset + 13]
+            val e52z = constraintData[rawIdx + eOffset + 14]
+
+            val e14x = constraintData[rawIdx + eOffset + 15]
+            val e14y = constraintData[rawIdx + eOffset + 16]
+            val e14z = constraintData[rawIdx + eOffset + 17]
+
+            val e24x = constraintData[rawIdx + eOffset + 18]
+            val e24y = constraintData[rawIdx + eOffset + 19]
+            val e24z = constraintData[rawIdx + eOffset + 20]
+
+            val e34x = constraintData[rawIdx + eOffset + 21]
+            val e34y = constraintData[rawIdx + eOffset + 22]
+            val e34z = constraintData[rawIdx + eOffset + 23]
+
+            val e44x = constraintData[rawIdx + eOffset + 24]
+            val e44y = constraintData[rawIdx + eOffset + 25]
+            val e44z = constraintData[rawIdx + eOffset + 26]
+
+            val e54x = constraintData[rawIdx + eOffset + 27]
+            val e54y = constraintData[rawIdx + eOffset + 28]
+            val e54z = constraintData[rawIdx + eOffset + 29]
+
+            val k11 = constraintData[rawIdx + kOffset + 0]
+            val k12 = constraintData[rawIdx + kOffset + 1]
+            val k13 = constraintData[rawIdx + kOffset + 2]
+            val k14 = constraintData[rawIdx + kOffset + 3]
+            val k15 = constraintData[rawIdx + kOffset + 4]
+
+            val k22 = constraintData[rawIdx + kOffset + 5]
+            val k23 = constraintData[rawIdx + kOffset + 6]
+            val k24 = constraintData[rawIdx + kOffset + 7]
+            val k25 = constraintData[rawIdx + kOffset + 8]
+
+            val k33 = constraintData[rawIdx + kOffset + 9]
+            val k34 = constraintData[rawIdx + kOffset + 10]
+            val k35 = constraintData[rawIdx + kOffset + 11]
+
+            val k44 = constraintData[rawIdx + kOffset + 12]
+            val k45 = constraintData[rawIdx + kOffset + 13]
+
+            val k55 = constraintData[rawIdx + kOffset + 14]
+
+            val t1 = constraintData[rawIdx + lOffset + 0]
+            val t2 = constraintData[rawIdx + lOffset + 1]
+            val t3 = constraintData[rawIdx + lOffset + 2]
+            val t4 = constraintData[rawIdx + lOffset + 3]
+            val t5 = constraintData[rawIdx + lOffset + 4]
+
+            val l1: Float
+            val l2: Float
+            val l3: Float
+            val l4: Float
+            val l5: Float
+
+            solveSymmetric5x5(
+                k11, k12, k13, k14, k15,
+                k22, k23, k24, k25,
+                k33, k34, k35,
+                k44, k45,
+                k55,
+
+                jv1, jv2, jv3, jv4, jv5,
+            ) { s1, s2, s3, s4, s5 ->
+                l1 = l1Transform(t1 + s1)
+                l2 = l2Transform(t2 + s2)
+                l3 = l3Transform(t3 + s3)
+                l4 = l4Transform(t4 + s4)
+                l5 = l5Transform(t5 + s5)
+            }
+
+            constraintData[rawIdx + lOffset + 0] = l1
+            constraintData[rawIdx + lOffset + 1] = l2
+            constraintData[rawIdx + lOffset + 2] = l3
+            constraintData[rawIdx + lOffset + 3] = l4
+            constraintData[rawIdx + lOffset + 4] = l5
+
+            val d1 = l1 - t1
+            val d2 = l2 - t2
+            val d3 = l3 - t3
+            val d4 = l4 - t4
+            val d5 = l5 - t5
+
+            bodyData[b1Idx * 6 + 0] += -im1 * d1
+            bodyData[b1Idx * 6 + 1] += -im1 * d2
+            bodyData[b1Idx * 6 + 2] += -im1 * d3
+            bodyData[b1Idx * 6 + 3] += fma(e12x, d1, fma(e22x, d2, fma(e32x, d3, fma(e42x, d4, e52x * d5))))
+            bodyData[b1Idx * 6 + 4] += fma(e12y, d1, fma(e22y, d2, fma(e32y, d3, fma(e42y, d4, e52y * d5))))
+            bodyData[b1Idx * 6 + 5] += fma(e12z, d1, fma(e22z, d2, fma(e32z, d3, fma(e42z, d4, e52z * d5))))
+
+            bodyData[b2Idx * 6 + 0] += im2 * d1
+            bodyData[b2Idx * 6 + 1] += im2 * d2
+            bodyData[b2Idx * 6 + 2] += im2 * d3
+            bodyData[b2Idx * 6 + 3] += fma(e14x, d1, fma(e24x, d2, fma(e34x, d3, fma(e44x, d4, e54x * d5))))
+            bodyData[b2Idx * 6 + 4] += fma(e14y, d1, fma(e24y, d2, fma(e34y, d3, fma(e44y, d4, e54y * d5))))
+            bodyData[b2Idx * 6 + 5] += fma(e14z, d1, fma(e24z, d2, fma(e34z, d3, fma(e44z, d4, e54z * d5))))
+        }
+    }
+
+    inline fun solve3p3rVelocity(
+        bodyData: FloatArray,
+        constraintData: ConstraintData3p3r,
+        numConstraints: Int,
+
+        l1Transform: (Float) -> Float = { f -> f },
+        l2Transform: (Float) -> Float = { f -> f },
+        l3Transform: (Float) -> Float = { f -> f },
+        l4Transform: (Float) -> Float = { f -> f },
+        l5Transform: (Float) -> Float = { f -> f },
+        l6Transform: (Float) -> Float = { f -> f },
+    ) {
+        val bOffset = ConstraintData3p3r.B_OFFSET
+        val jOffset = ConstraintData3p3r.J_OFFSET
+        val imOffset = ConstraintData3p3r.IM_OFFSET
+        val eOffset = ConstraintData3p3r.E_OFFSET
+        val kOffset = ConstraintData3p3r.K_OFFSET
+        val lOffset = ConstraintData3p3r.L_OFFSET
+
+        constraintData.forEach(numConstraints) { _, b1Idx, b2Idx, rawIdx ->
+            val v1 = bodyData[b1Idx * 6 + 0]
+            val v2 = bodyData[b1Idx * 6 + 1]
+            val v3 = bodyData[b1Idx * 6 + 2]
+            val v4 = bodyData[b1Idx * 6 + 3]
+            val v5 = bodyData[b1Idx * 6 + 4]
+            val v6 = bodyData[b1Idx * 6 + 5]
+
+            val v7 = bodyData[b2Idx * 6 + 0]
+            val v8 = bodyData[b2Idx * 6 + 1]
+            val v9 = bodyData[b2Idx * 6 + 2]
+            val v10 = bodyData[b2Idx * 6 + 3]
+            val v11 = bodyData[b2Idx * 6 + 4]
+            val v12 = bodyData[b2Idx * 6 + 5]
+
+            val b1 = constraintData[rawIdx + bOffset + 0]
+            val b2 = constraintData[rawIdx + bOffset + 1]
+            val b3 = constraintData[rawIdx + bOffset + 2]
+            val b4 = constraintData[rawIdx + bOffset + 3]
+            val b5 = constraintData[rawIdx + bOffset + 4]
+            val b6 = constraintData[rawIdx + bOffset + 5]
+
+            val r1x = constraintData[rawIdx + jOffset + 0]
+            val r1y = constraintData[rawIdx + jOffset + 1]
+            val r1z = constraintData[rawIdx + jOffset + 2]
+
+            val r2x = constraintData[rawIdx + jOffset + 3]
+            val r2y = constraintData[rawIdx + jOffset + 4]
+            val r2z = constraintData[rawIdx + jOffset + 5]
+
+            val j42x = constraintData[rawIdx + jOffset + 6]
+            val j42y = constraintData[rawIdx + jOffset + 7]
+            val j42z = constraintData[rawIdx + jOffset + 8]
+
+            val j52x = constraintData[rawIdx + jOffset + 9]
+            val j52y = constraintData[rawIdx + jOffset + 10]
+            val j52z = constraintData[rawIdx + jOffset + 11]
+
+            val j62x = constraintData[rawIdx + jOffset + 12]
+            val j62y = constraintData[rawIdx + jOffset + 13]
+            val j62z = constraintData[rawIdx + jOffset + 14]
+
+            val jv1 = -(-v1 + -r1z * v5 + r1y * v6 + v7 + r2z * v11 + -r2y * v12 + b1)
+            val jv2 = -(-v2 + r1z * v4 + -r1x * v6 + v8 + -r2z * v10 + r2x * v12 + b2)
+            val jv3 = -(-v3 + -r1y * v4 + r1x * v5 + v9 + r2y * v10 + -r2x * v11 + b3)
+            val jv4 =
+                -fma(j42x, v4, fma(j42y, v5, fma(j42z, v6, fma(-j42x, v10, fma(-j42y, v11, fma(-j42z, v12, b4))))))
+            val jv5 =
+                -fma(j52x, v4, fma(j52y, v5, fma(j52z, v6, fma(-j52x, v10, fma(-j52y, v11, fma(-j52z, v12, b5))))))
+            val jv6 =
+                -fma(j62x, v4, fma(j62y, v5, fma(j62z, v6, fma(-j62x, v10, fma(-j62y, v11, fma(-j62z, v12, b6))))))
+
+            val im1 = constraintData[rawIdx + imOffset + 0]
+            val im2 = constraintData[rawIdx + imOffset + 1]
+
+            val e12x = constraintData[rawIdx + eOffset + 0]
+            val e12y = constraintData[rawIdx + eOffset + 1]
+            val e12z = constraintData[rawIdx + eOffset + 2]
+
+            val e22x = constraintData[rawIdx + eOffset + 3]
+            val e22y = constraintData[rawIdx + eOffset + 4]
+            val e22z = constraintData[rawIdx + eOffset + 5]
+
+            val e32x = constraintData[rawIdx + eOffset + 6]
+            val e32y = constraintData[rawIdx + eOffset + 7]
+            val e32z = constraintData[rawIdx + eOffset + 8]
+
+            val e42x = constraintData[rawIdx + eOffset + 9]
+            val e42y = constraintData[rawIdx + eOffset + 10]
+            val e42z = constraintData[rawIdx + eOffset + 11]
+
+            val e52x = constraintData[rawIdx + eOffset + 12]
+            val e52y = constraintData[rawIdx + eOffset + 13]
+            val e52z = constraintData[rawIdx + eOffset + 14]
+
+            val e62x = constraintData[rawIdx + eOffset + 15]
+            val e62y = constraintData[rawIdx + eOffset + 16]
+            val e62z = constraintData[rawIdx + eOffset + 17]
+
+            val e14x = constraintData[rawIdx + eOffset + 18]
+            val e14y = constraintData[rawIdx + eOffset + 19]
+            val e14z = constraintData[rawIdx + eOffset + 20]
+
+            val e24x = constraintData[rawIdx + eOffset + 21]
+            val e24y = constraintData[rawIdx + eOffset + 22]
+            val e24z = constraintData[rawIdx + eOffset + 23]
+
+            val e34x = constraintData[rawIdx + eOffset + 24]
+            val e34y = constraintData[rawIdx + eOffset + 25]
+            val e34z = constraintData[rawIdx + eOffset + 26]
+
+            val e44x = constraintData[rawIdx + eOffset + 27]
+            val e44y = constraintData[rawIdx + eOffset + 28]
+            val e44z = constraintData[rawIdx + eOffset + 29]
+
+            val e54x = constraintData[rawIdx + eOffset + 30]
+            val e54y = constraintData[rawIdx + eOffset + 31]
+            val e54z = constraintData[rawIdx + eOffset + 32]
+
+            val e64x = constraintData[rawIdx + eOffset + 33]
+            val e64y = constraintData[rawIdx + eOffset + 34]
+            val e64z = constraintData[rawIdx + eOffset + 35]
+
+            val k11 = constraintData[rawIdx + kOffset + 0]
+            val k12 = constraintData[rawIdx + kOffset + 1]
+            val k13 = constraintData[rawIdx + kOffset + 2]
+            val k14 = constraintData[rawIdx + kOffset + 3]
+            val k15 = constraintData[rawIdx + kOffset + 4]
+            val k16 = constraintData[rawIdx + kOffset + 5]
+
+            val k22 = constraintData[rawIdx + kOffset + 6]
+            val k23 = constraintData[rawIdx + kOffset + 7]
+            val k24 = constraintData[rawIdx + kOffset + 8]
+            val k25 = constraintData[rawIdx + kOffset + 9]
+            val k26 = constraintData[rawIdx + kOffset + 10]
+
+            val k33 = constraintData[rawIdx + kOffset + 11]
+            val k34 = constraintData[rawIdx + kOffset + 12]
+            val k35 = constraintData[rawIdx + kOffset + 13]
+            val k36 = constraintData[rawIdx + kOffset + 14]
+
+            val k44 = constraintData[rawIdx + kOffset + 15]
+            val k45 = constraintData[rawIdx + kOffset + 16]
+            val k46 = constraintData[rawIdx + kOffset + 17]
+
+            val k55 = constraintData[rawIdx + kOffset + 18]
+            val k56 = constraintData[rawIdx + kOffset + 19]
+
+            val k66 = constraintData[rawIdx + kOffset + 20]
+
+            val t1 = constraintData[rawIdx + lOffset + 0]
+            val t2 = constraintData[rawIdx + lOffset + 1]
+            val t3 = constraintData[rawIdx + lOffset + 2]
+            val t4 = constraintData[rawIdx + lOffset + 3]
+            val t5 = constraintData[rawIdx + lOffset + 4]
+            val t6 = constraintData[rawIdx + lOffset + 5]
+
+            val l1: Float
+            val l2: Float
+            val l3: Float
+            val l4: Float
+            val l5: Float
+            val l6: Float
+
+            solveSymmetric6x6(
+                k11, k12, k13, k14, k15, k16,
+                k22, k23, k24, k25, k26,
+                k33, k34, k35, k36,
+                k44, k45, k46,
+                k55, k56,
+                k66,
+
+                jv1, jv2, jv3, jv4, jv5, jv6,
+            ) { s1, s2, s3, s4, s5, s6 ->
+                l1 = l1Transform(t1 + s1)
+                l2 = l2Transform(t2 + s2)
+                l3 = l3Transform(t3 + s3)
+                l4 = l4Transform(t4 + s4)
+                l5 = l5Transform(t5 + s5)
+                l6 = l6Transform(t6 + s6)
+            }
+
+            constraintData[rawIdx + lOffset + 0] = l1
+            constraintData[rawIdx + lOffset + 1] = l2
+            constraintData[rawIdx + lOffset + 2] = l3
+            constraintData[rawIdx + lOffset + 3] = l4
+            constraintData[rawIdx + lOffset + 4] = l5
+            constraintData[rawIdx + lOffset + 5] = l6
+
+            val d1 = l1 - t1
+            val d2 = l2 - t2
+            val d3 = l3 - t3
+            val d4 = l4 - t4
+            val d5 = l5 - t5
+            val d6 = l6 - t6
+
+            bodyData[b1Idx * 6 + 0] += -im1 * d1
+            bodyData[b1Idx * 6 + 1] += -im1 * d2
+            bodyData[b1Idx * 6 + 2] += -im1 * d3
+            bodyData[b1Idx * 6 + 3] += fma(
+                e12x,
+                d1,
+                fma(e22x, d2, fma(e32x, d3, fma(e42x, d4, fma(e52x, d5, e62x * d6))))
+            )
+            bodyData[b1Idx * 6 + 4] += fma(
+                e12y,
+                d1,
+                fma(e22y, d2, fma(e32y, d3, fma(e42y, d4, fma(e52y, d5, e62y * d6))))
+            )
+            bodyData[b1Idx * 6 + 5] += fma(
+                e12z,
+                d1,
+                fma(e22z, d2, fma(e32z, d3, fma(e42z, d4, fma(e52z, d5, e62z * d6))))
+            )
+
+            bodyData[b2Idx * 6 + 0] += im2 * d1
+            bodyData[b2Idx * 6 + 1] += im2 * d2
+            bodyData[b2Idx * 6 + 2] += im2 * d3
+            bodyData[b2Idx * 6 + 3] += fma(
+                e14x,
+                d1,
+                fma(e24x, d2, fma(e34x, d3, fma(e44x, d4, fma(e54x, d5, e64x * d6))))
+            )
+            bodyData[b2Idx * 6 + 4] += fma(
+                e14y,
+                d1,
+                fma(e24y, d2, fma(e34y, d3, fma(e44y, d4, fma(e54y, d5, e64y * d6))))
+            )
+            bodyData[b2Idx * 6 + 5] += fma(
+                e14z,
+                d1,
+                fma(e24z, d2, fma(e34z, d3, fma(e44z, d4, fma(e54z, d5, e64z * d6))))
+            )
+        }
+    }
+
+    fun solve3p0rPosition(
+        b1: ActiveBody,
+        b2: ActiveBody,
+
+        rr1x: Float,
+        rr1y: Float,
+        rr1z: Float,
+
+        rr2x: Float,
+        rr2y: Float,
+        rr2z: Float,
+
+        erp: Float,
+    ) {
+        val q1 = b1.q
+        val q2 = b2.q
+
+        val im1 = b1.inverseMass.toFloat()
+        val im2 = b2.inverseMass.toFloat()
+
+        val ii1 = b1.inverseInertia
+        val ii2 = b2.inverseInertia
+
+        val r1x: Float
+        val r1y: Float
+        val r1z: Float
+
+        q1.transform(rr1x.toDouble(), rr1y.toDouble(), rr1z.toDouble()) { x, y, z ->
+            r1x = x.toFloat()
+            r1y = y.toFloat()
+            r1z = z.toFloat()
         }
 
-        val l00 = sqrt(m11)
+        val p1x = r1x + b1.pos.x.toFloat()
+        val p1y = r1y + b1.pos.y.toFloat()
+        val p1z = r1z + b1.pos.z.toFloat()
 
-        val l10 = m12 / l00
-        val l11 = sqrt(m22 - l10 * l10)
+        val r2x: Float
+        val r2y: Float
+        val r2z: Float
 
-        val l20 = m13 / l00
-        val l21 = (m23 - l20 * l10) / l11
-        val l22 = sqrt(m33 - (l20 * l20 + l21 * l21))
+        q2.transform(rr2x.toDouble(), rr2y.toDouble(), rr2z.toDouble()) { x, y, z ->
+            r2x = x.toFloat()
+            r2y = y.toFloat()
+            r2z = z.toFloat()
+        }
 
-        val l30 = m14 / l00
-        val l31 = (m24 - l30 * l10) / l11
-        val l32 = (m34 - (l30 * l20 + l31 * l21)) / l22
-        val l33 = sqrt(m44 - (l30 * l30 + l31 * l31 + l32 * l32))
+        val p2x = r2x + b2.pos.x.toFloat()
+        val p2y = r2y + b2.pos.y.toFloat()
+        val p2z = r2z + b2.pos.z.toFloat()
 
-        val l40 = m15 / l00
-        val l41 = (m25 - l40 * l10) / l11
-        val l42 = (m35 - (l40 * l20 + l41 * l21)) / l22
-        val l43 = (m45 - (l40 * l30 + l41 * l31 + l42 * l32)) / l33
-        val l44 = sqrt(m55 - (l40 * l40 + l41 * l41 + l42 * l42 + l43 * l43))
+        val nx = p2x - p1x
+        val ny = p2y - p1y
+        val nz = p2z - p1z
 
-        val l50 = m16 / l00
-        val l51 = (m26 - l50 * l10) / l11
-        val l52 = (m36 - (l50 * l20 + l51 * l21)) / l22
-        val l53 = (m46 - (l50 * l30 + l51 * l31 + l52 * l32)) / l33
-        val l54 = (m56 - (l50 * l40 + l51 * l41 + l52 * l42 + l53 * l43)) / l44
-        val l55 = sqrt(m66 - (l50 * l50 + l51 * l51 + l52 * l52 + l53 * l53 + l54 * l54))
+        val e1 = nx
+        val e2 = ny
+        val e3 = nz
 
-        val y0 = v1 / l00
-        val y1 = (v2 - l10 * y0) / l11
-        val y2 = (v3 - (l20 * y0 + l21 * y1)) / l22
-        val y3 = (v4 - (l30 * y0 + l31 * y1 + l32 * y2)) / l33
-        val y4 = (v5 - (l40 * y0 + l41 * y1 + l42 * y2 + l43 * y3)) / l44
-        val y5 = (v6 - (l50 * y0 + l51 * y1 + l52 * y2 + l53 * y3 + l54 * y4)) / l55
+        val j12y = -r1z
+        val j12z = r1y
 
-        val s6 = y5 / l55
-        val s5 = (y4 - l54 * s6) / l44
-        val s4 = (y3 - (l43 * s5 + l53 * s6)) / l33
-        val s3 = (y2 - (l32 * s4 + l42 * s5 + l52 * s6)) / l22
-        val s2 = (y1 - (l21 * s3 + l31 * s4 + l41 * s5 + l51 * s6)) / l11
-        val s1 = (y0 - (l10 * s2 + l20 * s3 + l30 * s4 + l40 * s5 + l50 * s6)) / l00
+        val j14y = r2z
+        val j14z = -r2y
 
-        after(s1, s2, s3, s4, s5, s6)
+        val j22x = r1z
+        val j22z = -r1x
+
+        val j24x = -r2z
+        val j24z = r2x
+
+        val j32x = -r1y
+        val j32y = r1x
+
+        val j34x = r2y
+        val j34y = -r2x
+
+        val ej12x = fma(ii1.m10.toFloat(), j12y, ii1.m20.toFloat() * j12z)
+        val ej12y = fma(ii1.m11.toFloat(), j12y, ii1.m21.toFloat() * j12z)
+        val ej12z = fma(ii1.m12.toFloat(), j12y, ii1.m22.toFloat() * j12z)
+
+        val ej14x = fma(ii2.m10.toFloat(), j14y, ii2.m20.toFloat() * j14z)
+        val ej14y = fma(ii2.m11.toFloat(), j14y, ii2.m21.toFloat() * j14z)
+        val ej14z = fma(ii2.m12.toFloat(), j14y, ii2.m22.toFloat() * j14z)
+
+        val ej22x = fma(ii1.m00.toFloat(), j22x, ii1.m20.toFloat() * j22z)
+        val ej22y = fma(ii1.m01.toFloat(), j22x, ii1.m21.toFloat() * j22z)
+        val ej22z = fma(ii1.m02.toFloat(), j22x, ii1.m22.toFloat() * j22z)
+
+        val ej24x = fma(ii2.m00.toFloat(), j24x, ii2.m20.toFloat() * j24z)
+        val ej24y = fma(ii2.m01.toFloat(), j24x, ii2.m21.toFloat() * j24z)
+        val ej24z = fma(ii2.m02.toFloat(), j24x, ii2.m22.toFloat() * j24z)
+
+        val ej32x = fma(ii1.m00.toFloat(), j32x, ii1.m10.toFloat() * j32y)
+        val ej32y = fma(ii1.m01.toFloat(), j32x, ii1.m11.toFloat() * j32y)
+        val ej32z = fma(ii1.m02.toFloat(), j32x, ii1.m12.toFloat() * j32y)
+
+        val ej34x = fma(ii2.m00.toFloat(), j34x, ii2.m10.toFloat() * j34y)
+        val ej34y = fma(ii2.m01.toFloat(), j34x, ii2.m11.toFloat() * j34y)
+        val ej34z = fma(ii2.m02.toFloat(), j34x, ii2.m12.toFloat() * j34y)
+
+        val k11 =
+            im1 +
+            fma(ej12y, j12y, ej12z * j12z) +
+            im2 +
+            fma(ej14y, j14y, ej14z * j14z)
+        val k12 =
+            fma(ej12x, j22x, ej12z * j22z) +
+            fma(ej14x, j24x, ej14z * j24z)
+        val k13 =
+            fma(ej12x, j32x, ej12y * j32y) +
+            fma(ej14x, j34x, ej14y * j34y)
+
+        val k22 =
+            im1 +
+            fma(ej22x, j22x, ej22z * j22z) +
+            im2 +
+            fma(ej24x, j24x, ej24z * j24z)
+        val k23 =
+            fma(ej22x, j32x, ej22y * j32y) +
+            fma(ej24x, j34x, ej24y * j34y)
+
+        val k33 =
+            im1 +
+            fma(ej32x, j32x, ej32y * j32y) +
+            im2 +
+            fma(ej34x, j34x, ej34y * j34y)
+
+        val l1: Float
+        val l2: Float
+        val l3: Float
+
+        solveSymmetric3x3(
+            k11, k12, k13,
+            k22, k23,
+            k33,
+
+            -e1, -e2, -e3,
+        ) { s1, s2, s3 ->
+            l1 = s1
+            l2 = s2
+            l3 = s3
+        }
+
+        val d1 = -im1 * l1
+        val d2 = -im1 * l2
+        val d3 = -im1 * l3
+        val d4 = fma(ej12x, l1, fma(ej22x, l2, ej32x * l3))
+        val d5 = fma(ej12y, l1, fma(ej22y, l2, ej32y * l3))
+        val d6 = fma(ej12z, l1, fma(ej22z, l2, ej32z * l3))
+
+        val d7 = im2 * l1
+        val d8 = im2 * l2
+        val d9 = im2 * l3
+        val d10 = fma(ej14x, l1, fma(ej24x, l2, ej34x * l3))
+        val d11 = fma(ej14y, l1, fma(ej24y, l2, ej34y * l3))
+        val d12 = fma(ej14z, l1, fma(ej24z, l2, ej34z * l3))
+
+        b1.pos.add(
+            erp * d1.toDouble(),
+            erp * d2.toDouble(),
+            erp * d3.toDouble(),
+        )
+
+        quatTransform(
+            -q1.x, -q1.y, -q1.z, q1.w,
+            erp * d4.toDouble(),
+            erp * d5.toDouble(),
+            erp * d6.toDouble(),
+        ) { x, y, z ->
+            quatMul(
+                q1.x, q1.y, q1.z, q1.w,
+                x, y, z, 0.0,
+            ) { x, y, z, w ->
+                q1.add(x, y, z, w).normalize()
+            }
+        }
+
+        b2.pos.add(
+            erp * d7.toDouble(),
+            erp * d8.toDouble(),
+            erp * d9.toDouble(),
+        )
+
+        quatTransform(
+            -q2.x, -q2.y, -q2.z, q2.w,
+            erp * d10.toDouble(),
+            erp * d11.toDouble(),
+            erp * d12.toDouble(),
+        ) { x, y, z ->
+            quatMul(
+                q2.x, q2.y, q2.z, q2.w,
+                x, y, z, 0.0,
+            ) { x, y, z, w ->
+                q2.add(x, y, z, w).normalize()
+            }
+        }
+    }
+
+    /**
+     * rr1, rr2 = local relative positions on b1, b2
+     * ra = world-space axis
+     */
+    fun solve3p1rPosition(
+        b1: ActiveBody,
+        b2: ActiveBody,
+
+        rr1x: Float,
+        rr1y: Float,
+        rr1z: Float,
+
+        rr2x: Float,
+        rr2y: Float,
+        rr2z: Float,
+
+        ax: Float,
+        ay: Float,
+        az: Float,
+
+        ea: Float,
+
+        erp: Float,
+    ) {
+        val q1 = b1.q
+        val q2 = b2.q
+
+        val im1 = b1.inverseMass.toFloat()
+        val im2 = b2.inverseMass.toFloat()
+
+        val ii1 = b1.inverseInertia
+        val ii2 = b2.inverseInertia
+
+        val r1x: Float
+        val r1y: Float
+        val r1z: Float
+
+        q1.transform(rr1x.toDouble(), rr1y.toDouble(), rr1z.toDouble()) { x, y, z ->
+            r1x = x.toFloat()
+            r1y = y.toFloat()
+            r1z = z.toFloat()
+        }
+
+        val p1x = r1x + b1.pos.x.toFloat()
+        val p1y = r1y + b1.pos.y.toFloat()
+        val p1z = r1z + b1.pos.z.toFloat()
+
+        val r2x: Float
+        val r2y: Float
+        val r2z: Float
+
+        q2.transform(rr2x.toDouble(), rr2y.toDouble(), rr2z.toDouble()) { x, y, z ->
+            r2x = x.toFloat()
+            r2y = y.toFloat()
+            r2z = z.toFloat()
+        }
+
+        val p2x = r2x + b2.pos.x.toFloat()
+        val p2y = r2y + b2.pos.y.toFloat()
+        val p2z = r2z + b2.pos.z.toFloat()
+
+        val nx = p2x - p1x
+        val ny = p2y - p1y
+        val nz = p2z - p1z
+
+        val e1 = nx
+        val e2 = ny
+        val e3 = nz
+
+        val j12y = -r1z
+        val j12z = r1y
+
+        val j14y = r2z
+        val j14z = -r2y
+
+        val j22x = r1z
+        val j22z = -r1x
+
+        val j24x = -r2z
+        val j24z = r2x
+
+        val j32x = -r1y
+        val j32y = r1x
+
+        val j34x = r2y
+        val j34y = -r2x
+
+        val j42x = -ax
+        val j42y = -ay
+        val j42z = -az
+
+        val ej12x = fma(ii1.m10.toFloat(), j12y, ii1.m20.toFloat() * j12z)
+        val ej12y = fma(ii1.m11.toFloat(), j12y, ii1.m21.toFloat() * j12z)
+        val ej12z = fma(ii1.m12.toFloat(), j12y, ii1.m22.toFloat() * j12z)
+
+        val ej14x = fma(ii2.m10.toFloat(), j14y, ii2.m20.toFloat() * j14z)
+        val ej14y = fma(ii2.m11.toFloat(), j14y, ii2.m21.toFloat() * j14z)
+        val ej14z = fma(ii2.m12.toFloat(), j14y, ii2.m22.toFloat() * j14z)
+
+        val ej22x = fma(ii1.m00.toFloat(), j22x, ii1.m20.toFloat() * j22z)
+        val ej22y = fma(ii1.m01.toFloat(), j22x, ii1.m21.toFloat() * j22z)
+        val ej22z = fma(ii1.m02.toFloat(), j22x, ii1.m22.toFloat() * j22z)
+
+        val ej24x = fma(ii2.m00.toFloat(), j24x, ii2.m20.toFloat() * j24z)
+        val ej24y = fma(ii2.m01.toFloat(), j24x, ii2.m21.toFloat() * j24z)
+        val ej24z = fma(ii2.m02.toFloat(), j24x, ii2.m22.toFloat() * j24z)
+
+        val ej32x = fma(ii1.m00.toFloat(), j32x, ii1.m10.toFloat() * j32y)
+        val ej32y = fma(ii1.m01.toFloat(), j32x, ii1.m11.toFloat() * j32y)
+        val ej32z = fma(ii1.m02.toFloat(), j32x, ii1.m12.toFloat() * j32y)
+
+        val ej34x = fma(ii2.m00.toFloat(), j34x, ii2.m10.toFloat() * j34y)
+        val ej34y = fma(ii2.m01.toFloat(), j34x, ii2.m11.toFloat() * j34y)
+        val ej34z = fma(ii2.m02.toFloat(), j34x, ii2.m12.toFloat() * j34y)
+
+        val ej42x = fma(ii1.m00.toFloat(), j42x, fma(ii1.m10.toFloat(), j42y, ii1.m20.toFloat() * j42z))
+        val ej42y = fma(ii1.m01.toFloat(), j42x, fma(ii1.m11.toFloat(), j42y, ii1.m21.toFloat() * j42z))
+        val ej42z = fma(ii1.m02.toFloat(), j42x, fma(ii1.m12.toFloat(), j42y, ii1.m22.toFloat() * j42z))
+
+        val ej44x = -fma(ii2.m00.toFloat(), j42x, fma(ii2.m10.toFloat(), j42y, ii2.m20.toFloat() * j42z))
+        val ej44y = -fma(ii2.m01.toFloat(), j42x, fma(ii2.m11.toFloat(), j42y, ii2.m21.toFloat() * j42z))
+        val ej44z = -fma(ii2.m02.toFloat(), j42x, fma(ii2.m12.toFloat(), j42y, ii2.m22.toFloat() * j42z))
+
+        val d1x = ej12x - ej14x
+        val d1y = ej12y - ej14y
+        val d1z = ej12z - ej14z
+
+        val d2x = ej22x - ej24x
+        val d2y = ej22y - ej24y
+        val d2z = ej22z - ej24z
+
+        val d3x = ej32x - ej34x
+        val d3y = ej32y - ej34y
+        val d3z = ej32z - ej34z
+
+        val d4x = ej42x - ej44x
+        val d4y = ej42y - ej44y
+        val d4z = ej42z - ej44z
+
+        val k11 =
+            im1 +
+            fma(ej12y, j12y, ej12z * j12z) +
+            im2 +
+            fma(ej14y, j14y, ej14z * j14z)
+        val k12 =
+            fma(ej12x, j22x, ej12z * j22z) +
+            fma(ej14x, j24x, ej14z * j24z)
+        val k13 =
+            fma(ej12x, j32x, ej12y * j32y) +
+            fma(ej14x, j34x, ej14y * j34y)
+        val k14 = fma(d1x, j42x, fma(d1y, j42y, d1z * j42z))
+
+        val k22 =
+            im1 +
+            fma(ej22x, j22x, ej22z * j22z) +
+            im2 +
+            fma(ej24x, j24x, ej24z * j24z)
+        val k23 =
+            fma(ej22x, j32x, ej22y * j32y) +
+            fma(ej24x, j34x, ej24y * j34y)
+        val k24 = fma(d2x, j42x, fma(d2y, j42y, d2z * j42z))
+
+        val k33 =
+            im1 +
+            fma(ej32x, j32x, ej32y * j32y) +
+            im2 +
+            fma(ej34x, j34x, ej34y * j34y)
+        val k34 = fma(d3x, j42x, fma(d3y, j42y, d3z * j42z))
+
+        val k44 = fma(d4x, j42x, fma(d4y, j42y, d4z * j42z))
+
+        val l1: Float
+        val l2: Float
+        val l3: Float
+        val l4: Float
+
+        solveSymmetric4x4(
+            k11, k12, k13, k14,
+            k22, k23, k24,
+            k33, k34,
+            k44,
+
+            -e1, -e2, -e3, -ea,
+        ) { s1, s2, s3, s4 ->
+            l1 = s1
+            l2 = s2
+            l3 = s3
+            l4 = s4
+        }
+
+        val d1 = -im1 * l1
+        val d2 = -im1 * l2
+        val d3 = -im1 * l3
+        val d4 = fma(ej12x, l1, fma(ej22x, l2, fma(ej32x, l3, ej42x * l4)))
+        val d5 = fma(ej12y, l1, fma(ej22y, l2, fma(ej32y, l3, ej42y * l4)))
+        val d6 = fma(ej12z, l1, fma(ej22z, l2, fma(ej32z, l3, ej42z * l4)))
+
+        val d7 = im2 * l1
+        val d8 = im2 * l2
+        val d9 = im2 * l3
+        val d10 = fma(ej14x, l1, fma(ej24x, l2, fma(ej34x, l3, ej44x * l4)))
+        val d11 = fma(ej14y, l1, fma(ej24y, l2, fma(ej34y, l3, ej44y * l4)))
+        val d12 = fma(ej14z, l1, fma(ej24z, l2, fma(ej34z, l3, ej44z * l4)))
+
+        b1.pos.add(
+            erp * d1.toDouble(),
+            erp * d2.toDouble(),
+            erp * d3.toDouble(),
+        )
+
+        quatTransform(
+            -q1.x, -q1.y, -q1.z, q1.w,
+            erp * d4.toDouble(),
+            erp * d5.toDouble(),
+            erp * d6.toDouble(),
+        ) { x, y, z ->
+            quatMul(
+                q1.x, q1.y, q1.z, q1.w,
+                x, y, z, 0.0,
+            ) { x, y, z, w ->
+                q1.add(x, y, z, w).normalize()
+            }
+        }
+
+        b2.pos.add(
+            erp * d7.toDouble(),
+            erp * d8.toDouble(),
+            erp * d9.toDouble(),
+        )
+
+        quatTransform(
+            -q2.x, -q2.y, -q2.z, q2.w,
+            erp * d10.toDouble(),
+            erp * d11.toDouble(),
+            erp * d12.toDouble(),
+        ) { x, y, z ->
+            quatMul(
+                q2.x, q2.y, q2.z, q2.w,
+                x, y, z, 0.0,
+            ) { x, y, z, w ->
+                q2.add(x, y, z, w).normalize()
+            }
+        }
+    }
+
+    /**
+     * rr1, rr2 = local relative positions on b1, b2
+     * ra = world-space axis
+     * rb = world-space axis
+     */
+    fun solve3p2rPosition(
+        b1: ActiveBody,
+        b2: ActiveBody,
+
+        rr1x: Float,
+        rr1y: Float,
+        rr1z: Float,
+
+        rr2x: Float,
+        rr2y: Float,
+        rr2z: Float,
+
+        ax: Float,
+        ay: Float,
+        az: Float,
+
+        bx: Float,
+        by: Float,
+        bz: Float,
+
+        ea: Float,
+        eb: Float,
+
+        erp: Float,
+    ) {
+        val q1 = b1.q
+        val q2 = b2.q
+
+        val im1 = b1.inverseMass.toFloat()
+        val im2 = b2.inverseMass.toFloat()
+
+        val ii1 = b1.inverseInertia
+        val ii2 = b2.inverseInertia
+
+        val r1x: Float
+        val r1y: Float
+        val r1z: Float
+
+        q1.transform(rr1x.toDouble(), rr1y.toDouble(), rr1z.toDouble()) { x, y, z ->
+            r1x = x.toFloat()
+            r1y = y.toFloat()
+            r1z = z.toFloat()
+        }
+
+        val p1x = r1x + b1.pos.x.toFloat()
+        val p1y = r1y + b1.pos.y.toFloat()
+        val p1z = r1z + b1.pos.z.toFloat()
+
+        val r2x: Float
+        val r2y: Float
+        val r2z: Float
+
+        q2.transform(rr2x.toDouble(), rr2y.toDouble(), rr2z.toDouble()) { x, y, z ->
+            r2x = x.toFloat()
+            r2y = y.toFloat()
+            r2z = z.toFloat()
+        }
+
+        val p2x = r2x + b2.pos.x.toFloat()
+        val p2y = r2y + b2.pos.y.toFloat()
+        val p2z = r2z + b2.pos.z.toFloat()
+
+        val nx = p2x - p1x
+        val ny = p2y - p1y
+        val nz = p2z - p1z
+
+        val e1 = nx
+        val e2 = ny
+        val e3 = nz
+
+        val j12y = -r1z
+        val j12z = r1y
+
+        val j14y = r2z
+        val j14z = -r2y
+
+        val j22x = r1z
+        val j22z = -r1x
+
+        val j24x = -r2z
+        val j24z = r2x
+
+        val j32x = -r1y
+        val j32y = r1x
+
+        val j34x = r2y
+        val j34y = -r2x
+
+        val j42x = -ax
+        val j42y = -ay
+        val j42z = -az
+
+        val j52x = -bx
+        val j52y = -by
+        val j52z = -bz
+
+        val ej12x = fma(ii1.m10.toFloat(), j12y, ii1.m20.toFloat() * j12z)
+        val ej12y = fma(ii1.m11.toFloat(), j12y, ii1.m21.toFloat() * j12z)
+        val ej12z = fma(ii1.m12.toFloat(), j12y, ii1.m22.toFloat() * j12z)
+
+        val ej14x = fma(ii2.m10.toFloat(), j14y, ii2.m20.toFloat() * j14z)
+        val ej14y = fma(ii2.m11.toFloat(), j14y, ii2.m21.toFloat() * j14z)
+        val ej14z = fma(ii2.m12.toFloat(), j14y, ii2.m22.toFloat() * j14z)
+
+        val ej22x = fma(ii1.m00.toFloat(), j22x, ii1.m20.toFloat() * j22z)
+        val ej22y = fma(ii1.m01.toFloat(), j22x, ii1.m21.toFloat() * j22z)
+        val ej22z = fma(ii1.m02.toFloat(), j22x, ii1.m22.toFloat() * j22z)
+
+        val ej24x = fma(ii2.m00.toFloat(), j24x, ii2.m20.toFloat() * j24z)
+        val ej24y = fma(ii2.m01.toFloat(), j24x, ii2.m21.toFloat() * j24z)
+        val ej24z = fma(ii2.m02.toFloat(), j24x, ii2.m22.toFloat() * j24z)
+
+        val ej32x = fma(ii1.m00.toFloat(), j32x, ii1.m10.toFloat() * j32y)
+        val ej32y = fma(ii1.m01.toFloat(), j32x, ii1.m11.toFloat() * j32y)
+        val ej32z = fma(ii1.m02.toFloat(), j32x, ii1.m12.toFloat() * j32y)
+
+        val ej34x = fma(ii2.m00.toFloat(), j34x, ii2.m10.toFloat() * j34y)
+        val ej34y = fma(ii2.m01.toFloat(), j34x, ii2.m11.toFloat() * j34y)
+        val ej34z = fma(ii2.m02.toFloat(), j34x, ii2.m12.toFloat() * j34y)
+
+        val ej42x = fma(ii1.m00.toFloat(), j42x, fma(ii1.m10.toFloat(), j42y, ii1.m20.toFloat() * j42z))
+        val ej42y = fma(ii1.m01.toFloat(), j42x, fma(ii1.m11.toFloat(), j42y, ii1.m21.toFloat() * j42z))
+        val ej42z = fma(ii1.m02.toFloat(), j42x, fma(ii1.m12.toFloat(), j42y, ii1.m22.toFloat() * j42z))
+
+        val ej44x = -fma(ii2.m00.toFloat(), j42x, fma(ii2.m10.toFloat(), j42y, ii2.m20.toFloat() * j42z))
+        val ej44y = -fma(ii2.m01.toFloat(), j42x, fma(ii2.m11.toFloat(), j42y, ii2.m21.toFloat() * j42z))
+        val ej44z = -fma(ii2.m02.toFloat(), j42x, fma(ii2.m12.toFloat(), j42y, ii2.m22.toFloat() * j42z))
+
+        val ej52x = fma(ii1.m00.toFloat(), j52x, fma(ii1.m10.toFloat(), j52y, ii1.m20.toFloat() * j52z))
+        val ej52y = fma(ii1.m01.toFloat(), j52x, fma(ii1.m11.toFloat(), j52y, ii1.m21.toFloat() * j52z))
+        val ej52z = fma(ii1.m02.toFloat(), j52x, fma(ii1.m12.toFloat(), j52y, ii1.m22.toFloat() * j52z))
+
+        val ej54x = -fma(ii2.m00.toFloat(), j52x, fma(ii2.m10.toFloat(), j52y, ii2.m20.toFloat() * j52z))
+        val ej54y = -fma(ii2.m01.toFloat(), j52x, fma(ii2.m11.toFloat(), j52y, ii2.m21.toFloat() * j52z))
+        val ej54z = -fma(ii2.m02.toFloat(), j52x, fma(ii2.m12.toFloat(), j52y, ii2.m22.toFloat() * j52z))
+
+        val d1x = ej12x - ej14x
+        val d1y = ej12y - ej14y
+        val d1z = ej12z - ej14z
+
+        val d2x = ej22x - ej24x
+        val d2y = ej22y - ej24y
+        val d2z = ej22z - ej24z
+
+        val d3x = ej32x - ej34x
+        val d3y = ej32y - ej34y
+        val d3z = ej32z - ej34z
+
+        val d4x = ej42x - ej44x
+        val d4y = ej42y - ej44y
+        val d4z = ej42z - ej44z
+
+        val d5x = ej52x - ej54x
+        val d5y = ej52y - ej54y
+        val d5z = ej52z - ej54z
+
+        val k11 =
+            im1 +
+            fma(ej12y, j12y, ej12z * j12z) +
+            im2 +
+            fma(ej14y, j14y, ej14z * j14z)
+        val k12 =
+            fma(ej12x, j22x, ej12z * j22z) +
+            fma(ej14x, j24x, ej14z * j24z)
+        val k13 =
+            fma(ej12x, j32x, ej12y * j32y) +
+            fma(ej14x, j34x, ej14y * j34y)
+        val k14 = fma(d1x, j42x, fma(d1y, j42y, d1z * j42z))
+        val k15 = fma(d1x, j52x, fma(d1y, j52y, d1z * j52z))
+
+        val k22 =
+            im1 +
+            fma(ej22x, j22x, ej22z * j22z) +
+            im2 +
+            fma(ej24x, j24x, ej24z * j24z)
+        val k23 =
+            fma(ej22x, j32x, ej22y * j32y) +
+            fma(ej24x, j34x, ej24y * j34y)
+        val k24 = fma(d2x, j42x, fma(d2y, j42y, d2z * j42z))
+        val k25 = fma(d2x, j52x, fma(d2y, j52y, d2z * j52z))
+
+        val k33 =
+            im1 +
+            fma(ej32x, j32x, ej32y * j32y) +
+            im2 +
+            fma(ej34x, j34x, ej34y * j34y)
+        val k34 = fma(d3x, j42x, fma(d3y, j42y, d3z * j42z))
+        val k35 = fma(d3x, j52x, fma(d3y, j52y, d3z * j52z))
+
+        val k44 = fma(d4x, j42x, fma(d4y, j42y, d4z * j42z))
+        val k45 = fma(d4x, j52x, fma(d4y, j52y, d4z * j52z))
+
+        val k55 = fma(d5x, j52x, fma(d5y, j52y, d5z * j52z))
+
+        val l1: Float
+        val l2: Float
+        val l3: Float
+        val l4: Float
+        val l5: Float
+
+        solveSymmetric5x5(
+            k11, k12, k13, k14, k15,
+            k22, k23, k24, k25,
+            k33, k34, k35,
+            k44, k45,
+            k55,
+
+            -e1, -e2, -e3, -ea, -eb,
+        ) { s1, s2, s3, s4, s5 ->
+            l1 = s1
+            l2 = s2
+            l3 = s3
+            l4 = s4
+            l5 = s5
+        }
+
+        val d1 = -im1 * l1
+        val d2 = -im1 * l2
+        val d3 = -im1 * l3
+        val d4 = fma(ej12x, l1, fma(ej22x, l2, fma(ej32x, l3, fma(ej42x, l4, ej52x * l5))))
+        val d5 = fma(ej12y, l1, fma(ej22y, l2, fma(ej32y, l3, fma(ej42y, l4, ej52y * l5))))
+        val d6 = fma(ej12z, l1, fma(ej22z, l2, fma(ej32z, l3, fma(ej42z, l4, ej52z * l5))))
+
+        val d7 = im2 * l1
+        val d8 = im2 * l2
+        val d9 = im2 * l3
+        val d10 = fma(ej14x, l1, fma(ej24x, l2, fma(ej34x, l3, fma(ej44x, l4, ej54x * l5))))
+        val d11 = fma(ej14y, l1, fma(ej24y, l2, fma(ej34y, l3, fma(ej44y, l4, ej54y * l5))))
+        val d12 = fma(ej14z, l1, fma(ej24z, l2, fma(ej34z, l3, fma(ej44z, l4, ej54z * l5))))
+
+        b1.pos.add(
+            erp * d1.toDouble(),
+            erp * d2.toDouble(),
+            erp * d3.toDouble(),
+        )
+
+        quatTransform(
+            -q1.x, -q1.y, -q1.z, q1.w,
+            erp * d4.toDouble(),
+            erp * d5.toDouble(),
+            erp * d6.toDouble(),
+        ) { x, y, z ->
+            quatMul(
+                q1.x, q1.y, q1.z, q1.w,
+                x, y, z, 0.0,
+            ) { x, y, z, w ->
+                q1.add(x, y, z, w).normalize()
+            }
+        }
+
+        b2.pos.add(
+            erp * d7.toDouble(),
+            erp * d8.toDouble(),
+            erp * d9.toDouble(),
+        )
+
+        quatTransform(
+            -q2.x, -q2.y, -q2.z, q2.w,
+            erp * d10.toDouble(),
+            erp * d11.toDouble(),
+            erp * d12.toDouble(),
+        ) { x, y, z ->
+            quatMul(
+                q2.x, q2.y, q2.z, q2.w,
+                x, y, z, 0.0,
+            ) { x, y, z, w ->
+                q2.add(x, y, z, w).normalize()
+            }
+        }
+    }
+
+    /**
+     * rr1, rr2 = local relative positions on b1, b2
+     * ra = world-space axis
+     * rb = world-space axis
+     * rc = world-space axis
+     */
+    fun solve3p3rPosition(
+        b1: ActiveBody,
+        b2: ActiveBody,
+
+        rr1x: Float,
+        rr1y: Float,
+        rr1z: Float,
+
+        rr2x: Float,
+        rr2y: Float,
+        rr2z: Float,
+
+        ax: Float,
+        ay: Float,
+        az: Float,
+
+        bx: Float,
+        by: Float,
+        bz: Float,
+
+        cx: Float,
+        cy: Float,
+        cz: Float,
+
+        ea: Float,
+        eb: Float,
+        ec: Float,
+
+        erp: Float,
+    ) {
+        val q1 = b1.q
+        val q2 = b2.q
+
+        val im1 = b1.inverseMass.toFloat()
+        val im2 = b2.inverseMass.toFloat()
+
+        val ii1 = b1.inverseInertia
+        val ii2 = b2.inverseInertia
+
+        val r1x: Float
+        val r1y: Float
+        val r1z: Float
+
+        q1.transform(rr1x.toDouble(), rr1y.toDouble(), rr1z.toDouble()) { x, y, z ->
+            r1x = x.toFloat()
+            r1y = y.toFloat()
+            r1z = z.toFloat()
+        }
+
+        val p1x = r1x + b1.pos.x.toFloat()
+        val p1y = r1y + b1.pos.y.toFloat()
+        val p1z = r1z + b1.pos.z.toFloat()
+
+        val r2x: Float
+        val r2y: Float
+        val r2z: Float
+
+        q2.transform(rr2x.toDouble(), rr2y.toDouble(), rr2z.toDouble()) { x, y, z ->
+            r2x = x.toFloat()
+            r2y = y.toFloat()
+            r2z = z.toFloat()
+        }
+
+        val p2x = r2x + b2.pos.x.toFloat()
+        val p2y = r2y + b2.pos.y.toFloat()
+        val p2z = r2z + b2.pos.z.toFloat()
+
+        val nx = p2x - p1x
+        val ny = p2y - p1y
+        val nz = p2z - p1z
+
+        val e1 = nx
+        val e2 = ny
+        val e3 = nz
+
+        val j12y = -r1z
+        val j12z = r1y
+
+        val j14y = r2z
+        val j14z = -r2y
+
+        val j22x = r1z
+        val j22z = -r1x
+
+        val j24x = -r2z
+        val j24z = r2x
+
+        val j32x = -r1y
+        val j32y = r1x
+
+        val j34x = r2y
+        val j34y = -r2x
+
+        val j42x = -ax
+        val j42y = -ay
+        val j42z = -az
+
+        val j52x = -bx
+        val j52y = -by
+        val j52z = -bz
+
+        val j62x = -cx
+        val j62y = -cy
+        val j62z = -cz
+
+        val ej12x = fma(ii1.m10.toFloat(), j12y, ii1.m20.toFloat() * j12z)
+        val ej12y = fma(ii1.m11.toFloat(), j12y, ii1.m21.toFloat() * j12z)
+        val ej12z = fma(ii1.m12.toFloat(), j12y, ii1.m22.toFloat() * j12z)
+
+        val ej14x = fma(ii2.m10.toFloat(), j14y, ii2.m20.toFloat() * j14z)
+        val ej14y = fma(ii2.m11.toFloat(), j14y, ii2.m21.toFloat() * j14z)
+        val ej14z = fma(ii2.m12.toFloat(), j14y, ii2.m22.toFloat() * j14z)
+
+        val ej22x = fma(ii1.m00.toFloat(), j22x, ii1.m20.toFloat() * j22z)
+        val ej22y = fma(ii1.m01.toFloat(), j22x, ii1.m21.toFloat() * j22z)
+        val ej22z = fma(ii1.m02.toFloat(), j22x, ii1.m22.toFloat() * j22z)
+
+        val ej24x = fma(ii2.m00.toFloat(), j24x, ii2.m20.toFloat() * j24z)
+        val ej24y = fma(ii2.m01.toFloat(), j24x, ii2.m21.toFloat() * j24z)
+        val ej24z = fma(ii2.m02.toFloat(), j24x, ii2.m22.toFloat() * j24z)
+
+        val ej32x = fma(ii1.m00.toFloat(), j32x, ii1.m10.toFloat() * j32y)
+        val ej32y = fma(ii1.m01.toFloat(), j32x, ii1.m11.toFloat() * j32y)
+        val ej32z = fma(ii1.m02.toFloat(), j32x, ii1.m12.toFloat() * j32y)
+
+        val ej34x = fma(ii2.m00.toFloat(), j34x, ii2.m10.toFloat() * j34y)
+        val ej34y = fma(ii2.m01.toFloat(), j34x, ii2.m11.toFloat() * j34y)
+        val ej34z = fma(ii2.m02.toFloat(), j34x, ii2.m12.toFloat() * j34y)
+
+        val ej42x = fma(ii1.m00.toFloat(), j42x, fma(ii1.m10.toFloat(), j42y, ii1.m20.toFloat() * j42z))
+        val ej42y = fma(ii1.m01.toFloat(), j42x, fma(ii1.m11.toFloat(), j42y, ii1.m21.toFloat() * j42z))
+        val ej42z = fma(ii1.m02.toFloat(), j42x, fma(ii1.m12.toFloat(), j42y, ii1.m22.toFloat() * j42z))
+
+        val ej44x = -fma(ii2.m00.toFloat(), j42x, fma(ii2.m10.toFloat(), j42y, ii2.m20.toFloat() * j42z))
+        val ej44y = -fma(ii2.m01.toFloat(), j42x, fma(ii2.m11.toFloat(), j42y, ii2.m21.toFloat() * j42z))
+        val ej44z = -fma(ii2.m02.toFloat(), j42x, fma(ii2.m12.toFloat(), j42y, ii2.m22.toFloat() * j42z))
+
+        val ej52x = fma(ii1.m00.toFloat(), j52x, fma(ii1.m10.toFloat(), j52y, ii1.m20.toFloat() * j52z))
+        val ej52y = fma(ii1.m01.toFloat(), j52x, fma(ii1.m11.toFloat(), j52y, ii1.m21.toFloat() * j52z))
+        val ej52z = fma(ii1.m02.toFloat(), j52x, fma(ii1.m12.toFloat(), j52y, ii1.m22.toFloat() * j52z))
+
+        val ej54x = -fma(ii2.m00.toFloat(), j52x, fma(ii2.m10.toFloat(), j52y, ii2.m20.toFloat() * j52z))
+        val ej54y = -fma(ii2.m01.toFloat(), j52x, fma(ii2.m11.toFloat(), j52y, ii2.m21.toFloat() * j52z))
+        val ej54z = -fma(ii2.m02.toFloat(), j52x, fma(ii2.m12.toFloat(), j52y, ii2.m22.toFloat() * j52z))
+
+        val ej62x = fma(ii1.m00.toFloat(), j62x, fma(ii1.m10.toFloat(), j62y, ii1.m20.toFloat() * j62z))
+        val ej62y = fma(ii1.m01.toFloat(), j62x, fma(ii1.m11.toFloat(), j62y, ii1.m21.toFloat() * j62z))
+        val ej62z = fma(ii1.m02.toFloat(), j62x, fma(ii1.m12.toFloat(), j62y, ii1.m22.toFloat() * j62z))
+
+        val ej64x = -fma(ii2.m00.toFloat(), j62x, fma(ii2.m10.toFloat(), j62y, ii2.m20.toFloat() * j62z))
+        val ej64y = -fma(ii2.m01.toFloat(), j62x, fma(ii2.m11.toFloat(), j62y, ii2.m21.toFloat() * j62z))
+        val ej64z = -fma(ii2.m02.toFloat(), j62x, fma(ii2.m12.toFloat(), j62y, ii2.m22.toFloat() * j62z))
+
+        val d1x = ej12x - ej14x
+        val d1y = ej12y - ej14y
+        val d1z = ej12z - ej14z
+
+        val d2x = ej22x - ej24x
+        val d2y = ej22y - ej24y
+        val d2z = ej22z - ej24z
+
+        val d3x = ej32x - ej34x
+        val d3y = ej32y - ej34y
+        val d3z = ej32z - ej34z
+
+        val d4x = ej42x - ej44x
+        val d4y = ej42y - ej44y
+        val d4z = ej42z - ej44z
+
+        val d5x = ej52x - ej54x
+        val d5y = ej52y - ej54y
+        val d5z = ej52z - ej54z
+
+        val d6x = ej62x - ej64x
+        val d6y = ej62y - ej64y
+        val d6z = ej62z - ej64z
+
+        val k11 =
+            im1 +
+            fma(ej12y, j12y, ej12z * j12z) +
+            im2 +
+            fma(ej14y, j14y, ej14z * j14z)
+        val k12 =
+            fma(ej12x, j22x, ej12z * j22z) +
+            fma(ej14x, j24x, ej14z * j24z)
+        val k13 =
+            fma(ej12x, j32x, ej12y * j32y) +
+            fma(ej14x, j34x, ej14y * j34y)
+        val k14 = fma(d1x, j42x, fma(d1y, j42y, d1z * j42z))
+        val k15 = fma(d1x, j52x, fma(d1y, j52y, d1z * j52z))
+        val k16 = fma(d1x, j62x, fma(d1y, j62y, d1z * j62z))
+
+        val k22 =
+            im1 +
+            fma(ej22x, j22x, ej22z * j22z) +
+            im2 +
+            fma(ej24x, j24x, ej24z * j24z)
+        val k23 =
+            fma(ej22x, j32x, ej22y * j32y) +
+            fma(ej24x, j34x, ej24y * j34y)
+        val k24 = fma(d2x, j42x, fma(d2y, j42y, d2z * j42z))
+        val k25 = fma(d2x, j52x, fma(d2y, j52y, d2z * j52z))
+        val k26 = fma(d2x, j62x, fma(d2y, j62y, d2z * j62z))
+
+        val k33 =
+            im1 +
+            fma(ej32x, j32x, ej32y * j32y) +
+            im2 +
+            fma(ej34x, j34x, ej34y * j34y)
+        val k34 = fma(d3x, j42x, fma(d3y, j42y, d3z * j42z))
+        val k35 = fma(d3x, j52x, fma(d3y, j52y, d3z * j52z))
+        val k36 = fma(d3x, j62x, fma(d3y, j62y, d3z * j62z))
+
+        val k44 = fma(d4x, j42x, fma(d4y, j42y, d4z * j42z))
+        val k45 = fma(d4x, j52x, fma(d4y, j52y, d4z * j52z))
+        val k46 = fma(d4x, j62x, fma(d4y, j62y, d4z * j62z))
+
+        val k55 = fma(d5x, j52x, fma(d5y, j52y, d5z * j52z))
+        val k56 = fma(d5x, j62x, fma(d5y, j62y, d5z * j62z))
+
+        val k66 = fma(d6x, j62x, fma(d6y, j62y, d6z * j62z))
+
+        val l1: Float
+        val l2: Float
+        val l3: Float
+        val l4: Float
+        val l5: Float
+        val l6: Float
+
+        solveSymmetric6x6(
+            k11, k12, k13, k14, k15, k16,
+            k22, k23, k24, k25, k26,
+            k33, k34, k35, k36,
+            k44, k45, k46,
+            k55, k56,
+            k66,
+
+            -e1, -e2, -e3, -ea, -eb, -ec,
+        ) { s1, s2, s3, s4, s5, s6 ->
+            l1 = s1
+            l2 = s2
+            l3 = s3
+            l4 = s4
+            l5 = s5
+            l6 = s6
+        }
+
+        val d1 = -im1 * l1
+        val d2 = -im1 * l2
+        val d3 = -im1 * l3
+        val d4 = fma(ej12x, l1, fma(ej22x, l2, fma(ej32x, l3, fma(ej42x, l4, fma(ej52x, l5, ej62x * l6)))))
+        val d5 = fma(ej12y, l1, fma(ej22y, l2, fma(ej32y, l3, fma(ej42y, l4, fma(ej52y, l5, ej62y * l6)))))
+        val d6 = fma(ej12z, l1, fma(ej22z, l2, fma(ej32z, l3, fma(ej42z, l4, fma(ej52z, l5, ej62z * l6)))))
+
+        val d7 = im2 * l1
+        val d8 = im2 * l2
+        val d9 = im2 * l3
+        val d10 = fma(ej14x, l1, fma(ej24x, l2, fma(ej34x, l3, fma(ej44x, l4, fma(ej54x, l5, ej64x * l6)))))
+        val d11 = fma(ej14y, l1, fma(ej24y, l2, fma(ej34y, l3, fma(ej44y, l4, fma(ej54y, l5, ej64y * l6)))))
+        val d12 = fma(ej14z, l1, fma(ej24z, l2, fma(ej34z, l3, fma(ej44z, l4, fma(ej54z, l5, ej64z * l6)))))
+
+        b1.pos.add(
+            erp * d1.toDouble(),
+            erp * d2.toDouble(),
+            erp * d3.toDouble(),
+        )
+
+        quatTransform(
+            -q1.x, -q1.y, -q1.z, q1.w,
+            erp * d4.toDouble(),
+            erp * d5.toDouble(),
+            erp * d6.toDouble(),
+        ) { x, y, z ->
+            quatMul(
+                q1.x, q1.y, q1.z, q1.w,
+                x, y, z, 0.0,
+            ) { x, y, z, w ->
+                q1.add(x, y, z, w).normalize()
+            }
+        }
+
+        b2.pos.add(
+            erp * d7.toDouble(),
+            erp * d8.toDouble(),
+            erp * d9.toDouble(),
+        )
+
+        quatTransform(
+            -q2.x, -q2.y, -q2.z, q2.w,
+            erp * d10.toDouble(),
+            erp * d11.toDouble(),
+            erp * d12.toDouble(),
+        ) { x, y, z ->
+            quatMul(
+                q2.x, q2.y, q2.z, q2.w,
+                x, y, z, 0.0,
+            ) { x, y, z, w ->
+                q2.add(x, y, z, w).normalize()
+            }
+        }
     }
 }

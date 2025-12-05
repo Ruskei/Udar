@@ -1,6 +1,8 @@
 package com.ixume.udar.physics.constraint
 
 import com.ixume.udar.PhysicsWorld
+import com.ixume.udar.physics.cone.ConeConstraint
+import com.ixume.udar.physics.cone.ConeConstraintSolver
 import com.ixume.udar.physics.contact.v2.ContactSolver
 import com.ixume.udar.physics.hinge.HingeConstraint
 
@@ -20,6 +22,7 @@ class ConstraintSolver(
     val contactSolver = ContactSolver(this)
     val pointConstraintSolver = PointConstraintSolver(this)
     val hingeConstraintSolver = HingeConstraintSolver(this)
+    val coneConstraintSolver = ConeConstraintSolver(this)
     private val _vec3 = Vector3f()
     private val _quat = Quaternionf()
 
@@ -33,6 +36,7 @@ class ConstraintSolver(
     fun setup(
         pointConstraints: List<PointConstraint>,
         hingeConstraints: List<HingeConstraint>,
+        coneConstraints: List<ConeConstraint>,
     ) {
         bodyCount = physicsWorld.activeBodies.size()
         buildFlatBodyData()
@@ -41,6 +45,7 @@ class ConstraintSolver(
 
         pointConstraintSolver.setup(pointConstraints)
         hingeConstraintSolver.setup(hingeConstraints)
+        coneConstraintSolver.setup(coneConstraints)
     }
 
     private fun buildFlatBodyData() {
@@ -66,6 +71,7 @@ class ConstraintSolver(
     fun solve(iteration: Int) {
         pointConstraintSolver.solveVelocity()
         hingeConstraintSolver.solveVelocity()
+        coneConstraintSolver.solveVelocity()
         contactSolver.solveNormals(iteration)
     }
 
@@ -93,6 +99,7 @@ class ConstraintSolver(
     fun solvePositions() {
         pointConstraintSolver.solvePosition()
         hingeConstraintSolver.solvePosition()
+        coneConstraintSolver.solvePosition()
     }
 }
 

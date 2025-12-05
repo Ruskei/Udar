@@ -17,7 +17,8 @@ class TestCommand : BukkitCommand("udar") {
         RunTestCommand.arg to RunTestCommand,
         StressGridCommand.arg to StressGridCommand,
         ModelCommand.arg to ModelCommand,
-        JointCommand.arg to JointCommand,
+        ConeCommand.arg to ConeCommand,
+        HingeCommand.arg to HingeCommand,
     )
 
     private fun sendHelp(sender: CommandSender) {

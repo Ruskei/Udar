@@ -1,19 +1,18 @@
 package com.ixume.udar.physics.hinge
 
 import com.ixume.udar.Udar
-import com.ixume.udar.physics.constraint.ConstraintMath
-import com.ixume.udar.physics.constraint.ConstraintSolver
+import com.ixume.udar.physics.constraint.*
 import org.joml.Quaterniond
 import org.joml.Vector3d
 import java.lang.Math.fma
 import kotlin.math.*
 
 class HingeConstraintSolver(val parent: ConstraintSolver) {
-    private var unlimitedConstraintData = UnlimitedConstraintData(0)
+    private var unlimitedConstraintData = ConstraintData3p2r(0)
     private var unlimitedNumConstraints = 0
-    private var limitedConstraintData = LimitedConstraintData(0)
+    private var limitedConstraintData = ConstraintData3p3r(0)
     private var limitedNumConstraints = 0
-    private var frictionConstraintData = LimitedConstraintData(0)
+    private var frictionConstraintData = ConstraintData3p3r(0)
     private var frictionNumConstraints = 0
 
     private var dt = Udar.CONFIG.timeStep.toFloat()
@@ -48,17 +47,17 @@ class HingeConstraintSolver(val parent: ConstraintSolver) {
 
         if (limitedConstraintData.sizeFor(totalNumConstraints) != limitedConstraintData.value.size) {
             val s = limitedConstraintData.sizeFor(totalNumConstraints)
-            limitedConstraintData = LimitedConstraintData(s)
+            limitedConstraintData = ConstraintData3p3r(s)
         }
 
         if (frictionConstraintData.sizeFor(totalNumConstraints) != frictionConstraintData.value.size) {
             val s = frictionConstraintData.sizeFor(totalNumConstraints)
-            frictionConstraintData = LimitedConstraintData(s)
+            frictionConstraintData = ConstraintData3p3r(s)
         }
 
         if (unlimitedConstraintData.sizeFor(totalNumConstraints) != unlimitedConstraintData.value.size) {
             val s = unlimitedConstraintData.sizeFor(totalNumConstraints)
-            unlimitedConstraintData = UnlimitedConstraintData(s)
+            unlimitedConstraintData = ConstraintData3p2r(s)
         }
 
         unlimitedNumConstraints = 0
@@ -328,7 +327,7 @@ class HingeConstraintSolver(val parent: ConstraintSolver) {
             if (frictionTorque == 0f && theta in min..max) {
                 unlimitedConstraintData.set(
                     constraintIdx = i,
-                    cursor = unlimitedNumConstraints++ * UNLIMITED_CONSTRAINT_DATA_SIZE,
+                    cursor = unlimitedNumConstraints++ * ConstraintData3p2r.DATA_SIZE,
 
                     body1Idx = b1.idx,
                     body2Idx = b2.idx,
@@ -465,7 +464,7 @@ class HingeConstraintSolver(val parent: ConstraintSolver) {
                 val k56 = fma(d5x, j62x, fma(d5y, j62y, d5z * j62z))
                 val k66 = fma(d6x, j62x, fma(d6y, j62y, d6z * j62z))
 
-                val data: LimitedConstraintData
+                val data: ConstraintData3p3r
                 val cursor: Int
 
                 if (theta in min..max) {
@@ -478,7 +477,7 @@ class HingeConstraintSolver(val parent: ConstraintSolver) {
 
                 data.set(
                     constraintIdx = i,
-                    cursor = cursor * LIMITED_CONSTRAINT_DATA_SIZE,
+                    cursor = cursor * ConstraintData3p3r.DATA_SIZE,
 
                     body1Idx = b1.idx,
                     body2Idx = b2.idx,
@@ -603,404 +602,25 @@ class HingeConstraintSolver(val parent: ConstraintSolver) {
 
     fun solveVelocity() {
         val bodyData = parent.flatBodyData
-        unlimitedConstraintData.forEach(
-            numConstraints = unlimitedNumConstraints,
-        ) { _, b1Idx, b2Idx, rawIdx ->
-            val v1 = bodyData[b1Idx * 6 + 0]
-            val v2 = bodyData[b1Idx * 6 + 1]
-            val v3 = bodyData[b1Idx * 6 + 2]
-            val v4 = bodyData[b1Idx * 6 + 3]
-            val v5 = bodyData[b1Idx * 6 + 4]
-            val v6 = bodyData[b1Idx * 6 + 5]
-
-            val v7 = bodyData[b2Idx * 6 + 0]
-            val v8 = bodyData[b2Idx * 6 + 1]
-            val v9 = bodyData[b2Idx * 6 + 2]
-            val v10 = bodyData[b2Idx * 6 + 3]
-            val v11 = bodyData[b2Idx * 6 + 4]
-            val v12 = bodyData[b2Idx * 6 + 5]
-
-            val b1 = unlimitedConstraintData[rawIdx + UNLIMITED_B_OFFSET + 0]
-            val b2 = unlimitedConstraintData[rawIdx + UNLIMITED_B_OFFSET + 1]
-            val b3 = unlimitedConstraintData[rawIdx + UNLIMITED_B_OFFSET + 2]
-            val b4 = unlimitedConstraintData[rawIdx + UNLIMITED_B_OFFSET + 3]
-            val b5 = unlimitedConstraintData[rawIdx + UNLIMITED_B_OFFSET + 4]
-
-            val r1x = unlimitedConstraintData[rawIdx + UNLIMITED_J_OFFSET + 0]
-            val r1y = unlimitedConstraintData[rawIdx + UNLIMITED_J_OFFSET + 1]
-            val r1z = unlimitedConstraintData[rawIdx + UNLIMITED_J_OFFSET + 2]
-
-            val r2x = unlimitedConstraintData[rawIdx + UNLIMITED_J_OFFSET + 3]
-            val r2y = unlimitedConstraintData[rawIdx + UNLIMITED_J_OFFSET + 4]
-            val r2z = unlimitedConstraintData[rawIdx + UNLIMITED_J_OFFSET + 5]
-
-            val j42x = unlimitedConstraintData[rawIdx + UNLIMITED_J_OFFSET + 6]
-            val j42y = unlimitedConstraintData[rawIdx + UNLIMITED_J_OFFSET + 7]
-            val j42z = unlimitedConstraintData[rawIdx + UNLIMITED_J_OFFSET + 8]
-
-            val j52x = unlimitedConstraintData[rawIdx + UNLIMITED_J_OFFSET + 9]
-            val j52y = unlimitedConstraintData[rawIdx + UNLIMITED_J_OFFSET + 10]
-            val j52z = unlimitedConstraintData[rawIdx + UNLIMITED_J_OFFSET + 11]
-
-            val jv1 = -(-v1 + -r1z * v5 + r1y * v6 + v7 + r2z * v11 + -r2y * v12 + b1)
-            val jv2 = -(-v2 + r1z * v4 + -r1x * v6 + v8 + -r2z * v10 + r2x * v12 + b2)
-            val jv3 = -(-v3 + -r1y * v4 + r1x * v5 + v9 + r2y * v10 + -r2x * v11 + b3)
-            val jv4 =
-                -fma(j42x, v4, fma(j42y, v5, fma(j42z, v6, fma(-j42x, v10, fma(-j42y, v11, fma(-j42z, v12, b4))))))
-            val jv5 =
-                -fma(j52x, v4, fma(j52y, v5, fma(j52z, v6, fma(-j52x, v10, fma(-j52y, v11, fma(-j52z, v12, b5))))))
-
-            val im1 = unlimitedConstraintData[rawIdx + UNLIMITED_IM_OFFSET + 0]
-            val im2 = unlimitedConstraintData[rawIdx + UNLIMITED_IM_OFFSET + 1]
-
-            val e12x = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 0]
-            val e12y = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 1]
-            val e12z = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 2]
-
-            val e22x = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 3]
-            val e22y = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 4]
-            val e22z = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 5]
-
-            val e32x = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 6]
-            val e32y = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 7]
-            val e32z = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 8]
-
-            val e14x = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 9]
-            val e14y = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 10]
-            val e14z = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 11]
-
-            val e24x = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 12]
-            val e24y = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 13]
-            val e24z = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 14]
-
-            val e34x = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 15]
-            val e34y = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 16]
-            val e34z = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 17]
-
-            val e42x = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 18]
-            val e42y = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 19]
-            val e42z = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 20]
-
-            val e44x = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 21]
-            val e44y = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 22]
-            val e44z = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 23]
-
-            val e52x = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 24]
-            val e52y = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 25]
-            val e52z = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 26]
-
-            val e54x = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 27]
-            val e54y = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 28]
-            val e54z = unlimitedConstraintData[rawIdx + UNLIMITED_E_OFFSET + 29]
-
-            val k11 = unlimitedConstraintData[rawIdx + UNLIMITED_K_OFFSET + 0]
-            val k12 = unlimitedConstraintData[rawIdx + UNLIMITED_K_OFFSET + 1]
-            val k13 = unlimitedConstraintData[rawIdx + UNLIMITED_K_OFFSET + 2]
-            val k14 = unlimitedConstraintData[rawIdx + UNLIMITED_K_OFFSET + 3]
-            val k15 = unlimitedConstraintData[rawIdx + UNLIMITED_K_OFFSET + 4]
-
-            val k22 = unlimitedConstraintData[rawIdx + UNLIMITED_K_OFFSET + 5]
-            val k23 = unlimitedConstraintData[rawIdx + UNLIMITED_K_OFFSET + 6]
-            val k24 = unlimitedConstraintData[rawIdx + UNLIMITED_K_OFFSET + 7]
-            val k25 = unlimitedConstraintData[rawIdx + UNLIMITED_K_OFFSET + 8]
-
-            val k33 = unlimitedConstraintData[rawIdx + UNLIMITED_K_OFFSET + 9]
-            val k34 = unlimitedConstraintData[rawIdx + UNLIMITED_K_OFFSET + 10]
-            val k35 = unlimitedConstraintData[rawIdx + UNLIMITED_K_OFFSET + 11]
-
-            val k44 = unlimitedConstraintData[rawIdx + UNLIMITED_K_OFFSET + 12]
-            val k45 = unlimitedConstraintData[rawIdx + UNLIMITED_K_OFFSET + 13]
-
-            val k55 = unlimitedConstraintData[rawIdx + UNLIMITED_K_OFFSET + 14]
-
-            val t1 = unlimitedConstraintData[rawIdx + UNLIMITED_L_OFFSET + 0]
-            val t2 = unlimitedConstraintData[rawIdx + UNLIMITED_L_OFFSET + 1]
-            val t3 = unlimitedConstraintData[rawIdx + UNLIMITED_L_OFFSET + 2]
-            val t4 = unlimitedConstraintData[rawIdx + UNLIMITED_L_OFFSET + 3]
-            val t5 = unlimitedConstraintData[rawIdx + UNLIMITED_L_OFFSET + 4]
-
-            val l1: Float
-            val l2: Float
-            val l3: Float
-            val l4: Float
-            val l5: Float
-
-            ConstraintMath.solveSymmetric5x5(
-                k11, k12, k13, k14, k15,
-                k22, k23, k24, k25,
-                k33, k34, k35,
-                k44, k45,
-                k55,
-
-                jv1, jv2, jv3, jv4, jv5
-            ) { s1, s2, s3, s4, s5 ->
-                l1 = t1 + s1
-                l2 = t2 + s2
-                l3 = t3 + s3
-                l4 = t4 + s4
-                l5 = t5 + s5
-            }
-
-            unlimitedConstraintData[rawIdx + UNLIMITED_L_OFFSET + 0] = l1
-            unlimitedConstraintData[rawIdx + UNLIMITED_L_OFFSET + 1] = l2
-            unlimitedConstraintData[rawIdx + UNLIMITED_L_OFFSET + 2] = l3
-            unlimitedConstraintData[rawIdx + UNLIMITED_L_OFFSET + 3] = l4
-            unlimitedConstraintData[rawIdx + UNLIMITED_L_OFFSET + 4] = l5
-
-            val d1 = l1 - t1
-            val d2 = l2 - t2
-            val d3 = l3 - t3
-            val d4 = l4 - t4
-            val d5 = l5 - t5
-
-            bodyData[b1Idx * 6 + 0] += -im1 * d1
-            bodyData[b1Idx * 6 + 1] += -im1 * d2
-            bodyData[b1Idx * 6 + 2] += -im1 * d3
-            bodyData[b1Idx * 6 + 3] += fma(e12x, d1, fma(e22x, d2, fma(e32x, d3, fma(e42x, d4, e52x * d5))))
-            bodyData[b1Idx * 6 + 4] += fma(e12y, d1, fma(e22y, d2, fma(e32y, d3, fma(e42y, d4, e52y * d5))))
-            bodyData[b1Idx * 6 + 5] += fma(e12z, d1, fma(e22z, d2, fma(e32z, d3, fma(e42z, d4, e52z * d5))))
-
-            bodyData[b2Idx * 6 + 0] += im2 * d1
-            bodyData[b2Idx * 6 + 1] += im2 * d2
-            bodyData[b2Idx * 6 + 2] += im2 * d3
-            bodyData[b2Idx * 6 + 3] += fma(e14x, d1, fma(e24x, d2, fma(e34x, d3, fma(e44x, d4, e54x * d5))))
-            bodyData[b2Idx * 6 + 4] += fma(e14y, d1, fma(e24y, d2, fma(e34y, d3, fma(e44y, d4, e54y * d5))))
-            bodyData[b2Idx * 6 + 5] += fma(e14z, d1, fma(e24z, d2, fma(e34z, d3, fma(e44z, d4, e54z * d5))))
-        }
-
-        solveLimited(
-            data = limitedConstraintData,
-            numConstraints = limitedNumConstraints,
-        ) { l -> max(0f, l) }
-
-        solveLimited(
-            data = frictionConstraintData,
-            numConstraints = frictionNumConstraints,
-        ) { l -> max(-frictionTorque, min(frictionTorque, l)) }
-    }
-
-    private inline fun solveLimited(
-        data: LimitedConstraintData,
-        numConstraints: Int,
-        l6Transform: (lambda: Float) -> Float,
-    ) {
-        val bodyData = parent.flatBodyData
-        data.forEach(
-            numConstraints = numConstraints,
-        ) { _, b1Idx, b2Idx, rawIdx ->
-            val v1 = bodyData[b1Idx * 6 + 0]
-            val v2 = bodyData[b1Idx * 6 + 1]
-            val v3 = bodyData[b1Idx * 6 + 2]
-            val v4 = bodyData[b1Idx * 6 + 3]
-            val v5 = bodyData[b1Idx * 6 + 4]
-            val v6 = bodyData[b1Idx * 6 + 5]
-
-            val v7 = bodyData[b2Idx * 6 + 0]
-            val v8 = bodyData[b2Idx * 6 + 1]
-            val v9 = bodyData[b2Idx * 6 + 2]
-            val v10 = bodyData[b2Idx * 6 + 3]
-            val v11 = bodyData[b2Idx * 6 + 4]
-            val v12 = bodyData[b2Idx * 6 + 5]
-
-            val b1 = data[rawIdx + LIMITED_B_OFFSET + 0]
-            val b2 = data[rawIdx + LIMITED_B_OFFSET + 1]
-            val b3 = data[rawIdx + LIMITED_B_OFFSET + 2]
-            val b4 = data[rawIdx + LIMITED_B_OFFSET + 3]
-            val b5 = data[rawIdx + LIMITED_B_OFFSET + 4]
-            val b6 = data[rawIdx + LIMITED_B_OFFSET + 5]
-
-            val r1x = data[rawIdx + LIMITED_J_OFFSET + 0]
-            val r1y = data[rawIdx + LIMITED_J_OFFSET + 1]
-            val r1z = data[rawIdx + LIMITED_J_OFFSET + 2]
-
-            val r2x = data[rawIdx + LIMITED_J_OFFSET + 3]
-            val r2y = data[rawIdx + LIMITED_J_OFFSET + 4]
-            val r2z = data[rawIdx + LIMITED_J_OFFSET + 5]
-
-            val j42x = data[rawIdx + LIMITED_J_OFFSET + 6]
-            val j42y = data[rawIdx + LIMITED_J_OFFSET + 7]
-            val j42z = data[rawIdx + LIMITED_J_OFFSET + 8]
-
-            val j52x = data[rawIdx + LIMITED_J_OFFSET + 9]
-            val j52y = data[rawIdx + LIMITED_J_OFFSET + 10]
-            val j52z = data[rawIdx + LIMITED_J_OFFSET + 11]
-
-            val j62x = data[rawIdx + LIMITED_J_OFFSET + 12]
-            val j62y = data[rawIdx + LIMITED_J_OFFSET + 13]
-            val j62z = data[rawIdx + LIMITED_J_OFFSET + 14]
-
-            val jv1 = -(-v1 + -r1z * v5 + r1y * v6 + v7 + r2z * v11 + -r2y * v12 + b1)
-            val jv2 = -(-v2 + r1z * v4 + -r1x * v6 + v8 + -r2z * v10 + r2x * v12 + b2)
-            val jv3 = -(-v3 + -r1y * v4 + r1x * v5 + v9 + r2y * v10 + -r2x * v11 + b3)
-            val jv4 =
-                -fma(j42x, v4, fma(j42y, v5, fma(j42z, v6, fma(-j42x, v10, fma(-j42y, v11, fma(-j42z, v12, b4))))))
-            val jv5 =
-                -fma(j52x, v4, fma(j52y, v5, fma(j52z, v6, fma(-j52x, v10, fma(-j52y, v11, fma(-j52z, v12, b5))))))
-            val jv6 =
-                -fma(j62x, v4, fma(j62y, v5, fma(j62z, v6, fma(-j62x, v10, fma(-j62y, v11, fma(-j62z, v12, b6))))))
-
-            val im1 = data[rawIdx + LIMITED_IM_OFFSET + 0]
-            val im2 = data[rawIdx + LIMITED_IM_OFFSET + 1]
-
-            val e12x = data[rawIdx + LIMITED_E_OFFSET + 0]
-            val e12y = data[rawIdx + LIMITED_E_OFFSET + 1]
-            val e12z = data[rawIdx + LIMITED_E_OFFSET + 2]
-
-            val e22x = data[rawIdx + LIMITED_E_OFFSET + 3]
-            val e22y = data[rawIdx + LIMITED_E_OFFSET + 4]
-            val e22z = data[rawIdx + LIMITED_E_OFFSET + 5]
-
-            val e32x = data[rawIdx + LIMITED_E_OFFSET + 6]
-            val e32y = data[rawIdx + LIMITED_E_OFFSET + 7]
-            val e32z = data[rawIdx + LIMITED_E_OFFSET + 8]
-
-            val e14x = data[rawIdx + LIMITED_E_OFFSET + 9]
-            val e14y = data[rawIdx + LIMITED_E_OFFSET + 10]
-            val e14z = data[rawIdx + LIMITED_E_OFFSET + 11]
-
-            val e24x = data[rawIdx + LIMITED_E_OFFSET + 12]
-            val e24y = data[rawIdx + LIMITED_E_OFFSET + 13]
-            val e24z = data[rawIdx + LIMITED_E_OFFSET + 14]
-
-            val e34x = data[rawIdx + LIMITED_E_OFFSET + 15]
-            val e34y = data[rawIdx + LIMITED_E_OFFSET + 16]
-            val e34z = data[rawIdx + LIMITED_E_OFFSET + 17]
-
-            val e42x = data[rawIdx + LIMITED_E_OFFSET + 18]
-            val e42y = data[rawIdx + LIMITED_E_OFFSET + 19]
-            val e42z = data[rawIdx + LIMITED_E_OFFSET + 20]
-
-            val e44x = data[rawIdx + LIMITED_E_OFFSET + 21]
-            val e44y = data[rawIdx + LIMITED_E_OFFSET + 22]
-            val e44z = data[rawIdx + LIMITED_E_OFFSET + 23]
-
-            val e52x = data[rawIdx + LIMITED_E_OFFSET + 24]
-            val e52y = data[rawIdx + LIMITED_E_OFFSET + 25]
-            val e52z = data[rawIdx + LIMITED_E_OFFSET + 26]
-
-            val e54x = data[rawIdx + LIMITED_E_OFFSET + 27]
-            val e54y = data[rawIdx + LIMITED_E_OFFSET + 28]
-            val e54z = data[rawIdx + LIMITED_E_OFFSET + 29]
-
-            val e62x = data[rawIdx + LIMITED_E_OFFSET + 30]
-            val e62y = data[rawIdx + LIMITED_E_OFFSET + 31]
-            val e62z = data[rawIdx + LIMITED_E_OFFSET + 32]
-
-            val e64x = data[rawIdx + LIMITED_E_OFFSET + 33]
-            val e64y = data[rawIdx + LIMITED_E_OFFSET + 34]
-            val e64z = data[rawIdx + LIMITED_E_OFFSET + 35]
-
-            val k11 = data[rawIdx + LIMITED_K_OFFSET + 0]
-            val k12 = data[rawIdx + LIMITED_K_OFFSET + 1]
-            val k13 = data[rawIdx + LIMITED_K_OFFSET + 2]
-            val k14 = data[rawIdx + LIMITED_K_OFFSET + 3]
-            val k15 = data[rawIdx + LIMITED_K_OFFSET + 4]
-            val k16 = data[rawIdx + LIMITED_K_OFFSET + 5]
-
-            val k22 = data[rawIdx + LIMITED_K_OFFSET + 6]
-            val k23 = data[rawIdx + LIMITED_K_OFFSET + 7]
-            val k24 = data[rawIdx + LIMITED_K_OFFSET + 8]
-            val k25 = data[rawIdx + LIMITED_K_OFFSET + 9]
-            val k26 = data[rawIdx + LIMITED_K_OFFSET + 10]
-
-            val k33 = data[rawIdx + LIMITED_K_OFFSET + 11]
-            val k34 = data[rawIdx + LIMITED_K_OFFSET + 12]
-            val k35 = data[rawIdx + LIMITED_K_OFFSET + 13]
-            val k36 = data[rawIdx + LIMITED_K_OFFSET + 14]
-
-            val k44 = data[rawIdx + LIMITED_K_OFFSET + 15]
-            val k45 = data[rawIdx + LIMITED_K_OFFSET + 16]
-            val k46 = data[rawIdx + LIMITED_K_OFFSET + 17]
-
-            val k55 = data[rawIdx + LIMITED_K_OFFSET + 18]
-            val k56 = data[rawIdx + LIMITED_K_OFFSET + 19]
-
-            val k66 = data[rawIdx + LIMITED_K_OFFSET + 20]
-
-            val t1 = data[rawIdx + LIMITED_L_OFFSET + 0]
-            val t2 = data[rawIdx + LIMITED_L_OFFSET + 1]
-            val t3 = data[rawIdx + LIMITED_L_OFFSET + 2]
-            val t4 = data[rawIdx + LIMITED_L_OFFSET + 3]
-            val t5 = data[rawIdx + LIMITED_L_OFFSET + 4]
-            val t6 = data[rawIdx + LIMITED_L_OFFSET + 5]
-
-            val l1: Float
-            val l2: Float
-            val l3: Float
-            val l4: Float
-            val l5: Float
-            val l6: Float
-
-            ConstraintMath.solveSymmetric6x6(
-                k11, k12, k13, k14, k15, k16,
-                k22, k23, k24, k25, k26,
-                k33, k34, k35, k36,
-                k44, k45, k46,
-                k55, k56,
-                k66,
-
-                jv1, jv2, jv3, jv4, jv5, jv6
-            ) { s1, s2, s3, s4, s5, s6 ->
-                l1 = t1 + s1
-                l2 = t2 + s2
-                l3 = t3 + s3
-                l4 = t4 + s4
-                l5 = t5 + s5
-                l6 = l6Transform(t6 + s6)
-            }
-
-            data[rawIdx + LIMITED_L_OFFSET + 0] = l1
-            data[rawIdx + LIMITED_L_OFFSET + 1] = l2
-            data[rawIdx + LIMITED_L_OFFSET + 2] = l3
-            data[rawIdx + LIMITED_L_OFFSET + 3] = l4
-            data[rawIdx + LIMITED_L_OFFSET + 4] = l5
-            data[rawIdx + LIMITED_L_OFFSET + 5] = l6
-
-            val d1 = l1 - t1
-            val d2 = l2 - t2
-            val d3 = l3 - t3
-            val d4 = l4 - t4
-            val d5 = l5 - t5
-            val d6 = l6 - t6
-
-            bodyData[b1Idx * 6 + 0] += -im1 * d1
-            bodyData[b1Idx * 6 + 1] += -im1 * d2
-            bodyData[b1Idx * 6 + 2] += -im1 * d3
-            bodyData[b1Idx * 6 + 3] += fma(
-                e12x,
-                d1,
-                fma(e22x, d2, fma(e32x, d3, fma(e42x, d4, fma(e52x, d5, e62x * d6))))
-            )
-            bodyData[b1Idx * 6 + 4] += fma(
-                e12y,
-                d1,
-                fma(e22y, d2, fma(e32y, d3, fma(e42y, d4, fma(e52y, d5, e62y * d6))))
-            )
-            bodyData[b1Idx * 6 + 5] += fma(
-                e12z,
-                d1,
-                fma(e22z, d2, fma(e32z, d3, fma(e42z, d4, fma(e52z, d5, e62z * d6))))
-            )
-
-            bodyData[b2Idx * 6 + 0] += im2 * d1
-            bodyData[b2Idx * 6 + 1] += im2 * d2
-            bodyData[b2Idx * 6 + 2] += im2 * d3
-            bodyData[b2Idx * 6 + 3] += fma(
-                e14x,
-                d1,
-                fma(e24x, d2, fma(e34x, d3, fma(e44x, d4, fma(e54x, d5, e64x * d6))))
-            )
-            bodyData[b2Idx * 6 + 4] += fma(
-                e14y,
-                d1,
-                fma(e24y, d2, fma(e34y, d3, fma(e44y, d4, fma(e54y, d5, e64y * d6))))
-            )
-            bodyData[b2Idx * 6 + 5] += fma(
-                e14z,
-                d1,
-                fma(e24z, d2, fma(e34z, d3, fma(e44z, d4, fma(e54z, d5, e64z * d6))))
-            )
-        }
+        ConstraintMath.solve3p2rVelocity(
+            bodyData,
+            unlimitedConstraintData,
+            unlimitedNumConstraints,
+        )
+
+        ConstraintMath.solve3p3rVelocity(
+            bodyData,
+            limitedConstraintData,
+            limitedNumConstraints,
+            l6Transform = { max(0f, it) }
+        )
+
+        ConstraintMath.solve3p3rVelocity(
+            bodyData,
+            frictionConstraintData,
+            frictionNumConstraints,
+            l6Transform = { max(-frictionTorque, min(frictionTorque, it)) }
+        )
     }
 
     fun solvePosition() {
@@ -1304,7 +924,7 @@ class HingeConstraintSolver(val parent: ConstraintSolver) {
             val l4: Float
             val l5: Float
 
-            ConstraintMath.solveSymmetric5x5(
+            MatrixMath.solveSymmetric5x5(
                 k11, k12, k13, k14, k15,
                 k22, k23, k24, k25,
                 k33, k34, k35,
@@ -1380,7 +1000,7 @@ class HingeConstraintSolver(val parent: ConstraintSolver) {
             val l5: Float
             val l6: Float
 
-            ConstraintMath.solveSymmetric6x6(
+            MatrixMath.solveSymmetric6x6(
                 k11, k12, k13, k14, k15, k16,
                 k22, k23, k24, k25, k26,
                 k33, k34, k35, k36,
@@ -1472,525 +1092,3 @@ class HingeConstraintSolver(val parent: ConstraintSolver) {
         q2.add(_tempQ).normalize()
     }
 }
-
-@JvmInline
-private value class UnlimitedConstraintData(val value: FloatArray) {
-    constructor(size: Int) : this(FloatArray(size))
-
-    inline operator fun get(idx: Int) = value[idx]
-    inline operator fun set(idx: Int, v: Float) {
-        value[idx] = v
-    }
-
-    fun sizeFor(constraints: Int): Int {
-        return max(constraints * UNLIMITED_CONSTRAINT_DATA_SIZE, value.size)
-    }
-
-    fun set(
-        cursor: Int,
-
-        constraintIdx: Int,
-        body1Idx: Int,
-        body2Idx: Int,
-
-        r1x: Float,
-        r1y: Float,
-        r1z: Float,
-
-        r2x: Float,
-        r2y: Float,
-        r2z: Float,
-
-        j42x: Float,
-        j42y: Float,
-        j42z: Float,
-
-        j52x: Float,
-        j52y: Float,
-        j52z: Float,
-
-        im1: Float,
-        im2: Float,
-
-        e12x: Float,
-        e12y: Float,
-        e12z: Float,
-
-        e22x: Float,
-        e22y: Float,
-        e22z: Float,
-
-        e32x: Float,
-        e32y: Float,
-        e32z: Float,
-
-        e14x: Float,
-        e14y: Float,
-        e14z: Float,
-
-        e24x: Float,
-        e24y: Float,
-        e24z: Float,
-
-        e34x: Float,
-        e34y: Float,
-        e34z: Float,
-
-        e42x: Float,
-        e42y: Float,
-        e42z: Float,
-
-        e44x: Float,
-        e44y: Float,
-        e44z: Float,
-
-        e52x: Float,
-        e52y: Float,
-        e52z: Float,
-
-        e54x: Float,
-        e54y: Float,
-        e54z: Float,
-
-        k11: Float,
-        k12: Float,
-        k13: Float,
-        k14: Float,
-        k15: Float,
-
-        k22: Float,
-        k23: Float,
-        k24: Float,
-        k25: Float,
-
-        k33: Float,
-        k34: Float,
-        k35: Float,
-
-        k44: Float,
-        k45: Float,
-
-        k55: Float,
-
-        b1: Float,
-        b2: Float,
-        b3: Float,
-        b4: Float,
-        b5: Float,
-
-        l1: Float,
-        l2: Float,
-        l3: Float,
-        l4: Float,
-        l5: Float,
-    ) {
-        this[cursor + 0] = Float.fromBits(constraintIdx)
-        this[cursor + 1] = Float.fromBits(body1Idx)
-        this[cursor + 2] = Float.fromBits(body2Idx)
-
-        this[cursor + 3] = r1x
-        this[cursor + 4] = r1y
-        this[cursor + 5] = r1z
-
-        this[cursor + 6] = r2x
-        this[cursor + 7] = r2y
-        this[cursor + 8] = r2z
-
-        this[cursor + 9] = j42x
-        this[cursor + 10] = j42y
-        this[cursor + 11] = j42z
-
-        this[cursor + 12] = j52x
-        this[cursor + 13] = j52y
-        this[cursor + 14] = j52z
-
-        this[cursor + 15] = im1
-        this[cursor + 16] = im2
-
-        this[cursor + 17] = e12x
-        this[cursor + 18] = e12y
-        this[cursor + 19] = e12z
-
-        this[cursor + 20] = e22x
-        this[cursor + 21] = e22y
-        this[cursor + 22] = e22z
-
-        this[cursor + 23] = e32x
-        this[cursor + 24] = e32y
-        this[cursor + 25] = e32z
-
-        this[cursor + 26] = e14x
-        this[cursor + 27] = e14y
-        this[cursor + 28] = e14z
-
-        this[cursor + 29] = e24x
-        this[cursor + 30] = e24y
-        this[cursor + 31] = e24z
-
-        this[cursor + 32] = e34x
-        this[cursor + 33] = e34y
-        this[cursor + 34] = e34z
-
-        this[cursor + 35] = e42x
-        this[cursor + 36] = e42y
-        this[cursor + 37] = e42z
-
-        this[cursor + 38] = e44x
-        this[cursor + 39] = e44y
-        this[cursor + 40] = e44z
-
-        this[cursor + 41] = e52x
-        this[cursor + 42] = e52y
-        this[cursor + 43] = e52z
-
-        this[cursor + 44] = e54x
-        this[cursor + 45] = e54y
-        this[cursor + 46] = e54z
-
-        this[cursor + 47] = k11
-        this[cursor + 48] = k12
-        this[cursor + 49] = k13
-        this[cursor + 50] = k14
-        this[cursor + 51] = k15
-
-        this[cursor + 52] = k22
-        this[cursor + 53] = k23
-        this[cursor + 54] = k24
-        this[cursor + 55] = k25
-
-        this[cursor + 56] = k33
-        this[cursor + 57] = k34
-        this[cursor + 58] = k35
-
-        this[cursor + 59] = k44
-        this[cursor + 60] = k45
-
-        this[cursor + 61] = k55
-
-        this[cursor + 62] = b1
-        this[cursor + 63] = b2
-        this[cursor + 64] = b3
-        this[cursor + 65] = b4
-        this[cursor + 66] = b5
-
-        this[cursor + 67] = l1
-        this[cursor + 68] = l2
-        this[cursor + 69] = l3
-        this[cursor + 70] = l4
-        this[cursor + 71] = l5
-    }
-
-    inline fun forEach(
-        numConstraints: Int,
-        block: (
-            constraintIdx: Int,
-
-            b1Idx: Int,
-            b2Idx: Int,
-
-            rawIdx: Int,
-        ) -> Unit,
-    ) {
-        var i = 0
-        while (i < numConstraints) {
-            block(
-                this[i * UNLIMITED_CONSTRAINT_DATA_SIZE + 0].toRawBits(),
-                this[i * UNLIMITED_CONSTRAINT_DATA_SIZE + 1].toRawBits(),
-                this[i * UNLIMITED_CONSTRAINT_DATA_SIZE + 2].toRawBits(),
-                i * UNLIMITED_CONSTRAINT_DATA_SIZE,
-            )
-
-            i++
-        }
-    }
-}
-
-@JvmInline
-private value class LimitedConstraintData(val value: FloatArray) {
-    constructor(size: Int) : this(FloatArray(size))
-
-    inline operator fun get(idx: Int) = value[idx]
-    inline operator fun set(idx: Int, v: Float) {
-        value[idx] = v
-    }
-
-    fun sizeFor(constraints: Int): Int {
-        return max(constraints * LIMITED_CONSTRAINT_DATA_SIZE, value.size)
-    }
-
-    fun set(
-        cursor: Int,
-
-        constraintIdx: Int,
-        body1Idx: Int,
-        body2Idx: Int,
-
-        r1x: Float,
-        r1y: Float,
-        r1z: Float,
-
-        r2x: Float,
-        r2y: Float,
-        r2z: Float,
-
-        j42x: Float,
-        j42y: Float,
-        j42z: Float,
-
-        j52x: Float,
-        j52y: Float,
-        j52z: Float,
-
-        j62x: Float,
-        j62y: Float,
-        j62z: Float,
-
-        im1: Float,
-        im2: Float,
-
-        e12x: Float,
-        e12y: Float,
-        e12z: Float,
-
-        e22x: Float,
-        e22y: Float,
-        e22z: Float,
-
-        e32x: Float,
-        e32y: Float,
-        e32z: Float,
-
-        e14x: Float,
-        e14y: Float,
-        e14z: Float,
-
-        e24x: Float,
-        e24y: Float,
-        e24z: Float,
-
-        e34x: Float,
-        e34y: Float,
-        e34z: Float,
-
-        e42x: Float,
-        e42y: Float,
-        e42z: Float,
-
-        e44x: Float,
-        e44y: Float,
-        e44z: Float,
-
-        e52x: Float,
-        e52y: Float,
-        e52z: Float,
-
-        e54x: Float,
-        e54y: Float,
-        e54z: Float,
-
-        e62x: Float,
-        e62y: Float,
-        e62z: Float,
-
-        e64x: Float,
-        e64y: Float,
-        e64z: Float,
-
-        k11: Float,
-        k12: Float,
-        k13: Float,
-        k14: Float,
-        k15: Float,
-        k16: Float,
-
-        k22: Float,
-        k23: Float,
-        k24: Float,
-        k25: Float,
-        k26: Float,
-
-        k33: Float,
-        k34: Float,
-        k35: Float,
-        k36: Float,
-
-        k44: Float,
-        k45: Float,
-        k46: Float,
-
-        k55: Float,
-        k56: Float,
-
-        k66: Float,
-
-        b1: Float,
-        b2: Float,
-        b3: Float,
-        b4: Float,
-        b5: Float,
-        b6: Float,
-
-        l1: Float,
-        l2: Float,
-        l3: Float,
-        l4: Float,
-        l5: Float,
-        l6: Float,
-    ) {
-        this[cursor + 0] = Float.fromBits(constraintIdx)
-        this[cursor + 1] = Float.fromBits(body1Idx)
-        this[cursor + 2] = Float.fromBits(body2Idx)
-
-        this[cursor + 3] = r1x
-        this[cursor + 4] = r1y
-        this[cursor + 5] = r1z
-
-        this[cursor + 6] = r2x
-        this[cursor + 7] = r2y
-        this[cursor + 8] = r2z
-
-        this[cursor + 9] = j42x
-        this[cursor + 10] = j42y
-        this[cursor + 11] = j42z
-
-        this[cursor + 12] = j52x
-        this[cursor + 13] = j52y
-        this[cursor + 14] = j52z
-
-        this[cursor + 15] = j62x
-        this[cursor + 16] = j62y
-        this[cursor + 17] = j62z
-
-        this[cursor + 18] = im1
-        this[cursor + 19] = im2
-
-        this[cursor + 20] = e12x
-        this[cursor + 21] = e12y
-        this[cursor + 22] = e12z
-
-        this[cursor + 23] = e22x
-        this[cursor + 24] = e22y
-        this[cursor + 25] = e22z
-
-        this[cursor + 26] = e32x
-        this[cursor + 27] = e32y
-        this[cursor + 28] = e32z
-
-        this[cursor + 29] = e14x
-        this[cursor + 30] = e14y
-        this[cursor + 31] = e14z
-
-        this[cursor + 32] = e24x
-        this[cursor + 33] = e24y
-        this[cursor + 34] = e24z
-
-        this[cursor + 35] = e34x
-        this[cursor + 36] = e34y
-        this[cursor + 37] = e34z
-
-        this[cursor + 38] = e42x
-        this[cursor + 39] = e42y
-        this[cursor + 40] = e42z
-
-        this[cursor + 41] = e44x
-        this[cursor + 42] = e44y
-        this[cursor + 43] = e44z
-
-        this[cursor + 44] = e52x
-        this[cursor + 45] = e52y
-        this[cursor + 46] = e52z
-
-        this[cursor + 47] = e54x
-        this[cursor + 48] = e54y
-        this[cursor + 49] = e54z
-
-        this[cursor + 50] = e62x
-        this[cursor + 51] = e62y
-        this[cursor + 52] = e62z
-
-        this[cursor + 53] = e64x
-        this[cursor + 54] = e64y
-        this[cursor + 55] = e64z
-
-        this[cursor + 56] = k11
-        this[cursor + 57] = k12
-        this[cursor + 58] = k13
-        this[cursor + 59] = k14
-        this[cursor + 60] = k15
-        this[cursor + 61] = k16
-
-        this[cursor + 62] = k22
-        this[cursor + 63] = k23
-        this[cursor + 64] = k24
-        this[cursor + 65] = k25
-        this[cursor + 66] = k26
-
-        this[cursor + 67] = k33
-        this[cursor + 68] = k34
-        this[cursor + 69] = k35
-        this[cursor + 70] = k36
-
-        this[cursor + 71] = k44
-        this[cursor + 72] = k45
-        this[cursor + 73] = k46
-
-        this[cursor + 74] = k55
-        this[cursor + 75] = k56
-
-        this[cursor + 76] = k66
-
-        this[cursor + 77] = b1
-        this[cursor + 78] = b2
-        this[cursor + 79] = b3
-        this[cursor + 80] = b4
-        this[cursor + 81] = b5
-        this[cursor + 82] = b6
-
-        this[cursor + 83] = l1
-        this[cursor + 84] = l2
-        this[cursor + 85] = l3
-        this[cursor + 86] = l4
-        this[cursor + 87] = l5
-        this[cursor + 88] = l6
-    }
-
-    inline fun forEach(
-        numConstraints: Int,
-        block: (
-            constraintIdx: Int,
-
-            b1Idx: Int,
-            b2Idx: Int,
-
-            rawIdx: Int,
-        ) -> Unit,
-    ) {
-        var i = 0
-        while (i < numConstraints) {
-            block(
-                this[i * LIMITED_CONSTRAINT_DATA_SIZE + 0].toRawBits(),
-                this[i * LIMITED_CONSTRAINT_DATA_SIZE + 1].toRawBits(),
-                this[i * LIMITED_CONSTRAINT_DATA_SIZE + 2].toRawBits(),
-                i * LIMITED_CONSTRAINT_DATA_SIZE,
-            )
-
-            i++
-        }
-    }
-}
-
-private const val UNLIMITED_CONSTRAINT_DATA_SIZE = 72
-private const val UNLIMITED_J_OFFSET = 3
-private const val UNLIMITED_IM_OFFSET = 15
-private const val UNLIMITED_E_OFFSET = 17
-private const val UNLIMITED_K_OFFSET = 47
-private const val UNLIMITED_B_OFFSET = 62
-private const val UNLIMITED_L_OFFSET = 67
-
-private const val LIMITED_CONSTRAINT_DATA_SIZE = 89
-private const val LIMITED_J_OFFSET = 3
-private const val LIMITED_IM_OFFSET = 18
-private const val LIMITED_E_OFFSET = 20
-private const val LIMITED_K_OFFSET = 56
-private const val LIMITED_B_OFFSET = 77
-private const val LIMITED_L_OFFSET = 83
