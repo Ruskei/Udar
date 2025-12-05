@@ -612,14 +612,14 @@ class HingeConstraintSolver(val parent: ConstraintSolver) {
             bodyData,
             limitedConstraintData,
             limitedNumConstraints,
-            l6Transform = { max(0f, it) }
+            l6Transform = { l, _ -> max(0f, l) }
         )
 
         ConstraintMath.solve3p3rVelocity(
             bodyData,
             frictionConstraintData,
             frictionNumConstraints,
-            l6Transform = { max(-frictionTorque, min(frictionTorque, it)) }
+            l6Transform = { l, _ -> max(-frictionTorque, min(frictionTorque, l)) }
         )
     }
 

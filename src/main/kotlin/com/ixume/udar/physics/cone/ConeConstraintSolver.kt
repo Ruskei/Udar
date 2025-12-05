@@ -695,38 +695,102 @@ class ConeConstraintSolver(val parent: ConstraintSolver) {
         }
     }
 
-    fun solveVelocity() {
+    fun solveVelocity(iteration: Int) {
         val bodyData = parent.flatBodyData
         ConstraintMath.solve3p0rVelocity(
             bodyData = bodyData,
             constraintData = constraintData3x3,
             numConstraints = numConstraints3x3,
+            l1Transform = { l, i ->
+                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData3x3.value[i])
+                l
+            },
+            l2Transform = { l, i ->
+                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData3x3.value[i])
+                l
+            },
+            l3Transform = { l, i ->
+                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData3x3.value[i])
+                l
+            },
         )
 
         ConstraintMath.solve3p1rVelocity(
             bodyData = bodyData,
             constraintData = constraintData4x4,
             numConstraints = numConstraints4x4,
-            l4Transform = { max(0f, it) },
+            l1Transform = { l, i ->
+                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData4x4.value[i])
+                l
+            },
+            l2Transform = { l, i ->
+                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData4x4.value[i])
+                l
+            },
+            l3Transform = { l, i ->
+                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData4x4.value[i])
+                l
+            },
+            l4Transform = { l, i ->
+                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData4x4.value[i])
+                max(0f, l)
+            },
         )
 
         ConstraintMath.solve3p2rVelocity(
             bodyData = bodyData,
             constraintData = constraintData5x5,
             numConstraints = numConstraints5x5,
-
-            l4Transform = { max(0f, it) },
-            l5Transform = { max(0f, it) },
+            l1Transform = { l, i ->
+                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData5x5.value[i])
+                l
+            },
+            l2Transform = { l, i ->
+                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData5x5.value[i])
+                l
+            },
+            l3Transform = { l, i ->
+                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData5x5.value[i])
+                l
+            },
+            l4Transform = { l, i ->
+                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData5x5.value[i])
+                max(0f, l)
+            },
+            l5Transform = { l, i ->
+                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData5x5.value[i])
+                max(0f, l)
+            },
         )
 
         ConstraintMath.solve3p3rVelocity(
             bodyData = bodyData,
             constraintData = constraintData6x6,
             numConstraints = numConstraints6x6,
-
-            l4Transform = { max(0f, it) },
-            l5Transform = { max(0f, it) },
-            l6Transform = { max(0f, it) },
+            l1Transform = { l, i ->
+                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData6x6.value[i])
+                l
+            },
+            l2Transform = { l, i ->
+                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData6x6.value[i])
+                l
+            },
+            l3Transform = { l, i ->
+                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData6x6.value[i])
+                l
+            },
+            l4Transform = { l, i ->
+                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData6x6.value[i])
+                max(0f, l)
+            },
+            l5Transform = { l, i ->
+                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData6x6.value[i])
+                max(0f, l)
+            },
+            l6Transform = { l, i ->
+                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData6x6.value[i])
+                max(0f, l)
+            },
         )
     }
 

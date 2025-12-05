@@ -29,8 +29,6 @@ class ContactSolver(val parent: ConstraintSolver) {
 
     private val setupExecutor = Executors.newFixedThreadPool(3)
 
-    private var normalDeltaLambdas = FloatArray(Udar.CONFIG.collision.normalIterations)
-
     fun setup() {
         dt = Udar.CONFIG.timeStep.toFloat()
         friction = Udar.CONFIG.collision.friction.toFloat()
@@ -43,12 +41,6 @@ class ContactSolver(val parent: ConstraintSolver) {
         val a2sManifolds = world.envManifoldBuffer
         a2aNumManifolds = a2aManifolds.size()
         a2sNumManifolds = a2sManifolds.size()
-
-        if (normalDeltaLambdas.size != Udar.CONFIG.collision.normalIterations) {
-            normalDeltaLambdas = FloatArray(Udar.CONFIG.collision.normalIterations)
-        } else {
-            normalDeltaLambdas.fill(0f)
-        }
 
         if (a2aNormalManifoldData.sizeFor(
                 a2aNumManifolds,
@@ -743,13 +735,13 @@ class ContactSolver(val parent: ConstraintSolver) {
     fun solveNormals(iteration: Int) {
         solve(a2aNormalManifoldData, a2aNumManifolds) { l, lIdx ->
             val r = max(0f, l)
-            normalDeltaLambdas[iteration - 1] += abs(r - a2aNormalManifoldData[lIdx])
+            parent.debugDeltaLambdas[iteration - 1] += abs(r - a2aNormalManifoldData[lIdx])
             r
         }
 
         solve(a2sNormalManifoldData, a2sNumManifolds) { l, lIdx ->
             val r = max(0f, l)
-            normalDeltaLambdas[iteration - 1] += abs(r - a2sNormalManifoldData[lIdx])
+            parent.debugDeltaLambdas[iteration - 1] += abs(r - a2sNormalManifoldData[lIdx])
             r
         }
     }
@@ -892,29 +884,6 @@ class ContactSolver(val parent: ConstraintSolver) {
                 )
 
                 j++
-            }
-        }
-    }
-
-    fun reportLambdas() {
-        val iterations = Udar.CONFIG.collision.normalIterations
-        if (iterations <= 0) return
-        val n =
-            world.manifoldBuffer.numContacts + world.envManifoldBuffer.numContacts.get()
-        if (n == 0) return
-        for (i in 0..<normalDeltaLambdas.size) {
-            normalDeltaLambdas[i] /= n
-        }
-
-        val first = normalDeltaLambdas[0]
-        println("Δlambdas:")
-        println("  %4d: %8.2e ".format(1, first) + "*".repeat(10))
-        for (i in 2..normalDeltaLambdas.size) {
-            val v = normalDeltaLambdas[i - 1]
-            if (first == 0f) {
-                println("  %4d: %8.2e ".format(i, v))
-            } else {
-                println("  %4d: %8.2e ".format(i, v) + "*".repeat(abs(v / first * 10.0).roundToInt()))
             }
         }
     }

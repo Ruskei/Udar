@@ -138,9 +138,9 @@ object ConstraintMath {
         constraintData: ConstraintData3p0r,
         numConstraints: Int,
 
-        l1Transform: (Float) -> Float = { f -> f },
-        l2Transform: (Float) -> Float = { f -> f },
-        l3Transform: (Float) -> Float = { f -> f },
+        l1Transform: (l: Float, i: Int) -> Float = { f, _ -> f },
+        l2Transform: (l: Float, i: Int) -> Float = { f, _ -> f },
+        l3Transform: (l: Float, i: Int) -> Float = { f, _ -> f },
     ) {
         val bOffset = ConstraintData3p0r.B_OFFSET
         val jOffset = ConstraintData3p0r.J_OFFSET
@@ -231,9 +231,9 @@ object ConstraintMath {
 
                 jv1, jv2, jv3,
             ) { s1, s2, s3 ->
-                l1 = l1Transform(t1 + s1)
-                l2 = l2Transform(t2 + s2)
-                l3 = l3Transform(t3 + s3)
+                l1 = l1Transform(t1 + s1, rawIdx + lOffset + 0)
+                l2 = l2Transform(t2 + s2, rawIdx + lOffset + 1)
+                l3 = l3Transform(t3 + s3, rawIdx + lOffset + 2)
             }
 
             constraintData[rawIdx + lOffset + 0] = l1
@@ -265,10 +265,10 @@ object ConstraintMath {
         constraintData: ConstraintData3p1r,
         numConstraints: Int,
 
-        l1Transform: (Float) -> Float = { f -> f },
-        l2Transform: (Float) -> Float = { f -> f },
-        l3Transform: (Float) -> Float = { f -> f },
-        l4Transform: (Float) -> Float = { f -> f },
+        l1Transform: (l: Float, i: Int) -> Float = { f, _ -> f },
+        l2Transform: (l: Float, i: Int) -> Float = { f, _ -> f },
+        l3Transform: (l: Float, i: Int) -> Float = { f, _ -> f },
+        l4Transform: (l: Float, i: Int) -> Float = { f, _ -> f },
     ) {
         val bOffset = ConstraintData3p1r.B_OFFSET
         val jOffset = ConstraintData3p1r.J_OFFSET
@@ -382,10 +382,10 @@ object ConstraintMath {
 
                 jv1, jv2, jv3, jv4,
             ) { s1, s2, s3, s4 ->
-                l1 = l1Transform(t1 + s1)
-                l2 = l2Transform(t2 + s2)
-                l3 = l3Transform(t3 + s3)
-                l4 = l4Transform(t4 + s4)
+                l1 = l1Transform(t1 + s1, rawIdx + lOffset + 0)
+                l2 = l2Transform(t2 + s2, rawIdx + lOffset + 1)
+                l3 = l3Transform(t3 + s3, rawIdx + lOffset + 2)
+                l4 = l4Transform(t4 + s4, rawIdx + lOffset + 3)
             }
 
             constraintData[rawIdx + lOffset + 0] = l1
@@ -419,11 +419,11 @@ object ConstraintMath {
         constraintData: ConstraintData3p2r,
         numConstraints: Int,
 
-        l1Transform: (Float) -> Float = { f -> f },
-        l2Transform: (Float) -> Float = { f -> f },
-        l3Transform: (Float) -> Float = { f -> f },
-        l4Transform: (Float) -> Float = { f -> f },
-        l5Transform: (Float) -> Float = { f -> f },
+        l1Transform: (l: Float, i: Int) -> Float = { f, _ -> f },
+        l2Transform: (l: Float, i: Int) -> Float = { f, _ -> f },
+        l3Transform: (l: Float, i: Int) -> Float = { f, _ -> f },
+        l4Transform: (l: Float, i: Int) -> Float = { f, _ -> f },
+        l5Transform: (l: Float, i: Int) -> Float = { f, _ -> f },
     ) {
         val bOffset = ConstraintData3p2r.B_OFFSET
         val jOffset = ConstraintData3p2r.J_OFFSET
@@ -561,11 +561,11 @@ object ConstraintMath {
 
                 jv1, jv2, jv3, jv4, jv5,
             ) { s1, s2, s3, s4, s5 ->
-                l1 = l1Transform(t1 + s1)
-                l2 = l2Transform(t2 + s2)
-                l3 = l3Transform(t3 + s3)
-                l4 = l4Transform(t4 + s4)
-                l5 = l5Transform(t5 + s5)
+                l1 = l1Transform(t1 + s1, rawIdx + lOffset + 0)
+                l2 = l2Transform(t2 + s2, rawIdx + lOffset + 1)
+                l3 = l3Transform(t3 + s3, rawIdx + lOffset + 2)
+                l4 = l4Transform(t4 + s4, rawIdx + lOffset + 3)
+                l5 = l5Transform(t5 + s5, rawIdx + lOffset + 4)
             }
 
             constraintData[rawIdx + lOffset + 0] = l1
@@ -601,12 +601,12 @@ object ConstraintMath {
         constraintData: ConstraintData3p3r,
         numConstraints: Int,
 
-        l1Transform: (Float) -> Float = { f -> f },
-        l2Transform: (Float) -> Float = { f -> f },
-        l3Transform: (Float) -> Float = { f -> f },
-        l4Transform: (Float) -> Float = { f -> f },
-        l5Transform: (Float) -> Float = { f -> f },
-        l6Transform: (Float) -> Float = { f -> f },
+        l1Transform: (l: Float, i: Int) -> Float = { f, _ -> f },
+        l2Transform: (l: Float, i: Int) -> Float = { f, _ -> f },
+        l3Transform: (l: Float, i: Int) -> Float = { f, _ -> f },
+        l4Transform: (l: Float, i: Int) -> Float = { f, _ -> f },
+        l5Transform: (l: Float, i: Int) -> Float = { f, _ -> f },
+        l6Transform: (l: Float, i: Int) -> Float = { f, _ -> f },
     ) {
         val bOffset = ConstraintData3p3r.B_OFFSET
         val jOffset = ConstraintData3p3r.J_OFFSET
@@ -769,12 +769,12 @@ object ConstraintMath {
 
                 jv1, jv2, jv3, jv4, jv5, jv6,
             ) { s1, s2, s3, s4, s5, s6 ->
-                l1 = l1Transform(t1 + s1)
-                l2 = l2Transform(t2 + s2)
-                l3 = l3Transform(t3 + s3)
-                l4 = l4Transform(t4 + s4)
-                l5 = l5Transform(t5 + s5)
-                l6 = l6Transform(t6 + s6)
+                l1 = l1Transform(t1 + s1, rawIdx + lOffset + 0)
+                l2 = l2Transform(t2 + s2, rawIdx + lOffset + 1)
+                l3 = l3Transform(t3 + s3, rawIdx + lOffset + 2)
+                l4 = l4Transform(t4 + s4, rawIdx + lOffset + 3)
+                l5 = l5Transform(t5 + s5, rawIdx + lOffset + 4)
+                l6 = l6Transform(t6 + s6, rawIdx + lOffset + 5)
             }
 
             constraintData[rawIdx + lOffset + 0] = l1

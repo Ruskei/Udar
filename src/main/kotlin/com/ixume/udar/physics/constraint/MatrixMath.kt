@@ -35,8 +35,8 @@ object MatrixMath {
         val y2 = (v3 - (l20 * y0 + l21 * y1)) / l22
 
         val s3 = y2 / l22
-        val s2 = (y1 - y2 * l21) / l11
-        val s1 = (y0 - y1 * l10 - y2 * l20) / l00
+        val s2 = (y1 - s3 * l21) / l11
+        val s1 = (y0 - s2 * l10 - s3 * l20) / l00
 
         after(s1, s2, s3)
     }

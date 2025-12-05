@@ -41,7 +41,7 @@ class ConstraintManager(val physicsWorld: PhysicsWorld) {
         }
 
         if (Udar.CONFIG.debug.reportLambdas) {
-            constraintSolver.contactSolver.reportLambdas()
+            constraintSolver.reportLambdas()
         }
 
         for (iteration in 1..Udar.CONFIG.collision.frictionIterations) {

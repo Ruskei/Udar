@@ -6,6 +6,7 @@ import com.ixume.udar.physics.constraint.ConstraintMath
 import com.ixume.udar.physics.constraint.ConstraintSolver
 import com.ixume.udar.physics.constraint.QuatMath.transform
 import java.lang.Math.fma
+import kotlin.math.abs
 import kotlin.math.pow
 
 class PointConstraintSolver(val parent: ConstraintSolver) {
@@ -225,12 +226,24 @@ class PointConstraintSolver(val parent: ConstraintSolver) {
         }
     }
 
-    fun solveVelocity() {
+    fun solveVelocity(iteration: Int) {
         val bodyData = parent.flatBodyData
         ConstraintMath.solve3p0rVelocity(
             bodyData = bodyData,
             constraintData = constraintData,
             numConstraints = numConstraints,
+            l1Transform = { l, i ->
+                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData.value[i])
+                l
+            },
+            l2Transform = { l, i ->
+                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData.value[i])
+                l
+            },
+            l3Transform = { l, i ->
+                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData.value[i])
+                l
+            },
         )
     }
 
