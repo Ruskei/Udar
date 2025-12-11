@@ -37,6 +37,7 @@ import kotlin.time.toDuration
 class PhysicsWorld(
     val world: World,
 ) {
+    private val tasks = AtomicList<Runnable>()
     private val bodiesToAdd = AtomicList<ActiveBody>()
     private val bodiesToRemove = AtomicList<ActiveBody>()
 
@@ -105,6 +106,10 @@ class PhysicsWorld(
         }
     }, 1, 1)
 
+    fun run(task: Runnable) {
+        tasks += task
+    }
+
     fun registerBody(body: ActiveBody) {
         bodiesToAdd += body
     }
@@ -157,6 +162,8 @@ class PhysicsWorld(
 
                 manifoldBuffer.clear()
                 envManifoldBuffer.clear()
+
+                tasks.getAndClear().forEach { it.run() }
 
                 val bodiesSnapshot = activeBodies.activeBodies()
 
