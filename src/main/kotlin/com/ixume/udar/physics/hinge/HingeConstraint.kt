@@ -36,4 +36,10 @@ data class HingeConstraint(
     val r2x: Float,
     val r2y: Float,
     val r2z: Float,
-)
+) {
+    var λunlimited1 = 0f
+    var λunlimited2 = 0f
+    var λunlimited3 = 0f
+    var λunlimited4 = 0f
+    var λunlimited5 = 0f
+}

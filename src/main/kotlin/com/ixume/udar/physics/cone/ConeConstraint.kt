@@ -42,7 +42,11 @@ data class ConeConstraint(
 
     val maxXAngle: Float,
     val maxYAngle: Float,
-    
+
     val minTwistAngle: Float,
     val maxTwistAngle: Float,
-)
+) {
+    var λ3x31 = 0f
+    var λ3x32 = 0f
+    var λ3x33 = 0f
+}

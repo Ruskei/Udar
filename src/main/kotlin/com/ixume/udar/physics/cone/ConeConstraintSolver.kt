@@ -67,6 +67,7 @@ class ConeConstraintSolver(val parent: ConstraintSolver) {
         while (i < totalNumConstraints) {
             val constraint = constraints[i]
 
+
             val b1 = constraint.b1
             val b2 = constraint.b2
 
@@ -444,7 +445,7 @@ class ConeConstraintSolver(val parent: ConstraintSolver) {
                     k22, k23,
                     k33,
                     bias1, bias2, bias3,
-                    0f, 0f, 0f,
+                    constraint.λ3x31, constraint.λ3x32, constraint.λ3x33,
                 )
             } else if (constrainTwist && !constrainSwing) { //4
                 val j42x = jTwistX
@@ -708,6 +709,13 @@ class ConeConstraintSolver(val parent: ConstraintSolver) {
 
             i++
         }
+
+        ConstraintMath.warm3p0r(
+            parent = parent,
+            constraintData = constraintData3x3,
+            numConstraints = numConstraints3x3,
+            relaxation = relaxation,
+        )
     }
 
     fun solveVelocity() {
@@ -738,6 +746,16 @@ class ConeConstraintSolver(val parent: ConstraintSolver) {
             numConstraints = numConstraints6x6,
             relaxation = relaxation,
         )
+    }
+
+    fun heatUp() {
+        if (carryover <= 0f) return
+        constraintData3x3.forEach(numConstraints3x3) { idx, b1Idx, b2Idx, rawIdx ->
+            val c = rawConstraints[idx]
+            c.λ3x31 = constraintData3x3[rawIdx + ConstraintData3p0r.L_OFFSET + 0] * carryover
+            c.λ3x32 = constraintData3x3[rawIdx + ConstraintData3p0r.L_OFFSET + 1] * carryover
+            c.λ3x33 = constraintData3x3[rawIdx + ConstraintData3p0r.L_OFFSET + 2] * carryover
+        }
     }
 
     fun solvePosition() {

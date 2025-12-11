@@ -331,35 +331,83 @@ class HingeConstraintSolver(val parent: ConstraintSolver) {
                 unlimitedConstraintData.set(
                     unlimitedNumConstraints++ * ConstraintData3p2r.DATA_SIZE,
                     i,
-                    b1.idx, b2.idx,
+                    b1.idx,
+                    b2.idx,
 
-                    r1x, r1y, r1z,
-                    r2x, r2y, r2z,
+                    r1x,
+                    r1y,
+                    r1z,
+                    r2x,
+                    r2y,
+                    r2z,
 
-                    j42x, j42y, j42z,
-                    j52x, j52y, j52z,
+                    j42x,
+                    j42y,
+                    j42z,
+                    j52x,
+                    j52y,
+                    j52z,
 
-                    im1, im2,
+                    im1,
+                    im2,
 
-                    ej12x, ej12y, ej12z,
-                    ej22x, ej22y, ej22z,
-                    ej32x, ej32y, ej32z,
-                    ej42x, ej42y, ej42z,
-                    ej52x, ej52y, ej52z,
-                    ej14x, ej14y, ej14z,
-                    ej24x, ej24y, ej24z,
-                    ej34x, ej34y, ej34z,
-                    ej44x, ej44y, ej44z,
-                    ej54x, ej54y, ej54z,
+                    ej12x,
+                    ej12y,
+                    ej12z,
+                    ej22x,
+                    ej22y,
+                    ej22z,
+                    ej32x,
+                    ej32y,
+                    ej32z,
+                    ej42x,
+                    ej42y,
+                    ej42z,
+                    ej52x,
+                    ej52y,
+                    ej52z,
+                    ej14x,
+                    ej14y,
+                    ej14z,
+                    ej24x,
+                    ej24y,
+                    ej24z,
+                    ej34x,
+                    ej34y,
+                    ej34z,
+                    ej44x,
+                    ej44y,
+                    ej44z,
+                    ej54x,
+                    ej54y,
+                    ej54z,
 
-                    k11, k12, k13, k14, k15,
-                    k22, k23, k24, k25,
-                    k33, k34, k35,
-                    k44, k45,
+                    k11,
+                    k12,
+                    k13,
+                    k14,
+                    k15,
+                    k22,
+                    k23,
+                    k24,
+                    k25,
+                    k33,
+                    k34,
+                    k35,
+                    k44,
+                    k45,
                     k55,
 
-                    bias1, bias2, bias3, bias4, bias5,
-                    0f, 0f, 0f, 0f, 0f,
+                    bias1,
+                    bias2,
+                    bias3,
+                    bias4,
+                    bias5,
+                    constraint.λunlimited1,
+                    constraint.λunlimited2,
+                    constraint.λunlimited3,
+                    constraint.λunlimited4,
+                    constraint.λunlimited5,
                 )
             } else {
                 val bias6: Float
@@ -404,7 +452,6 @@ class HingeConstraintSolver(val parent: ConstraintSolver) {
 
                 val data: ConstraintData3p3r
                 val cursor: Int
-
                 if (theta in min..max) {
                     data = frictionConstraintData
                     cursor = frictionNumConstraints++
@@ -446,13 +493,37 @@ class HingeConstraintSolver(val parent: ConstraintSolver) {
                     k66,
 
                     bias1, bias2, bias3, bias4, bias5, bias6,
-
                     0f, 0f, 0f, 0f, 0f, 0f,
                 )
             }
 
             i++
         }
+
+        warm()
+    }
+
+    private fun warm() {
+        ConstraintMath.warm3p2r(
+            parent,
+            unlimitedConstraintData,
+            unlimitedNumConstraints,
+            relaxation = relaxation,
+        )
+
+        ConstraintMath.warm3p3r(
+            parent,
+            limitedConstraintData,
+            limitedNumConstraints,
+            relaxation = relaxation,
+        )
+
+        ConstraintMath.warm3p3r(
+            parent,
+            frictionConstraintData,
+            frictionNumConstraints,
+            relaxation = relaxation,
+        )
     }
 
     fun solveVelocity() {
@@ -952,5 +1023,17 @@ class HingeConstraintSolver(val parent: ConstraintSolver) {
         _tempQ.set(q2).mul(_tempV.x, _tempV.y, _tempV.z, 0.0).mul(0.5)
 
         q2.add(_tempQ).normalize()
+    }
+
+    fun heatUp() {
+        if (carryover <= 0f) return
+        unlimitedConstraintData.forEach(unlimitedNumConstraints) { idx, b1Idx, b2Idx, rawIdx ->
+            val c = rawConstraints[idx]
+            c.λunlimited1 = unlimitedConstraintData[rawIdx + ConstraintData3p2r.L_OFFSET + 0] * carryover
+            c.λunlimited2 = unlimitedConstraintData[rawIdx + ConstraintData3p2r.L_OFFSET + 1] * carryover
+            c.λunlimited3 = unlimitedConstraintData[rawIdx + ConstraintData3p2r.L_OFFSET + 2] * carryover
+            c.λunlimited4 = unlimitedConstraintData[rawIdx + ConstraintData3p2r.L_OFFSET + 3] * carryover
+            c.λunlimited5 = unlimitedConstraintData[rawIdx + ConstraintData3p2r.L_OFFSET + 4] * carryover
+        }
     }
 }

@@ -141,6 +141,7 @@ object ConstraintMath {
         relaxation: Float = 1f,
     ) {
         val bodyData = parent.flatBodyData
+        val debugData = parent.debugData
 
         val bOffset = ConstraintData3p0r.B_OFFSET
         val jOffset = ConstraintData3p0r.J_OFFSET
@@ -245,6 +246,10 @@ object ConstraintMath {
             val d1 = l1 - t1
             val d2 = l2 - t2
             val d3 = l3 - t3
+            
+            debugData += d1
+            debugData += d2
+            debugData += d3
 
             bodyData[b1Idx * 6 + 0] += -im1 * d1 * relaxation
             bodyData[b1Idx * 6 + 1] += -im1 * d2 * relaxation
@@ -396,7 +401,7 @@ object ConstraintMath {
             val d3 = l3 - t3
             val d4 = l4 - t4
 
-            val valid4 = l4Validator(d4, rawIdx + lOffset + 3)
+            val valid4 = l4Validator(l4, rawIdx + lOffset + 3)
 
             if (!valid4) {
                 val fl1: Float
@@ -628,8 +633,8 @@ object ConstraintMath {
             val d4 = l4 - t4
             val d5 = l5 - t5
 
-            val valid4 = l4Validator(d4, rawIdx + lOffset + 3)
-            val valid5 = l5Validator(d5, rawIdx + lOffset + 4)
+            val valid4 = l4Validator(l4, rawIdx + lOffset + 3)
+            val valid5 = l5Validator(l5, rawIdx + lOffset + 4)
 
             if (valid4 != valid5) {
                 val jv4r: Float
@@ -742,16 +747,40 @@ object ConstraintMath {
                 bodyData[b1Idx * 6 + 0] += -im1 * d1 * relaxation
                 bodyData[b1Idx * 6 + 1] += -im1 * d2 * relaxation
                 bodyData[b1Idx * 6 + 2] += -im1 * d3 * relaxation
-                bodyData[b1Idx * 6 + 3] += fma(e12x, d1, fma(e22x, d2, fma(e32x, d3, fma(e42x, d4, e52x * d5)))) * relaxation
-                bodyData[b1Idx * 6 + 4] += fma(e12y, d1, fma(e22y, d2, fma(e32y, d3, fma(e42y, d4, e52y * d5)))) * relaxation
-                bodyData[b1Idx * 6 + 5] += fma(e12z, d1, fma(e22z, d2, fma(e32z, d3, fma(e42z, d4, e52z * d5)))) * relaxation
+                bodyData[b1Idx * 6 + 3] += fma(
+                    e12x,
+                    d1,
+                    fma(e22x, d2, fma(e32x, d3, fma(e42x, d4, e52x * d5)))
+                ) * relaxation
+                bodyData[b1Idx * 6 + 4] += fma(
+                    e12y,
+                    d1,
+                    fma(e22y, d2, fma(e32y, d3, fma(e42y, d4, e52y * d5)))
+                ) * relaxation
+                bodyData[b1Idx * 6 + 5] += fma(
+                    e12z,
+                    d1,
+                    fma(e22z, d2, fma(e32z, d3, fma(e42z, d4, e52z * d5)))
+                ) * relaxation
 
                 bodyData[b2Idx * 6 + 0] += im2 * d1 * relaxation
                 bodyData[b2Idx * 6 + 1] += im2 * d2 * relaxation
                 bodyData[b2Idx * 6 + 2] += im2 * d3 * relaxation
-                bodyData[b2Idx * 6 + 3] += fma(e14x, d1, fma(e24x, d2, fma(e34x, d3, fma(e44x, d4, e54x * d5)))) * relaxation
-                bodyData[b2Idx * 6 + 4] += fma(e14y, d1, fma(e24y, d2, fma(e34y, d3, fma(e44y, d4, e54y * d5)))) * relaxation
-                bodyData[b2Idx * 6 + 5] += fma(e14z, d1, fma(e24z, d2, fma(e34z, d3, fma(e44z, d4, e54z * d5)))) * relaxation
+                bodyData[b2Idx * 6 + 3] += fma(
+                    e14x,
+                    d1,
+                    fma(e24x, d2, fma(e34x, d3, fma(e44x, d4, e54x * d5)))
+                ) * relaxation
+                bodyData[b2Idx * 6 + 4] += fma(
+                    e14y,
+                    d1,
+                    fma(e24y, d2, fma(e34y, d3, fma(e44y, d4, e54y * d5)))
+                ) * relaxation
+                bodyData[b2Idx * 6 + 5] += fma(
+                    e14z,
+                    d1,
+                    fma(e24z, d2, fma(e34z, d3, fma(e44z, d4, e54z * d5)))
+                ) * relaxation
             } else {
                 //both invalid
                 val l1: Float
@@ -988,9 +1017,9 @@ object ConstraintMath {
             val d5 = l5 - t5
             val d6 = l6 - t6
 
-            val valid4 = l4Validator(d4, rawIdx + lOffset + 3)
-            val valid5 = l5Validator(d5, rawIdx + lOffset + 4)
-            val valid6 = l6Validator(d6, rawIdx + lOffset + 5)
+            val valid4 = l4Validator(l4, rawIdx + lOffset + 3)
+            val valid5 = l5Validator(l5, rawIdx + lOffset + 4)
+            val valid6 = l6Validator(l6, rawIdx + lOffset + 5)
 
             var numValid = 0
             if (valid4) numValid++
@@ -1650,14 +1679,6 @@ object ConstraintMath {
                 q2.add(x, y, z, w).safeNormalize()
             }
         }
-
-        if (abs(q1.x) + abs(q1.y) + abs(q1.z) + abs(q1.w) < 1e-4) {
-            throw IllegalStateException()
-        }
-
-        if (abs(q2.x) + abs(q2.y) + abs(q2.z) + abs(q2.w) < 1e-4) {
-            throw IllegalStateException()
-        }
     }
 
     /**
@@ -1902,14 +1923,6 @@ object ConstraintMath {
             ) { x, y, z, w ->
                 q2.add(x, y, z, w).safeNormalize()
             }
-        }
-
-        if (abs(q1.x) + abs(q1.y) + abs(q1.z) + abs(q1.w) < 1e-4) {
-            throw IllegalStateException()
-        }
-
-        if (abs(q2.x) + abs(q2.y) + abs(q2.z) + abs(q2.w) < 1e-4) {
-            throw IllegalStateException()
         }
     }
 
@@ -2186,14 +2199,6 @@ object ConstraintMath {
             ) { x, y, z, w ->
                 q2.add(x, y, z, w).safeNormalize()
             }
-        }
-
-        if (abs(q1.x) + abs(q1.y) + abs(q1.z) + abs(q1.w) < 1e-4) {
-            throw IllegalStateException()
-        }
-
-        if (abs(q2.x) + abs(q2.y) + abs(q2.z) + abs(q2.w) < 1e-4) {
-            throw IllegalStateException()
         }
     }
 
@@ -2502,6 +2507,348 @@ object ConstraintMath {
             ) { x, y, z, w ->
                 q2.add(x, y, z, w).safeNormalize()
             }
+        }
+    }
+
+    fun warm3p0r(
+        parent: ConstraintSolver,
+        constraintData: ConstraintData3p0r,
+        numConstraints: Int,
+        relaxation: Float = 1f,
+    ) {
+        val bodyData = parent.flatBodyData
+
+        val imOffset = ConstraintData3p0r.IM_OFFSET
+        val eOffset = ConstraintData3p0r.E_OFFSET
+        val lOffset = ConstraintData3p0r.L_OFFSET
+
+        constraintData.forEach(numConstraints) { constraintIdx, b1Idx, b2Idx, rawIdx ->
+            val λ1 = constraintData[rawIdx + lOffset + 0]
+            val λ2 = constraintData[rawIdx + lOffset + 1]
+            val λ3 = constraintData[rawIdx + lOffset + 2]
+
+            val im1 = constraintData[rawIdx + imOffset + 0]
+            val im2 = constraintData[rawIdx + imOffset + 1]
+
+            val e12x = constraintData[rawIdx + eOffset + 0]
+            val e12y = constraintData[rawIdx + eOffset + 1]
+            val e12z = constraintData[rawIdx + eOffset + 2]
+
+            val e22x = constraintData[rawIdx + eOffset + 3]
+            val e22y = constraintData[rawIdx + eOffset + 4]
+            val e22z = constraintData[rawIdx + eOffset + 5]
+
+            val e32x = constraintData[rawIdx + eOffset + 6]
+            val e32y = constraintData[rawIdx + eOffset + 7]
+            val e32z = constraintData[rawIdx + eOffset + 8]
+
+            val e14x = constraintData[rawIdx + eOffset + 9]
+            val e14y = constraintData[rawIdx + eOffset + 10]
+            val e14z = constraintData[rawIdx + eOffset + 11]
+
+            val e24x = constraintData[rawIdx + eOffset + 12]
+            val e24y = constraintData[rawIdx + eOffset + 13]
+            val e24z = constraintData[rawIdx + eOffset + 14]
+
+            val e34x = constraintData[rawIdx + eOffset + 15]
+            val e34y = constraintData[rawIdx + eOffset + 16]
+            val e34z = constraintData[rawIdx + eOffset + 17]
+
+            bodyData[b1Idx * 6 + 0] += -im1 * λ1 * relaxation
+            bodyData[b1Idx * 6 + 1] += -im1 * λ2 * relaxation
+            bodyData[b1Idx * 6 + 2] += -im1 * λ3 * relaxation
+            bodyData[b1Idx * 6 + 3] += fma(e12x, λ1, fma(e22x, λ2, e32x * λ3)) * relaxation
+            bodyData[b1Idx * 6 + 4] += fma(e12y, λ1, fma(e22y, λ2, e32y * λ3)) * relaxation
+            bodyData[b1Idx * 6 + 5] += fma(e12z, λ1, fma(e22z, λ2, e32z * λ3)) * relaxation
+
+            bodyData[b2Idx * 6 + 0] += im2 * λ1 * relaxation
+            bodyData[b2Idx * 6 + 1] += im2 * λ2 * relaxation
+            bodyData[b2Idx * 6 + 2] += im2 * λ3 * relaxation
+            bodyData[b2Idx * 6 + 3] += fma(e14x, λ1, fma(e24x, λ2, e34x * λ3)) * relaxation
+            bodyData[b2Idx * 6 + 4] += fma(e14y, λ1, fma(e24y, λ2, e34y * λ3)) * relaxation
+            bodyData[b2Idx * 6 + 5] += fma(e14z, λ1, fma(e24z, λ2, e34z * λ3)) * relaxation
+        }
+    }
+
+    fun warm3p1r(
+        parent: ConstraintSolver,
+        constraintData: ConstraintData3p1r,
+        numConstraints: Int,
+        relaxation: Float = 1f,
+    ) {
+        val bodyData = parent.flatBodyData
+
+        val imOffset = ConstraintData3p1r.IM_OFFSET
+        val eOffset = ConstraintData3p1r.E_OFFSET
+        val lOffset = ConstraintData3p1r.L_OFFSET
+
+        constraintData.forEach(numConstraints) { constraintIdx, b1Idx, b2Idx, rawIdx ->
+            val λ1 = constraintData[rawIdx + lOffset + 0]
+            val λ2 = constraintData[rawIdx + lOffset + 1]
+            val λ3 = constraintData[rawIdx + lOffset + 2]
+            val λ4 = constraintData[rawIdx + lOffset + 3]
+
+            val im1 = constraintData[rawIdx + imOffset + 0]
+            val im2 = constraintData[rawIdx + imOffset + 1]
+
+            val e12x = constraintData[rawIdx + eOffset + 0]
+            val e12y = constraintData[rawIdx + eOffset + 1]
+            val e12z = constraintData[rawIdx + eOffset + 2]
+
+            val e22x = constraintData[rawIdx + eOffset + 3]
+            val e22y = constraintData[rawIdx + eOffset + 4]
+            val e22z = constraintData[rawIdx + eOffset + 5]
+
+            val e32x = constraintData[rawIdx + eOffset + 6]
+            val e32y = constraintData[rawIdx + eOffset + 7]
+            val e32z = constraintData[rawIdx + eOffset + 8]
+
+            val e42x = constraintData[rawIdx + eOffset + 9]
+            val e42y = constraintData[rawIdx + eOffset + 10]
+            val e42z = constraintData[rawIdx + eOffset + 11]
+
+            val e14x = constraintData[rawIdx + eOffset + 12]
+            val e14y = constraintData[rawIdx + eOffset + 13]
+            val e14z = constraintData[rawIdx + eOffset + 14]
+
+            val e24x = constraintData[rawIdx + eOffset + 15]
+            val e24y = constraintData[rawIdx + eOffset + 16]
+            val e24z = constraintData[rawIdx + eOffset + 17]
+
+            val e34x = constraintData[rawIdx + eOffset + 18]
+            val e34y = constraintData[rawIdx + eOffset + 19]
+            val e34z = constraintData[rawIdx + eOffset + 20]
+
+            val e44x = constraintData[rawIdx + eOffset + 21]
+            val e44y = constraintData[rawIdx + eOffset + 22]
+            val e44z = constraintData[rawIdx + eOffset + 23]
+
+            bodyData[b1Idx * 6 + 0] += -im1 * λ1 * relaxation
+            bodyData[b1Idx * 6 + 1] += -im1 * λ2 * relaxation
+            bodyData[b1Idx * 6 + 2] += -im1 * λ3 * relaxation
+            bodyData[b1Idx * 6 + 3] += fma(e12x, λ1, fma(e22x, λ2, fma(e32x, λ3, e42x * λ4))) * relaxation
+            bodyData[b1Idx * 6 + 4] += fma(e12y, λ1, fma(e22y, λ2, fma(e32y, λ3, e42y * λ4))) * relaxation
+            bodyData[b1Idx * 6 + 5] += fma(e12z, λ1, fma(e22z, λ2, fma(e32z, λ3, e42z * λ4))) * relaxation
+
+            bodyData[b2Idx * 6 + 0] += im2 * λ1 * relaxation
+            bodyData[b2Idx * 6 + 1] += im2 * λ2 * relaxation
+            bodyData[b2Idx * 6 + 2] += im2 * λ3 * relaxation
+            bodyData[b2Idx * 6 + 3] += fma(e14x, λ1, fma(e24x, λ2, fma(e34x, λ3, e44x * λ4))) * relaxation
+            bodyData[b2Idx * 6 + 4] += fma(e14y, λ1, fma(e24y, λ2, fma(e34y, λ3, e44y * λ4))) * relaxation
+            bodyData[b2Idx * 6 + 5] += fma(e14z, λ1, fma(e24z, λ2, fma(e34z, λ3, e44z * λ4))) * relaxation
+        }
+    }
+
+    fun warm3p2r(
+        parent: ConstraintSolver,
+        constraintData: ConstraintData3p2r,
+        numConstraints: Int,
+        relaxation: Float = 1f,
+    ) {
+        val bodyData = parent.flatBodyData
+
+        val imOffset = ConstraintData3p2r.IM_OFFSET
+        val eOffset = ConstraintData3p2r.E_OFFSET
+        val lOffset = ConstraintData3p2r.L_OFFSET
+
+        constraintData.forEach(numConstraints) { constraintIdx, b1Idx, b2Idx, rawIdx ->
+            val λ1 = constraintData[rawIdx + lOffset + 0]
+            val λ2 = constraintData[rawIdx + lOffset + 1]
+            val λ3 = constraintData[rawIdx + lOffset + 2]
+            val λ4 = constraintData[rawIdx + lOffset + 3]
+            val λ5 = constraintData[rawIdx + lOffset + 4]
+
+            val im1 = constraintData[rawIdx + imOffset + 0]
+            val im2 = constraintData[rawIdx + imOffset + 1]
+
+            val e12x = constraintData[rawIdx + eOffset + 0]
+            val e12y = constraintData[rawIdx + eOffset + 1]
+            val e12z = constraintData[rawIdx + eOffset + 2]
+
+            val e22x = constraintData[rawIdx + eOffset + 3]
+            val e22y = constraintData[rawIdx + eOffset + 4]
+            val e22z = constraintData[rawIdx + eOffset + 5]
+
+            val e32x = constraintData[rawIdx + eOffset + 6]
+            val e32y = constraintData[rawIdx + eOffset + 7]
+            val e32z = constraintData[rawIdx + eOffset + 8]
+
+            val e42x = constraintData[rawIdx + eOffset + 9]
+            val e42y = constraintData[rawIdx + eOffset + 10]
+            val e42z = constraintData[rawIdx + eOffset + 11]
+
+            val e52x = constraintData[rawIdx + eOffset + 12]
+            val e52y = constraintData[rawIdx + eOffset + 13]
+            val e52z = constraintData[rawIdx + eOffset + 14]
+
+            val e14x = constraintData[rawIdx + eOffset + 15]
+            val e14y = constraintData[rawIdx + eOffset + 16]
+            val e14z = constraintData[rawIdx + eOffset + 17]
+
+            val e24x = constraintData[rawIdx + eOffset + 18]
+            val e24y = constraintData[rawIdx + eOffset + 19]
+            val e24z = constraintData[rawIdx + eOffset + 20]
+
+            val e34x = constraintData[rawIdx + eOffset + 21]
+            val e34y = constraintData[rawIdx + eOffset + 22]
+            val e34z = constraintData[rawIdx + eOffset + 23]
+
+            val e44x = constraintData[rawIdx + eOffset + 24]
+            val e44y = constraintData[rawIdx + eOffset + 25]
+            val e44z = constraintData[rawIdx + eOffset + 26]
+
+            val e54x = constraintData[rawIdx + eOffset + 27]
+            val e54y = constraintData[rawIdx + eOffset + 28]
+            val e54z = constraintData[rawIdx + eOffset + 29]
+
+            bodyData[b1Idx * 6 + 0] += -im1 * λ1 * relaxation
+            bodyData[b1Idx * 6 + 1] += -im1 * λ2 * relaxation
+            bodyData[b1Idx * 6 + 2] += -im1 * λ3 * relaxation
+            bodyData[b1Idx * 6 + 3] += fma(
+                e12x,
+                λ1,
+                fma(e22x, λ2, fma(e32x, λ3, fma(e42x, λ4, e52x * λ5)))
+            ) * relaxation
+            bodyData[b1Idx * 6 + 4] += fma(
+                e12y,
+                λ1,
+                fma(e22y, λ2, fma(e32y, λ3, fma(e42y, λ4, e52y * λ5)))
+            ) * relaxation
+            bodyData[b1Idx * 6 + 5] += fma(
+                e12z,
+                λ1,
+                fma(e22z, λ2, fma(e32z, λ3, fma(e42z, λ4, e52z * λ5)))
+            ) * relaxation
+
+            bodyData[b2Idx * 6 + 0] += im2 * λ1 * relaxation
+            bodyData[b2Idx * 6 + 1] += im2 * λ2 * relaxation
+            bodyData[b2Idx * 6 + 2] += im2 * λ3 * relaxation
+            bodyData[b2Idx * 6 + 3] += fma(
+                e14x,
+                λ1,
+                fma(e24x, λ2, fma(e34x, λ3, fma(e44x, λ4, e54x * λ5)))
+            ) * relaxation
+            bodyData[b2Idx * 6 + 4] += fma(
+                e14y,
+                λ1,
+                fma(e24y, λ2, fma(e34y, λ3, fma(e44y, λ4, e54y * λ5)))
+            ) * relaxation
+            bodyData[b2Idx * 6 + 5] += fma(
+                e14z,
+                λ1,
+                fma(e24z, λ2, fma(e34z, λ3, fma(e44z, λ4, e54z * λ5)))
+            ) * relaxation
+        }
+    }
+
+    fun warm3p3r(
+        parent: ConstraintSolver,
+        constraintData: ConstraintData3p3r,
+        numConstraints: Int,
+        relaxation: Float = 1f,
+    ) {
+        val bodyData = parent.flatBodyData
+
+        val imOffset = ConstraintData3p3r.IM_OFFSET
+        val eOffset = ConstraintData3p3r.E_OFFSET
+        val lOffset = ConstraintData3p3r.L_OFFSET
+
+        constraintData.forEach(numConstraints) { constraintIdx, b1Idx, b2Idx, rawIdx ->
+            val λ1 = constraintData[rawIdx + lOffset + 0]
+            val λ2 = constraintData[rawIdx + lOffset + 1]
+            val λ3 = constraintData[rawIdx + lOffset + 2]
+            val λ4 = constraintData[rawIdx + lOffset + 3]
+            val λ5 = constraintData[rawIdx + lOffset + 4]
+            val λ6 = constraintData[rawIdx + lOffset + 5]
+
+            val im1 = constraintData[rawIdx + imOffset + 0]
+            val im2 = constraintData[rawIdx + imOffset + 1]
+
+            val e12x = constraintData[rawIdx + eOffset + 0]
+            val e12y = constraintData[rawIdx + eOffset + 1]
+            val e12z = constraintData[rawIdx + eOffset + 2]
+
+            val e22x = constraintData[rawIdx + eOffset + 3]
+            val e22y = constraintData[rawIdx + eOffset + 4]
+            val e22z = constraintData[rawIdx + eOffset + 5]
+
+            val e32x = constraintData[rawIdx + eOffset + 6]
+            val e32y = constraintData[rawIdx + eOffset + 7]
+            val e32z = constraintData[rawIdx + eOffset + 8]
+
+            val e42x = constraintData[rawIdx + eOffset + 9]
+            val e42y = constraintData[rawIdx + eOffset + 10]
+            val e42z = constraintData[rawIdx + eOffset + 11]
+
+            val e52x = constraintData[rawIdx + eOffset + 12]
+            val e52y = constraintData[rawIdx + eOffset + 13]
+            val e52z = constraintData[rawIdx + eOffset + 14]
+
+            val e62x = constraintData[rawIdx + eOffset + 15]
+            val e62y = constraintData[rawIdx + eOffset + 16]
+            val e62z = constraintData[rawIdx + eOffset + 17]
+
+            val e14x = constraintData[rawIdx + eOffset + 18]
+            val e14y = constraintData[rawIdx + eOffset + 19]
+            val e14z = constraintData[rawIdx + eOffset + 20]
+
+            val e24x = constraintData[rawIdx + eOffset + 21]
+            val e24y = constraintData[rawIdx + eOffset + 22]
+            val e24z = constraintData[rawIdx + eOffset + 23]
+
+            val e34x = constraintData[rawIdx + eOffset + 24]
+            val e34y = constraintData[rawIdx + eOffset + 25]
+            val e34z = constraintData[rawIdx + eOffset + 26]
+
+            val e44x = constraintData[rawIdx + eOffset + 27]
+            val e44y = constraintData[rawIdx + eOffset + 28]
+            val e44z = constraintData[rawIdx + eOffset + 29]
+
+            val e54x = constraintData[rawIdx + eOffset + 30]
+            val e54y = constraintData[rawIdx + eOffset + 31]
+            val e54z = constraintData[rawIdx + eOffset + 32]
+
+            val e64x = constraintData[rawIdx + eOffset + 33]
+            val e64y = constraintData[rawIdx + eOffset + 34]
+            val e64z = constraintData[rawIdx + eOffset + 35]
+
+            bodyData[b1Idx * 6 + 0] += -im1 * λ1 * relaxation
+            bodyData[b1Idx * 6 + 1] += -im1 * λ2 * relaxation
+            bodyData[b1Idx * 6 + 2] += -im1 * λ3 * relaxation
+            bodyData[b1Idx * 6 + 3] += fma(
+                e12x,
+                λ1,
+                fma(e22x, λ2, fma(e32x, λ3, fma(e42x, λ4, fma(e52x, λ5, e62x * λ6))))
+            ) * relaxation
+            bodyData[b1Idx * 6 + 4] += fma(
+                e12y,
+                λ1,
+                fma(e22y, λ2, fma(e32y, λ3, fma(e42y, λ4, fma(e52y, λ5, e62y * λ6))))
+            ) * relaxation
+            bodyData[b1Idx * 6 + 5] += fma(
+                e12z,
+                λ1,
+                fma(e22z, λ2, fma(e32z, λ3, fma(e42z, λ4, fma(e52z, λ5, e62z * λ6))))
+            ) * relaxation
+
+            bodyData[b2Idx * 6 + 0] += im2 * λ1 * relaxation
+            bodyData[b2Idx * 6 + 1] += im2 * λ2 * relaxation
+            bodyData[b2Idx * 6 + 2] += im2 * λ3 * relaxation
+            bodyData[b2Idx * 6 + 3] += fma(
+                e14x,
+                λ1,
+                fma(e24x, λ2, fma(e34x, λ3, fma(e44x, λ4, fma(e54x, λ5, e64x * λ6))))
+            ) * relaxation
+            bodyData[b2Idx * 6 + 4] += fma(
+                e14y,
+                λ1,
+                fma(e24y, λ2, fma(e34y, λ3, fma(e44y, λ4, fma(e54y, λ5, e64y * λ6))))
+            ) * relaxation
+            bodyData[b2Idx * 6 + 5] += fma(
+                e14z,
+                λ1,
+                fma(e24z, λ2, fma(e34z, λ3, fma(e44z, λ4, fma(e54z, λ5, e64z * λ6))))
+            ) * relaxation
         }
     }
 }

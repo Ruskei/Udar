@@ -100,6 +100,8 @@ class ConstraintSolver(
         }
 
         contactSolver.heatUp()
+        hingeConstraintSolver.heatUp()
+        coneConstraintSolver.heatUp()
     }
 
     fun solvePositions() {
