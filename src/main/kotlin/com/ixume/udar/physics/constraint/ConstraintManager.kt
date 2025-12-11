@@ -38,7 +38,7 @@ class ConstraintManager(val physicsWorld: PhysicsWorld) {
 
         for (iteration in 1..Udar.CONFIG.collision.normalIterations) {
             constraintSolver.debugData.iteration = iteration
-            constraintSolver.solve()
+            constraintSolver.solve1()
         }
 
         if (Udar.CONFIG.debug.reportLambdas) {
@@ -46,7 +46,7 @@ class ConstraintManager(val physicsWorld: PhysicsWorld) {
         }
 
         for (iteration in 1..Udar.CONFIG.collision.frictionIterations) {
-            constraintSolver.solvePost()
+            constraintSolver.solve2()
         }
 
         constraintSolver.write()

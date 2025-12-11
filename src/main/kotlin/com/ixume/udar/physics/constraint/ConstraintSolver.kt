@@ -75,14 +75,14 @@ class ConstraintSolver(
     }
 
 
-    fun solve() {
-//        pointConstraintSolver.solveVelocity(iteration)
+    fun solve1() {
+//        pointConstraintSolver.solveVelocity()
+        contactSolver.solveVelocity()
         hingeConstraintSolver.solveVelocity()
         coneConstraintSolver.solveVelocity()
-        contactSolver.solveVelocity()
     }
 
-    fun solvePost() {
+    fun solve2() {
         contactSolver.solveFrictions()
     }
 

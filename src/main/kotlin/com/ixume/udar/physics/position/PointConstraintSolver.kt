@@ -225,8 +225,7 @@ class PointConstraintSolver(val parent: ConstraintSolver) {
         }
     }
 
-    fun solveVelocity(iteration: Int) {
-        val bodyData = parent.flatBodyData
+    fun solveVelocity() {
         ConstraintMath.solve3p0rVelocity(
             parent = parent,
             constraintData = constraintData,
