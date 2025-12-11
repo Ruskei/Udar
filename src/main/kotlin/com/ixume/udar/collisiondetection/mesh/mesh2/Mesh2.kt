@@ -35,7 +35,6 @@ class LocalMesher {
 //        experimental: Boolean = false,
     ): Mesh2 {
         val nmsWorld = (world as CraftWorld).handle!!
-//        println("GENERATING!")
         val meshStart = Vector3i(
             floor(boundingBox.minX).toInt(),
             floor(boundingBox.minY).toInt(),
@@ -47,9 +46,6 @@ class LocalMesher {
             floor(boundingBox.maxZ).toInt(),
         )
 
-//        println("| meshStart: $meshStart")
-//        println("| meshEnd: $meshEnd")
-//
         val flatTree = FlattenedAABBTree(0)
         _bbs.clear()
 
@@ -63,10 +59,8 @@ class LocalMesher {
             for (y in (meshStart.y - 1)..(meshEnd.y + 1)) {
                 for (z in (meshStart.z - 1)..(meshEnd.z + 1)) {
                     _bp.set(x, y, z)
-//                    println(" * b@: $x $y $z")
                     val block = nmsWorld.fastBlockAt(_bp)
                     val isPassable = !block.block.hasCollision
-//                    println(" * isPassable: $isPassable")
                     val mine =
                         x in meshStart.x..meshEnd.x &&
                         y in meshStart.y..meshEnd.y &&
@@ -81,14 +75,6 @@ class LocalMesher {
                         nmsWorld,
                         _bp,
                     ).forAllBoxes { minX, minY, minZ, maxX, maxY, maxZ ->
-//                        println(" * BB")
-//                        println(" | minX: $minX")
-//                        println(" | minY: $minY")
-//                        println(" | minZ: $minZ")
-//                        println(" | maxX: $maxX")
-//                        println(" | maxY: $maxY")
-//                        println(" | maxZ: $maxZ")
-
                         val aabb = AABB(
                             x + minX,
                             y + minY,
@@ -130,8 +116,6 @@ class LocalMesher {
                 }
             }
         }
-
-//        println("${_bbs.size} BBs!")
 
         if (_bbs.size == 0) {
             return Mesh2(
@@ -362,19 +346,9 @@ class LocalMesher {
         val length = end.z - start.z + 1
 
         fun visualize(world: World) {
-//            println("visualizing mesh")
             xEdges2?.visualize(world)
             yEdges2?.visualize(world)
             zEdges2?.visualize(world)
-//            flatTree?.visualize(world)
-
-//            faces?.xFaces?.ls?.forEach { it.visualize(world) }
-//            faces?.yFaces?.ls?.forEach { it.visualize(world) }
-//            faces?.zFaces?.ls?.forEach { it.visualize(world) }
-////
-//            xEdges?.visualize(world)
-//            yEdges?.visualize(world)
-//            zEdges?.visualize(world)
         }
 
         fun stateAt(x: Int, y: Int, z: Int): Long {

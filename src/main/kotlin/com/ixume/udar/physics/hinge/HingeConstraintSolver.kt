@@ -5,7 +5,10 @@ import com.ixume.udar.physics.constraint.*
 import org.joml.Quaterniond
 import org.joml.Vector3d
 import java.lang.Math.fma
-import kotlin.math.*
+import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 class HingeConstraintSolver(val parent: ConstraintSolver) {
     private var unlimitedConstraintData = ConstraintData3p2r(0)
@@ -80,7 +83,7 @@ class HingeConstraintSolver(val parent: ConstraintSolver) {
             val ii1 = b1.inverseInertia
             val ii2 = b2.inverseInertia
 
-            q1.transform(constraint.p1x.toDouble(), constraint.p1y.toDouble(), constraint.p1z.toDouble(), _tempV)
+            q1.transform(constraint.r1x.toDouble(), constraint.r1y.toDouble(), constraint.r1z.toDouble(), _tempV)
 
             val r1x = _tempV.x.toFloat()
             val r1y = _tempV.y.toFloat()
@@ -90,7 +93,7 @@ class HingeConstraintSolver(val parent: ConstraintSolver) {
             val p1y = r1y + b1.pos.y.toFloat()
             val p1z = r1z + b1.pos.z.toFloat()
 
-            q2.transform(constraint.p2x.toDouble(), constraint.p2y.toDouble(), constraint.p2z.toDouble(), _tempV)
+            q2.transform(constraint.r2x.toDouble(), constraint.r2y.toDouble(), constraint.r2z.toDouble(), _tempV)
 
             val r2x = _tempV.x.toFloat()
             val r2y = _tempV.y.toFloat()
@@ -326,102 +329,37 @@ class HingeConstraintSolver(val parent: ConstraintSolver) {
 
             if (frictionTorque == 0f && theta in min..max) {
                 unlimitedConstraintData.set(
-                    constraintIdx = i,
-                    cursor = unlimitedNumConstraints++ * ConstraintData3p2r.DATA_SIZE,
+                    unlimitedNumConstraints++ * ConstraintData3p2r.DATA_SIZE,
+                    i,
+                    b1.idx, b2.idx,
 
-                    body1Idx = b1.idx,
-                    body2Idx = b2.idx,
+                    r1x, r1y, r1z,
+                    r2x, r2y, r2z,
 
-                    r1x = r1x,
-                    r1y = r1y,
-                    r1z = r1z,
+                    j42x, j42y, j42z,
+                    j52x, j52y, j52z,
 
-                    r2x = r2x,
-                    r2y = r2y,
-                    r2z = r2z,
+                    im1, im2,
 
-                    j42x = j42x,
-                    j42y = j42y,
-                    j42z = j42z,
+                    ej12x, ej12y, ej12z,
+                    ej22x, ej22y, ej22z,
+                    ej32x, ej32y, ej32z,
+                    ej42x, ej42y, ej42z,
+                    ej52x, ej52y, ej52z,
+                    ej14x, ej14y, ej14z,
+                    ej24x, ej24y, ej24z,
+                    ej34x, ej34y, ej34z,
+                    ej44x, ej44y, ej44z,
+                    ej54x, ej54y, ej54z,
 
-                    j52x = j52x,
-                    j52y = j52y,
-                    j52z = j52z,
+                    k11, k12, k13, k14, k15,
+                    k22, k23, k24, k25,
+                    k33, k34, k35,
+                    k44, k45,
+                    k55,
 
-                    im1 = im1,
-                    im2 = im2,
-
-                    e12x = ej12x,
-                    e12y = ej12y,
-                    e12z = ej12z,
-
-                    e22x = ej22x,
-                    e22y = ej22y,
-                    e22z = ej22z,
-
-                    e32x = ej32x,
-                    e32y = ej32y,
-                    e32z = ej32z,
-
-                    e14x = ej14x,
-                    e14y = ej14y,
-                    e14z = ej14z,
-
-                    e24x = ej24x,
-                    e24y = ej24y,
-                    e24z = ej24z,
-
-                    e34x = ej34x,
-                    e34y = ej34y,
-                    e34z = ej34z,
-
-                    e42x = ej42x,
-                    e42y = ej42y,
-                    e42z = ej42z,
-
-                    e44x = ej44x,
-                    e44y = ej44y,
-                    e44z = ej44z,
-
-                    e52x = ej52x,
-                    e52y = ej52y,
-                    e52z = ej52z,
-
-                    e54x = ej54x,
-                    e54y = ej54y,
-                    e54z = ej54z,
-
-                    k11 = k11,
-                    k12 = k12,
-                    k13 = k13,
-                    k14 = k14,
-                    k15 = k15,
-
-                    k22 = k22,
-                    k23 = k23,
-                    k24 = k24,
-                    k25 = k25,
-
-                    k33 = k33,
-                    k34 = k34,
-                    k35 = k35,
-
-                    k44 = k44,
-                    k45 = k45,
-
-                    k55 = k55,
-
-                    b1 = bias1,
-                    b2 = bias2,
-                    b3 = bias3,
-                    b4 = bias4,
-                    b5 = bias5,
-
-                    l1 = 0f,
-                    l2 = 0f,
-                    l3 = 0f,
-                    l4 = 0f,
-                    l5 = 0f,
+                    bias1, bias2, bias3, bias4, bias5,
+                    0f, 0f, 0f, 0f, 0f,
                 )
             } else {
                 val bias6: Float
@@ -476,123 +414,40 @@ class HingeConstraintSolver(val parent: ConstraintSolver) {
                 }
 
                 data.set(
-                    constraintIdx = i,
-                    cursor = cursor * ConstraintData3p3r.DATA_SIZE,
+                    cursor * ConstraintData3p3r.DATA_SIZE,
+                    i,
+                    b1.idx, b2.idx,
+                    r1x, r1y, r1z,
+                    r2x, r2y, r2z,
+                    j42x, j42y, j42z,
+                    j52x, j52y, j52z,
+                    j62x, j62y, j62z,
 
-                    body1Idx = b1.idx,
-                    body2Idx = b2.idx,
+                    im1, im2,
 
-                    r1x = r1x,
-                    r1y = r1y,
-                    r1z = r1z,
+                    ej12x, ej12y, ej12z,
+                    ej22x, ej22y, ej22z,
+                    ej32x, ej32y, ej32z,
+                    ej42x, ej42y, ej42z,
+                    ej52x, ej52y, ej52z,
+                    ej62x, ej62y, ej62z,
+                    ej14x, ej14y, ej14z,
+                    ej24x, ej24y, ej24z,
+                    ej34x, ej34y, ej34z,
+                    ej44x, ej44y, ej44z,
+                    ej54x, ej54y, ej54z,
+                    ej64x, ej64y, ej64z,
 
-                    r2x = r2x,
-                    r2y = r2y,
-                    r2z = r2z,
+                    k11, k12, k13, k14, k15, k16,
+                    k22, k23, k24, k25, k26,
+                    k33, k34, k35, k36,
+                    k44, k45, k46,
+                    k55, k56,
+                    k66,
 
-                    j42x = j42x,
-                    j42y = j42y,
-                    j42z = j42z,
+                    bias1, bias2, bias3, bias4, bias5, bias6,
 
-                    j52x = j52x,
-                    j52y = j52y,
-                    j52z = j52z,
-
-                    j62x = j62x,
-                    j62y = j62y,
-                    j62z = j62z,
-
-                    im1 = im1,
-                    im2 = im2,
-
-                    e12x = ej12x,
-                    e12y = ej12y,
-                    e12z = ej12z,
-
-                    e22x = ej22x,
-                    e22y = ej22y,
-                    e22z = ej22z,
-
-                    e32x = ej32x,
-                    e32y = ej32y,
-                    e32z = ej32z,
-
-                    e14x = ej14x,
-                    e14y = ej14y,
-                    e14z = ej14z,
-
-                    e24x = ej24x,
-                    e24y = ej24y,
-                    e24z = ej24z,
-
-                    e34x = ej34x,
-                    e34y = ej34y,
-                    e34z = ej34z,
-
-                    e42x = ej42x,
-                    e42y = ej42y,
-                    e42z = ej42z,
-
-                    e44x = ej44x,
-                    e44y = ej44y,
-                    e44z = ej44z,
-
-                    e52x = ej52x,
-                    e52y = ej52y,
-                    e52z = ej52z,
-
-                    e54x = ej54x,
-                    e54y = ej54y,
-                    e54z = ej54z,
-
-                    e62x = ej62x,
-                    e62y = ej62y,
-                    e62z = ej62z,
-
-                    e64x = ej64x,
-                    e64y = ej64y,
-                    e64z = ej64z,
-
-                    k11 = k11,
-                    k12 = k12,
-                    k13 = k13,
-                    k14 = k14,
-                    k15 = k15,
-                    k16 = k16,
-
-                    k22 = k22,
-                    k23 = k23,
-                    k24 = k24,
-                    k25 = k25,
-                    k26 = k26,
-
-                    k33 = k33,
-                    k34 = k34,
-                    k35 = k35,
-                    k36 = k36,
-
-                    k44 = k44,
-                    k45 = k45,
-                    k46 = k46,
-
-                    k55 = k55,
-                    k56 = k56,
-
-                    k66 = k66,
-
-                    b1 = bias1,
-                    b2 = bias2,
-                    b3 = bias3,
-                    b4 = bias4,
-                    b5 = bias5,
-                    b6 = bias6,
-
-                    l1 = 0f,
-                    l2 = 0f,
-                    l3 = 0f,
-                    l4 = 0f,
-                    l5 = 0f,
-                    l6 = 0f,
+                    0f, 0f, 0f, 0f, 0f, 0f,
                 )
             }
 
@@ -601,25 +456,32 @@ class HingeConstraintSolver(val parent: ConstraintSolver) {
     }
 
     fun solveVelocity() {
-        val bodyData = parent.flatBodyData
         ConstraintMath.solve3p2rVelocity(
-            bodyData,
+            parent,
             unlimitedConstraintData,
             unlimitedNumConstraints,
+            relaxation = relaxation,
+            l4Validator = { _, _ -> true },
+            l5Validator = { _, _ -> true },
         )
 
         ConstraintMath.solve3p3rVelocity(
-            bodyData,
+            parent,
             limitedConstraintData,
             limitedNumConstraints,
-            l6Transform = { l, _ -> max(0f, l) }
+            relaxation = relaxation,
+            l4Validator = { _, _ -> true },
+            l5Validator = { _, _ -> true },
         )
 
         ConstraintMath.solve3p3rVelocity(
-            bodyData,
+            parent,
             frictionConstraintData,
             frictionNumConstraints,
-            l6Transform = { l, _ -> max(-frictionTorque, min(frictionTorque, l)) }
+            relaxation = relaxation,
+            l4Validator = { _, _ -> true },
+            l5Validator = { _, _ -> true },
+            l6Validator = { l, _ -> l in -frictionTorque..frictionTorque }
         )
     }
 
@@ -631,15 +493,15 @@ class HingeConstraintSolver(val parent: ConstraintSolver) {
             solvePosition(constraint)
         }
 
-        frictionConstraintData.forEach(
-            numConstraints = frictionNumConstraints,
+        limitedConstraintData.forEach(
+            numConstraints = limitedNumConstraints,
         ) { constraintIdx, _, _, _ ->
             val constraint = rawConstraints[constraintIdx]
             solvePosition(constraint)
         }
 
-        limitedConstraintData.forEach(
-            numConstraints = limitedNumConstraints,
+        frictionConstraintData.forEach(
+            numConstraints = frictionNumConstraints,
         ) { constraintIdx, _, _, _ ->
             val constraint = rawConstraints[constraintIdx]
             solvePosition(constraint)
@@ -659,7 +521,7 @@ class HingeConstraintSolver(val parent: ConstraintSolver) {
         val ii1 = b1.inverseInertia
         val ii2 = b2.inverseInertia
 
-        q1.transform(constraint.p1x.toDouble(), constraint.p1y.toDouble(), constraint.p1z.toDouble(), _tempV)
+        q1.transform(constraint.r1x.toDouble(), constraint.r1y.toDouble(), constraint.r1z.toDouble(), _tempV)
 
         val r1x = _tempV.x.toFloat()
         val r1y = _tempV.y.toFloat()
@@ -669,7 +531,7 @@ class HingeConstraintSolver(val parent: ConstraintSolver) {
         val p1y = r1y + b1.pos.y.toFloat()
         val p1z = r1z + b1.pos.z.toFloat()
 
-        q2.transform(constraint.p2x.toDouble(), constraint.p2y.toDouble(), constraint.p2z.toDouble(), _tempV)
+        q2.transform(constraint.r2x.toDouble(), constraint.r2y.toDouble(), constraint.r2z.toDouble(), _tempV)
 
         val r2x = _tempV.x.toFloat()
         val r2y = _tempV.y.toFloat()

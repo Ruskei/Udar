@@ -57,9 +57,7 @@ class WorldMeshesManager(
         }
         time++
 
-//        println("TICK")
         val t = measureNanoTime {
-//            positionedMeshes.forEach { it.value.visualize(world) }
             val snapshot = envContactGenerators.toTypedArray()
             time("diffing_multi") {
                 diffingExecutor.runPartitioned(snapshot.size, diffingCallables) { start, end ->
@@ -98,7 +96,6 @@ class WorldMeshesManager(
             }
 
             val mpList = mpsToGen.keys.toList()
-//            println("To gen: ${mpList.size}")
             time("meshing_multi") {
                 meshingExecutor.runPartitioned(mpList.size, mesherCallables) { start, end ->
                     out.clear()
@@ -136,34 +133,8 @@ class WorldMeshesManager(
 
             averageTickTime = 0.0
         }
-//        val d = t.toDuration(DurationUnit.NANOSECONDS)
-//        println("Mesh manager tick took $d")
         busy.set(false)
     }
-
-//    fun MeshPosition.genMesh(): LocalMesher.Mesh2 {
-//        val meshBB = AABB(
-//            minX = x * MESH_SIZE.toDouble(),
-//            minY = y * MESH_SIZE.toDouble(),
-//            minZ = z * MESH_SIZE.toDouble(),
-//            maxX = x * MESH_SIZE.toDouble() + MESH_SIZE,
-//            maxY = y * MESH_SIZE.toDouble() + MESH_SIZE,
-//            maxZ = z * MESH_SIZE.toDouble() + MESH_SIZE,
-//        )
-//
-//        val mesh: LocalMesher.Mesh2
-//
-//        val t = measureNanoTime {
-//            mesh = mesher.mesh(
-//                world = world,
-//                boundingBox = meshBB
-//            )
-//        }
-//
-//        println("Generated mesh in ${t.toDuration(DurationUnit.NANOSECONDS)}!")
-//        println("| at: ${x * MESH_SIZE.toDouble()} ${y * MESH_SIZE.toDouble()} ${z * MESH_SIZE.toDouble()}")
-//        return mesh
-//    }
 
     fun kill() {
         positionedMeshes.clear()
@@ -250,9 +221,5 @@ private inline fun time(name: String, block: () -> Unit) {
         callsInPlace(block, InvocationKind.EXACTLY_ONCE)
     }
 
-    val t = measureNanoTime {
-        block()
-    }
-
-//    println("$name took ${t.toDuration(DurationUnit.NANOSECONDS)}!")
+    block()
 }

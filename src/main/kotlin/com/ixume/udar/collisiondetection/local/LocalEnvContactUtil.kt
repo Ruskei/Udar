@@ -32,7 +32,6 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 
         val meshes = contactGen.meshes.getMeshes()
 
-//        println("ENV COLLISION CHECK ${activeBody.uuid.hashCode().toLong() and 0xFFFFFFFF}")
         val minX = activeBody.tightBB.minX - 1.0
         val minY = activeBody.tightBB.minY - 1.0
         val minZ = activeBody.tightBB.minZ - 1.0
@@ -43,17 +42,11 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
 
         var m = 0
         while (m < meshes.size) {
-//            println("- MESH")
             val mesh = meshes[m]
             if (!mesh.relevant(minX, minY, minZ, maxX, maxY, maxZ)) {
                 m++
                 continue
             }
-
-//            println(" * MESH")
-//            println(" | part: ${mesh.hashCode().toLong() and 0b111111}")
-//            println(" | full: ${mesh.hashCode().toLong()}")
-//            println(" | start: ${mesh.start}")
 
             val faces = mesh.faces
             val bbs = mesh.flatTree
@@ -66,7 +59,6 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
             _possibleManifolds.clear()
 
             if (faces != null) {
-//                println(" - TESTING MESH FACES")
                 collideFaces(activeBody, faces.xFaces, bbs, LocalMesher.AxisD.X, math, mesh)
                 collideFaces(activeBody, faces.yFaces, bbs, LocalMesher.AxisD.Y, math, mesh)
                 collideFaces(activeBody, faces.zFaces, bbs, LocalMesher.AxisD.Z, math, mesh)
@@ -120,7 +112,6 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
         math: LocalMathUtil,
         mesh: LocalMesher.Mesh2,
     ) {
-//        println("COLLIDING $axis FACES")
         val bb = activeBody.tightBB
         //faces are guaranteed to be inside BB
         when (axis) {
@@ -207,8 +198,6 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                 math = math,
             )
 
-//            println("VALIDATING")
-
             var j = 0
             while (j < _contacts2.size()) {
                 val pa = _contacts2.pointAComponent(j, axis.aOffset).toDouble()
@@ -292,9 +281,6 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                             a = pb,
                         )
                     ) {
-//                        println("  * CONTAINED IN HOLE:")
-//                        println("  | min: ($minA $minB)")
-//                        println("  | max: ($maxA $maxB)")
                         valid = true
                         break
                     }
@@ -303,13 +289,11 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                 }
 
                 if (!valid) {
-//                    Println("  - REJECTED: NO HOLE")
                     j++
                     continue
                 }
 
                 if (!bbs.contains(x, y, z)) {
-//                    println("  - REJECTED: NOT CONTAINED")
                     j++
                     continue
                 }
@@ -328,8 +312,6 @@ class LocalEnvContactUtil(val math: LocalMathUtil) {
                 )
             }
         }
-
-//        println("  - Tested $count $axis faces!")
     }
 
     private val _bodyAxiss = Array(3) { Vector3d() }

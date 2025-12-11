@@ -92,18 +92,6 @@ object ManifoldIDGenerator {
             .or((meshEdgeIdx.toLong() and 0xFF) shl 48)
             .or((meshEdgePointIdx.toLong() and 0xFF) shl 56)
 
-//        if (envContactUtil.seenFaceIDs.contains(r)) {
-//            println("EDGE-FACE ID COLLISION")
-//        }
-//
-//        if (seenEdgeIDs.contains(result)) {
-//            println("EDGE-EDGE ID COLLISION")
-//        } else {
-//            seenEdgeIDs.add(result)
-//        }
-
-//        println("0 PRODUCED $r")
-
         return r
     }
 
@@ -119,17 +107,6 @@ object ManifoldIDGenerator {
             .or((edgeAxis.ordinal.toLong() and 0b11) shl 40)
             .or((meshEdgeIdx.toLong() and 0b11111111111) shl 42)
             .or((meshEdgePointIdx.toLong() and 0b11111111111) shl 53)
-//        
-//        println("CONSTRUCTING FACE_EDGE ID $r")
-//        println("| activeBody: ${activeBody.uuid.hashCode()}")
-//        println("| mesh: ${mesh.hashCode()}")
-//        println("| a: $edgeA b: $edgeB axis: $edgeAxis idx: $meshEdgeIdx")
-
-//        if (envContactUtil.seenFaceIDs.contains(r)) {
-//            println("EDGE(F)-FACE ID COLLISION")
-//        }
-
-//        println("1 PRODUCED $r")
 
         return r
     }
@@ -146,24 +123,6 @@ object ManifoldIDGenerator {
             .or((faceAxis.ordinal.toLong() and 0b11) shl 40)
             .or(((faceLevel - mesh.minLevel(faceAxis)) / (32.0 / 0xffffff.toDouble())).toLong() shl 42)
 
-//        println("A2SFace Manifold ID: $r")
-//        println("| activeBody.uuid: ${activeBody.uuid}")
-//        println("| faceLevel: $faceLevel")
-//        println("| mesh.full: ${mesh.hashCode()}")
-//        println("| mesh.part: ${mesh.hashCode().toLong() and 0b111111}")
-
-//        if (envContactUtil.seenFaceIDs.contains(r)) {
-//            println("FACE-FACE ID COLLISION")
-//        } else {
-//            envContactUtil.seenFaceIDs.add(r)
-//        }
-//
-//        if (math.seenEdgeIDs.contains(r)) {
-//            println("FACE-EDGE ID COLLISION")
-//        }
-
-//        println("2 PRODUCED $r")
-
         return r
     }
 
@@ -177,8 +136,6 @@ object ManifoldIDGenerator {
             .or((firstIdx.toLong() and ((1L shl 8) - 1)) shl 48)
             .or((secondIdx.toLong() and ((1L shl 8) - 1)) shl 56)
 
-//        println("3 PRODUCED $r")
-
         return r
     }
 
@@ -191,8 +148,6 @@ object ManifoldIDGenerator {
         val r = constructA2AStart(first, second, A2AManifoldType.EDGE)
             .or((firstIdx.toLong() and ((1L shl 8) - 1)) shl 48)
             .or((secondIdx.toLong() and ((1L shl 8) - 1)) shl 56)
-
-//        println("4 PRODUCED $r")
 
         return r
     }

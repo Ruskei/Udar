@@ -46,7 +46,6 @@ class EnvManifoldBuffer(numContacts: Int) {
         buf: A2SContactDataBuffer,
         face: MeshFace,
     ) {
-//        println("ADDING FACE MANIFOLD (${face.id})")
         var existing = running.get(face.id)
         if (existing == null) {
             existing = ManifoldNode()
@@ -60,39 +59,27 @@ class EnvManifoldBuffer(numContacts: Int) {
         val maxY = buf.maxY()
         val maxZ = buf.maxZ()
         
-//        println("BB")
-//        println("| minX: $minX")
-//        println("| minY: $minY")
-//        println("| minZ: $minZ")
-//        println("| maxX: $maxX")
-//        println("| maxY: $maxY")
-//        println("| maxZ: $maxZ")
-
         _connections.clear()
 
         // find all overlapping edges
         var i = 0
         while (i < face.edgeConnections.size) {
             val conn = face.edgeConnections[i]
-//            println("  - testing edge connection with ${conn.otherFaceID}, axis: ${conn.tree.axis}")
             when (conn.tree.axis) {
                 LocalMesher.AxisD.X -> {
                     if (maxX >= conn.min && minX <= conn.max) {
-//                        println("  * overlapping with ${conn.otherFaceID}, bounds: ${conn.min}<->${conn.max}!")
                         _connections.add(conn.otherFaceID)
                     }
                 }
 
                 LocalMesher.AxisD.Y -> {
                     if (maxY >= conn.min && minY <= conn.max) {
-//                        println("  * overlapping with ${conn.otherFaceID}, bounds: ${conn.min}<->${conn.max}!")
                         _connections.add(conn.otherFaceID)
                     }
                 }
 
                 LocalMesher.AxisD.Z -> {
                     if (maxZ >= conn.min && minZ <= conn.max) {
-//                        println("  * overlapping with ${conn.otherFaceID}, bounds: ${conn.min}<->${conn.max}!")
                         _connections.add(conn.otherFaceID)
                     }
                 }
@@ -107,13 +94,11 @@ class EnvManifoldBuffer(numContacts: Int) {
             val l = connectedItr.nextLong()
             val present = running.get(l)
             if (present != null) {
-//                println("  - connected face with existing $l")
                 existing.add(l)
                 present.add(face.id)
             }
         }
 
-//        println("  - adding face(${face.id}) as ${buffer.cursor}")
         idxMap.put(face.id, buffer.cursor)
         buffer.addManifold(activeBody, contactID, buf)
     }
@@ -163,15 +148,9 @@ class EnvManifoldBuffer(numContacts: Int) {
         idxMap.clear()
         edgeManifolds.clear()
         running.clear() // TODO: change this to a memory-churn-free method
-//        val itr = Long2ObjectMaps.fastIterator(running)
-//        while (itr.hasNext()) {
-//            val e = itr.next()
-//            e.value.clear()
-//        }
     }
 
     fun post(out: A2SManifoldCollection) {
-//        println("POST")
         // traverse idx map, find each node; if it's a face node and it's not the smallest of its neighbors, don't add it; otherwise, add it
         val idxItr = Long2IntMaps.fastIterator(idxMap)
         while (idxItr.hasNext()) {
@@ -188,21 +167,18 @@ class EnvManifoldBuffer(numContacts: Int) {
 
                 val adjDepth = buffer.maxDepth(adj)
                 if (adjDepth < myDepth) {
-//                    println("  - failed to load face $idx, usurped by $adj")
                     valid = false
                     break
                 }
             }
 
             if (valid) {
-//                println("  - loaded face $idx")
                 out.load(buffer, idx)
             }
         }
 
         var i = 0
         while (i < edgeManifolds.size) {
-//            println("  - loaded edge $i")
             out.load(buffer, edgeManifolds.getInt(i))
 
             i++

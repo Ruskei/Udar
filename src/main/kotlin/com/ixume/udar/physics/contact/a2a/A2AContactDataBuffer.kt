@@ -103,8 +103,6 @@ class A2AContactDataBuffer(private val numContacts: Int) {
 
         arr[contactArrIdx + DEPTH_OFFSET] = depth
 
-//        if (normalLambda == 0f) println("LOADED COLD LAMBDA")
-
         arr[contactArrIdx + NORMAL_LAMBDA_OFFSET] = normalLambda
         arr[contactArrIdx + T1_LAMBDA_OFFSET] = t1Lambda
         arr[contactArrIdx + T2_LAMBDA_OFFSET] = t2Lambda

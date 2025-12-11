@@ -89,16 +89,16 @@ object HingeCommand : Command {
                 n2y = 1f,
                 n2z = 0f,
 
-                min = -45f * PI.toFloat() / 180f,
-                max = 45f * PI.toFloat() / 180f,
+                min = 0f * PI.toFloat() / 180f,
+                max = 150f * PI.toFloat() / 180f,
 
-                p1x = -0.25f,
-                p1y = 0f,
-                p1z = 0f,
+                r1x = -0.25f,
+                r1y = 0f,
+                r1z = 0f,
 
-                p2x = 0.75f,
-                p2y = 0f,
-                p2z = 0f,
+                r2x = 0.75f,
+                r2y = 0f,
+                r2z = 0f,
             )
         )
 

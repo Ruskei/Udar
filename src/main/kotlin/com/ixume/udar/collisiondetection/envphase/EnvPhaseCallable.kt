@@ -9,7 +9,6 @@ class EnvPhaseCallable(val world: PhysicsWorld) : Runnable {
     var end = 0
 
     override fun run() {
-//        println(" * Doing $start..<$end, doing: ${(end - start).toDouble() / bodiesSnapshot.size * 100.0}%")
         if (start >= end) {
             return
         }

@@ -6,7 +6,7 @@ import com.ixume.udar.physics.constraint.MatrixMath.cross
 import com.ixume.udar.physics.constraint.MatrixMath.dot
 import com.ixume.udar.physics.constraint.MatrixMath.normalize
 import com.ixume.udar.physics.constraint.MatrixMath.reject
-import com.ixume.udar.physics.constraint.MiscMath.toDegrees
+import com.ixume.udar.physics.constraint.MiscMath.biasedSign
 import com.ixume.udar.physics.constraint.QuatMath.transform
 import java.lang.Math.fma
 import kotlin.math.*
@@ -69,6 +69,9 @@ class ConeConstraintSolver(val parent: ConstraintSolver) {
 
             val b1 = constraint.b1
             val b2 = constraint.b2
+
+            check(b1.idx != -1)
+            check(b2.idx != -1)
 
             val q1 = b1.q
             val q2 = b2.q
@@ -261,27 +264,27 @@ class ConeConstraintSolver(val parent: ConstraintSolver) {
                 if (abs(sinPhi) < abs(sinTheta)) { // swap for stability and avoid division by 0
                     val k = sinPhi / sinTheta
                     val lambda =
-                        abs(sinMaxTheta * sinMaxPhi / sqrt(abs(k) * sinMaxTheta * sinMaxTheta + sinMaxPhi * sinMaxPhi))
+                        theta.biasedSign * abs(sinMaxTheta * sinMaxPhi) / sqrt(k * k * sinMaxTheta * sinMaxTheta + sinMaxPhi * sinMaxPhi)
 
-                    clampedTheta = asin(lambda) * sign(theta)
-                    clampedPhi = asin(lambda * k) * sign(phi)
+                    clampedTheta = asin(lambda)
+                    clampedPhi = asin(lambda * k)
                 } else {
                     val k = sinTheta / sinPhi
                     val lambda =
-                        abs(sinMaxTheta * sinMaxPhi / sqrt(sinMaxTheta * sinMaxTheta + abs(k) * sinMaxPhi * sinMaxPhi))
+                        phi.biasedSign * abs(sinMaxTheta * sinMaxPhi) / sqrt(sinMaxTheta * sinMaxTheta + k * k * sinMaxPhi * sinMaxPhi)
 
-                    clampedTheta = asin(lambda * k) * sign(theta)
-                    clampedPhi = asin(lambda) * sign(phi)
+                    clampedTheta = asin(lambda * k)
+                    clampedPhi = asin(lambda)
                 }
 
-                eTheta = sign(theta) * (clampedTheta - theta)
-                jThetaX = sign(theta) * x1x
-                jThetaY = sign(theta) * x1y
-                jThetaZ = sign(theta) * x1z
-                ePhi = sign(phi) * (clampedPhi - phi)
-                jPhiX = sign(phi) * y1x
-                jPhiY = sign(phi) * y1y
-                jPhiZ = sign(phi) * y1z
+                eTheta = theta.biasedSign * (clampedTheta - theta)
+                jThetaX = theta.biasedSign * x1x
+                jThetaY = theta.biasedSign * x1y
+                jThetaZ = theta.biasedSign * x1z
+                ePhi = phi.biasedSign * (clampedPhi - phi)
+                jPhiX = phi.biasedSign * y1x
+                jPhiY = phi.biasedSign * y1y
+                jPhiZ = phi.biasedSign * y1z
             } else {
                 constrainSwing = false
                 eTheta = 0f
@@ -308,6 +311,16 @@ class ConeConstraintSolver(val parent: ConstraintSolver) {
                 z2x, z2y, z2z, //from
                 x1x, x1y, x1z
             ) { cx, cy, cz ->
+                if (fma(cx, cx, fma(cy, cy, cz * cz)) < 1e-4) {
+                    constrainTwist = false
+                    psi = 0f
+                    eTwist = 0f
+                    jTwistX = 0f
+                    jTwistY = 0f
+                    jTwistZ = 0f
+                    return@reject
+                }
+
                 normalize(cx, cy, cz) { cx, cy, cz ->
                     val cos = dot(cx, cy, cz, x2x, x2y, x2z)
                     val sin: Float
@@ -494,10 +507,12 @@ class ConeConstraintSolver(val parent: ConstraintSolver) {
                 val j42x = jThetaX
                 val j42y = jThetaY
                 val j42z = jThetaZ
+                check(abs(sqrt(j42x * j42x + j42y * j42y + j42z * j42z) - 1) < 1e-4)
 
                 val j52x = jPhiX
                 val j52y = jPhiY
                 val j52z = jPhiZ
+                check(abs(sqrt(j52x * j52x + j52y * j52y + j52z * j52z) - 1) < 1e-4)
 
                 val ej42x = fma(ii1.m00.toFloat(), j42x, fma(ii1.m10.toFloat(), j42y, ii1.m20.toFloat() * j42z))
                 val ej42y = fma(ii1.m01.toFloat(), j42x, fma(ii1.m11.toFloat(), j42y, ii1.m21.toFloat() * j42z))
@@ -695,102 +710,33 @@ class ConeConstraintSolver(val parent: ConstraintSolver) {
         }
     }
 
-    fun solveVelocity(iteration: Int) {
-        val bodyData = parent.flatBodyData
+    fun solveVelocity() {
         ConstraintMath.solve3p0rVelocity(
-            bodyData = bodyData,
+            parent = parent,
             constraintData = constraintData3x3,
             numConstraints = numConstraints3x3,
-            l1Transform = { l, i ->
-                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData3x3.value[i])
-                l
-            },
-            l2Transform = { l, i ->
-                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData3x3.value[i])
-                l
-            },
-            l3Transform = { l, i ->
-                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData3x3.value[i])
-                l
-            },
+            relaxation = relaxation,
         )
 
         ConstraintMath.solve3p1rVelocity(
-            bodyData = bodyData,
+            parent = parent,
             constraintData = constraintData4x4,
             numConstraints = numConstraints4x4,
-            l1Transform = { l, i ->
-                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData4x4.value[i])
-                l
-            },
-            l2Transform = { l, i ->
-                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData4x4.value[i])
-                l
-            },
-            l3Transform = { l, i ->
-                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData4x4.value[i])
-                l
-            },
-            l4Transform = { l, i ->
-                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData4x4.value[i])
-                max(0f, l)
-            },
+            relaxation = relaxation,
         )
 
         ConstraintMath.solve3p2rVelocity(
-            bodyData = bodyData,
+            parent = parent,
             constraintData = constraintData5x5,
             numConstraints = numConstraints5x5,
-            l1Transform = { l, i ->
-                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData5x5.value[i])
-                l
-            },
-            l2Transform = { l, i ->
-                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData5x5.value[i])
-                l
-            },
-            l3Transform = { l, i ->
-                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData5x5.value[i])
-                l
-            },
-            l4Transform = { l, i ->
-                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData5x5.value[i])
-                max(0f, l)
-            },
-            l5Transform = { l, i ->
-                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData5x5.value[i])
-                max(0f, l)
-            },
+            relaxation = relaxation,
         )
 
         ConstraintMath.solve3p3rVelocity(
-            bodyData = bodyData,
+            parent = parent,
             constraintData = constraintData6x6,
             numConstraints = numConstraints6x6,
-            l1Transform = { l, i ->
-                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData6x6.value[i])
-                l
-            },
-            l2Transform = { l, i ->
-                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData6x6.value[i])
-                l
-            },
-            l3Transform = { l, i ->
-                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData6x6.value[i])
-                l
-            },
-            l4Transform = { l, i ->
-                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData6x6.value[i])
-                max(0f, l)
-            },
-            l5Transform = { l, i ->
-                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData6x6.value[i])
-                max(0f, l)
-            },
-            l6Transform = { l, i ->
-                parent.debugDeltaLambdas[iteration - 1] += abs(l - constraintData6x6.value[i])
-                max(0f, l)
-            },
+            relaxation = relaxation,
         )
     }
 
@@ -920,10 +866,7 @@ class ConeConstraintSolver(val parent: ConstraintSolver) {
                     cx, cy, cz,
                     z1x, z1y, z1z,
                 ) { cx, cy, cz ->
-                    sin = dot(
-                        cx, cy, cz,
-                        y1x, y1y, y1z,
-                    )
+                    sin = dot(cx, cy, cz, y1x, y1y, y1z)
                 }
 
                 t = -atan2(sin, cos)
@@ -961,27 +904,27 @@ class ConeConstraintSolver(val parent: ConstraintSolver) {
             if (abs(sinPhi) < abs(sinTheta)) { // swap for stability and avoid division by 0
                 val k = sinPhi / sinTheta
                 val lambda =
-                    abs(sinMaxTheta * sinMaxPhi / sqrt(abs(k) * sinMaxTheta * sinMaxTheta + sinMaxPhi * sinMaxPhi))
+                    theta.biasedSign * abs(sinMaxTheta * sinMaxPhi) / sqrt(k * k * sinMaxTheta * sinMaxTheta + sinMaxPhi * sinMaxPhi)
 
-                clampedTheta = asin(lambda) * sign(theta)
-                clampedPhi = asin(lambda * k) * sign(phi)
+                clampedTheta = asin(lambda)
+                clampedPhi = asin(lambda * k)
             } else {
                 val k = sinTheta / sinPhi
                 val lambda =
-                    abs(sinMaxTheta * sinMaxPhi / sqrt(sinMaxTheta * sinMaxTheta + abs(k) * sinMaxPhi * sinMaxPhi))
+                    phi.biasedSign * abs(sinMaxTheta * sinMaxPhi) / sqrt(sinMaxTheta * sinMaxTheta + k * k * sinMaxPhi * sinMaxPhi)
 
-                clampedTheta = asin(lambda * k) * sign(theta)
-                clampedPhi = asin(lambda) * sign(phi)
+                clampedTheta = asin(lambda * k)
+                clampedPhi = asin(lambda)
             }
 
-            eTheta = sign(theta) * (clampedTheta - theta)
-            jThetaX = sign(theta) * x1x
-            jThetaY = sign(theta) * x1y
-            jThetaZ = sign(theta) * x1z
-            ePhi = sign(phi) * (clampedPhi - phi)
-            jPhiX = sign(phi) * y1x
-            jPhiY = sign(phi) * y1y
-            jPhiZ = sign(phi) * y1z
+            eTheta = theta.biasedSign * (clampedTheta - theta)
+            jThetaX = theta.biasedSign * x1x
+            jThetaY = theta.biasedSign * x1y
+            jThetaZ = theta.biasedSign * x1z
+            ePhi = phi.biasedSign * (clampedPhi - phi)
+            jPhiX = phi.biasedSign * y1x
+            jPhiY = phi.biasedSign * y1y
+            jPhiZ = phi.biasedSign * y1z
         } else {
             constrainSwing = false
             eTheta = 0f
@@ -1005,6 +948,16 @@ class ConeConstraintSolver(val parent: ConstraintSolver) {
             z2x, z2y, z2z, //from
             x1x, x1y, x1z
         ) { cx, cy, cz ->
+            if (fma(cx, cx, fma(cy, cy, cz * cz)) < 1e-4) {
+                constrainTwist = false
+                psi = 0f
+                eTwist = 0f
+                jTwistX = 0f
+                jTwistY = 0f
+                jTwistZ = 0f
+                return@reject
+            }
+
             normalize(cx, cy, cz) { cx, cy, cz ->
                 val cos = dot(cx, cy, cz, x2x, x2y, x2z)
                 val sin: Float

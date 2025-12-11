@@ -42,8 +42,6 @@ fun BoundingBox.overlappingBlocks(
 ): List<BoundingBox> {
     val bbs = mutableListOf<BoundingBox>()
 
-    println(this)
-
     var x = minX
     while (x < maxX + 1.0) {
         var y = minY

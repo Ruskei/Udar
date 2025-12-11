@@ -1,7 +1,6 @@
 package com.ixume.udar.physics.constraint
 
 import com.ixume.udar.PhysicsWorld
-import com.ixume.udar.Udar
 import com.ixume.udar.physics.cone.ConeConstraint
 import com.ixume.udar.physics.cone.ConeConstraintSolver
 import com.ixume.udar.physics.contact.v2.ContactSolver
@@ -15,10 +14,7 @@ import org.joml.Quaternionf
 import org.joml.Vector3d
 import org.joml.Vector3f
 import java.nio.FloatBuffer
-import kotlin.math.abs
 import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.roundToInt
 
 class ConstraintSolver(
     val physicsWorld: PhysicsWorld,
@@ -35,7 +31,7 @@ class ConstraintSolver(
     @JvmField
     var flatBodyData: FloatArray = FloatArray(1)
 
-    var debugDeltaLambdas = FloatArray(Udar.CONFIG.collision.normalIterations)
+    val debugData = ImpulseDebugData()
 
     private val _quatd = Quaterniond()
 
@@ -47,11 +43,7 @@ class ConstraintSolver(
         bodyCount = physicsWorld.activeBodies.size()
         buildFlatBodyData()
 
-        if (debugDeltaLambdas.size != Udar.CONFIG.collision.normalIterations) {
-            debugDeltaLambdas = FloatArray(Udar.CONFIG.collision.normalIterations)
-        } else {
-            debugDeltaLambdas.fill(0f)
-        }
+        debugData.setup()
 
         contactSolver.setup()
 
@@ -61,29 +53,7 @@ class ConstraintSolver(
     }
 
     fun reportLambdas() {
-        val iterations = Udar.CONFIG.collision.normalIterations
-        if (iterations <= 0) return
-        for (i in 0..<debugDeltaLambdas.size) {
-            debugDeltaLambdas[i]
-        }
-
-        val first = debugDeltaLambdas[0]
-        println("∑(Δλ):")
-        println("  %4d: %8.2e ".format(1, first) + "*".repeat(10))
-        for (i in 2..debugDeltaLambdas.size) {
-            val v = debugDeltaLambdas[i - 1]
-            if (first == 0f) {
-                println("  %4d: %8.2e ".format(i, v))
-            } else {
-                val num = abs(v / first * 10.0).roundToInt()
-                val clamped = min(200, num)
-                print("  %4d: %8.2e ".format(i, v) + "*".repeat(clamped))
-                if (clamped < num) {
-                    print("($num)")
-                }
-                println()
-            }
-        }
+        debugData.reportLambdas()
     }
 
     private fun buildFlatBodyData() {
@@ -97,7 +67,6 @@ class ConstraintSolver(
         var i = 0
         while (i < bodyCount) {
             val b = physicsWorld.activeBodies.fastGet(i)!!
-
             buf.putVector3f(_vec3.set(b.velocity))
             buf.putVector3f(_vec3.set(b.omega).rotate(_quat.set(b.q)))
 
@@ -106,11 +75,11 @@ class ConstraintSolver(
     }
 
 
-    fun solve(iteration: Int) {
-        pointConstraintSolver.solveVelocity(iteration)
+    fun solve() {
+//        pointConstraintSolver.solveVelocity(iteration)
         hingeConstraintSolver.solveVelocity()
-        coneConstraintSolver.solveVelocity(iteration)
-        contactSolver.solveNormals(iteration)
+        coneConstraintSolver.solveVelocity()
+        contactSolver.solveVelocity()
     }
 
     fun solvePost() {
@@ -122,7 +91,6 @@ class ConstraintSolver(
         val n = bodyCount * BODY_DATA_FLOATS
         while (i < n) {
             val body = physicsWorld.activeBodies.fastGet(i / BODY_DATA_FLOATS)!!
-
             body.velocity.from(i + V_OFFSET, flatBodyData)
             check(body.velocity.isFinite)
             body.omega.from(i + O_OFFSET, flatBodyData).rotate(_quatd.set(body.q).conjugate())
@@ -135,7 +103,7 @@ class ConstraintSolver(
     }
 
     fun solvePositions() {
-        pointConstraintSolver.solvePosition()
+//        pointConstraintSolver.solvePosition()
         hingeConstraintSolver.solvePosition()
         coneConstraintSolver.solvePosition()
     }

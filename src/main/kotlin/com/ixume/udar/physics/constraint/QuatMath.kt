@@ -5,6 +5,7 @@ import java.lang.Math.fma
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
+import kotlin.math.sqrt
 
 @OptIn(ExperimentalContracts::class)
 object QuatMath {
@@ -29,6 +30,9 @@ object QuatMath {
         val zw = qz * qw
         val yw = qy * qw
         val k = 1 / (xx + yy + zz + ww)
+        if (k.isNaN()) {
+            throw IllegalStateException()
+        }
 
         after(
             fma((xx - yy - zz + ww) * k, x, fma(2 * (xy - zw) * k, y, (2 * (xz + yw) * k) * z)),
@@ -74,4 +78,21 @@ object QuatMath {
         )
     }
 
+    fun Quaterniond.safeNormalize(epsilon: Double = 1e-8): Quaterniond {
+        val len = sqrt(lengthSquared())
+        if (len < epsilon) {
+            x = 0.0
+            y = 0.0
+            z = 0.0
+            w = 1.0
+        } else {
+            val inv = 1 / len
+            x *= inv
+            y *= inv
+            z *= inv
+            w *= inv
+        }
+
+        return this
+    }
 }

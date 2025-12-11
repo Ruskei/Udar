@@ -46,8 +46,6 @@ class MeshRunnable : Runnable {
             )
         }
 
-//        println("Generated mesh in ${t.toDuration(DurationUnit.NANOSECONDS)}!")
-//        println("| at: ${x * MESH_SIZE.toDouble()} ${y * MESH_SIZE.toDouble()} ${z * MESH_SIZE.toDouble()}")
         return mesh
     }
 }

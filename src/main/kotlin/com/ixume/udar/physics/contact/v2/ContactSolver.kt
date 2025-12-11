@@ -5,7 +5,10 @@ import com.ixume.udar.physics.constraint.ConstraintSolver
 import java.lang.Math.fma
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
-import kotlin.math.*
+import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.sqrt
 
 class ContactSolver(val parent: ConstraintSolver) {
     private val world = parent.physicsWorld
@@ -732,18 +735,9 @@ class ContactSolver(val parent: ConstraintSolver) {
         }
     }
 
-    fun solveNormals(iteration: Int) {
-        solve(a2aNormalManifoldData, a2aNumManifolds) { l, lIdx ->
-            val r = max(0f, l)
-            parent.debugDeltaLambdas[iteration - 1] += abs(r - a2aNormalManifoldData[lIdx])
-            r
-        }
-
-        solve(a2sNormalManifoldData, a2sNumManifolds) { l, lIdx ->
-            val r = max(0f, l)
-            parent.debugDeltaLambdas[iteration - 1] += abs(r - a2sNormalManifoldData[lIdx])
-            r
-        }
+    fun solveVelocity() {
+        solve(a2aNormalManifoldData, a2aNumManifolds) { l, lIdx -> max(0f, l) }
+        solve(a2sNormalManifoldData, a2sNumManifolds) { l, lIdx -> max(0f, l) }
     }
 
     fun solveFrictions() {

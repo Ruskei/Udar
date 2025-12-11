@@ -17,7 +17,6 @@ class CompositeCompositeContactGenerator(
     override fun collides(other: ActiveBody, math: LocalMathUtil, out: A2AManifoldCollection): Boolean {
         require(other is Composite)
 
-        val pw = other.world.physicsWorld!!
         var collided = false
 
         for (myPart in composite.parts) {
@@ -27,18 +26,12 @@ class CompositeCompositeContactGenerator(
                 val can = myPart.capableCollision(otherPart)
                 if (can < 0) continue
 
-                pw.debugData.totalPairs++
-                pw.debugData.totalCompositePairs++
-
                 if (!myPart.tightBB.overlaps(otherPart.tightBB)) continue
-
-                pw.debugData.totalCompositeCollisionChecks++
 
                 val result = myPart.collides(otherPart, math, out)
 
                 if (result) {
                     collided = true
-                    pw.debugData.compositeCollisions++
                 }
             }
         }

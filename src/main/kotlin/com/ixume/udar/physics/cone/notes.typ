@@ -15,10 +15,11 @@ $
 lambda^2 / alpha^2 + (lambda k)^2 / beta^2 = 1 \
 lambda^2 beta^2 + lambda^2 k^2 alpha^2 = alpha^2 beta^2 \
 lambda^2 = (alpha^2 beta^2) / (beta^2 + k^2 alpha^2) \
-lambda = (alpha beta) / sqrt(k alpha^2 + beta^2)
+lambda = -sqrt((alpha^2 beta^2) / (beta^2 + k^2 alpha^2)), sqrt((alpha^2 beta^2) / (beta^2 + k^2 alpha^2)) \
+lambda = "sign"(theta) * abs(alpha beta) / sqrt(beta^2 + k^2 alpha^2)
 $
 
-We only take the positive solution to not flip signs. Our clamped point is then $p = (lambda, lambda k)$. $theta_"clamped" = arcsin(lambda), phi_"clamped" = arcsin(lambda k)$, which are used for errors and biases.
+We multiply by the sign of $theta$ to stay on the same side. Our clamped point is then $p = (lambda, lambda k)$. $theta_"clamped" = arcsin(lambda), phi_"clamped" = arcsin(lambda k)$, which are used for errors and biases.
 
 To determine twist we simply find the signed angle between $X_c$ and $X$ on the child $X, Y$ plane. $X_2 = "rej"_Z X$, $cos(psi) = X_2 dot X_c, sin(psi) = (X_2 times X_c) dot Z$, thus $psi = "atan2"(sin(psi), cos(psi))$.
 
@@ -43,3 +44,7 @@ J = mat(
 $
 
 Intuitively, the rows correspond to: stopping rotation in $theta$, $phi$, $psi$. Since $psi$ is measured by finding the angle between $X_c$ and $X$ on the child's $X Y$ plane (formed by rejecting $Z$), the rotation to fix it must be around the $Z$ axis.
+
+The twist constraint can be broken down as: $phi <= phi_"max" = phi_"max" - phi >= 0$ and $phi >= phi_"min" = phi - phi_"min" >= 0$.
+
+We want to structure constraints as $C >= 0$, meaning that these are the valid configurations.

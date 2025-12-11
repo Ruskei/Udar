@@ -976,24 +976,6 @@ class FlattenedBodyAABBTree(
         freeIdx = this
     }
 
-//    private fun Int.printState() {
-//        if (this == -1) {
-//            return
-//        }
-//        
-//        if (this == rootIdx) {
-//            print("(ROOT) ")
-//        }
-//        
-//        if (isLeaf()) {
-//            println("(LEAF) ${parent()} -> {$this}")
-//        } else {
-//            println("(INTERNAL) ${parent()} -> {$this} -> (${child1()}, ${child2()})")
-//            child1().printState()
-//            child2().printState()
-//        }
-//    }
-
     fun visualize(world: World) {
         var i = 0
         val numNodes = arr.size / DATA_SIZE

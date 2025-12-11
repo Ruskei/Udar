@@ -1,5 +1,6 @@
 package com.ixume.udar.physics.constraint
 
+import com.ixume.udar.physics.constraint.MiscMath.sqrte
 import java.lang.Math.fma
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
@@ -21,14 +22,14 @@ object MatrixMath {
             callsInPlace(after, InvocationKind.EXACTLY_ONCE)
         }
 
-        val l00 = sqrt(m11)
+        val l00 = sqrte(m11)
 
         val l10 = m12 / l00
-        val l11 = sqrt(m22 - l10 * l10)
+        val l11 = sqrte(m22 - l10 * l10)
 
         val l20 = m13 / l00
         val l21 = (m23 - l20 * l10) / l11
-        val l22 = sqrt(m33 - (l20 * l20 + l21 * l21))
+        val l22 = sqrte(m33 - (l20 * l20 + l21 * l21))
 
         val y0 = v1 / l00
         val y1 = (v2 - l10 * y0) / l11
@@ -52,19 +53,19 @@ object MatrixMath {
         contract {
             callsInPlace(after, InvocationKind.EXACTLY_ONCE)
         }
-        val l00 = sqrt(m11)
+        val l00 = sqrte(m11)
 
         val l10 = m12 / l00
-        val l11 = sqrt(m22 - l10 * l10)
+        val l11 = sqrte(m22 - l10 * l10)
 
         val l20 = m13 / l00
         val l21 = (m23 - l20 * l10) / l11
-        val l22 = sqrt(m33 - (l20 * l20 + l21 * l21))
+        val l22 = sqrte(m33 - (l20 * l20 + l21 * l21))
 
         val l30 = m14 / l00
         val l31 = (m24 - l30 * l10) / l11
         val l32 = (m34 - (l30 * l20 + l31 * l21)) / l22
-        val l33 = sqrt(m44 - (l30 * l30 + l31 * l31 + l32 * l32))
+        val l33 = sqrte(m44 - (l30 * l30 + l31 * l31 + l32 * l32))
 
         val y0 = v1 / l00
         val y1 = (v2 - l10 * y0) / l11
@@ -94,25 +95,25 @@ object MatrixMath {
             callsInPlace(after, InvocationKind.EXACTLY_ONCE)
         }
 
-        val l00 = sqrt(m11)
+        val l00 = sqrte(m11)
 
         val l10 = m12 / l00
-        val l11 = sqrt(m22 - l10 * l10)
+        val l11 = sqrte(m22 - l10 * l10)
 
         val l20 = m13 / l00
         val l21 = (m23 - l20 * l10) / l11
-        val l22 = sqrt(m33 - (l20 * l20 + l21 * l21))
+        val l22 = sqrte(m33 - (l20 * l20 + l21 * l21))
 
         val l30 = m14 / l00
         val l31 = (m24 - l30 * l10) / l11
         val l32 = (m34 - (l30 * l20 + l31 * l21)) / l22
-        val l33 = sqrt(m44 - (l30 * l30 + l31 * l31 + l32 * l32))
+        val l33 = sqrte(m44 - (l30 * l30 + l31 * l31 + l32 * l32))
 
         val l40 = m15 / l00
         val l41 = (m25 - l40 * l10) / l11
         val l42 = (m35 - (l40 * l20 + l41 * l21)) / l22
         val l43 = (m45 - (l40 * l30 + l41 * l31 + l42 * l32)) / l33
-        val l44 = sqrt(m55 - (l40 * l40 + l41 * l41 + l42 * l42 + l43 * l43))
+        val l44 = sqrte(m55 - (l40 * l40 + l41 * l41 + l42 * l42 + l43 * l43))
 
         val y0 = v1 / l00
         val y1 = (v2 - l10 * y0) / l11
@@ -145,32 +146,32 @@ object MatrixMath {
             callsInPlace(after, InvocationKind.EXACTLY_ONCE)
         }
 
-        val l00 = sqrt(m11)
+        val l00 = sqrte(m11)
 
         val l10 = m12 / l00
-        val l11 = sqrt(m22 - l10 * l10)
+        val l11 = sqrte(m22 - l10 * l10)
 
         val l20 = m13 / l00
         val l21 = (m23 - l20 * l10) / l11
-        val l22 = sqrt(m33 - (l20 * l20 + l21 * l21))
+        val l22 = sqrte(m33 - (l20 * l20 + l21 * l21))
 
         val l30 = m14 / l00
         val l31 = (m24 - l30 * l10) / l11
         val l32 = (m34 - (l30 * l20 + l31 * l21)) / l22
-        val l33 = sqrt(m44 - (l30 * l30 + l31 * l31 + l32 * l32))
+        val l33 = sqrte(m44 - (l30 * l30 + l31 * l31 + l32 * l32))
 
         val l40 = m15 / l00
         val l41 = (m25 - l40 * l10) / l11
         val l42 = (m35 - (l40 * l20 + l41 * l21)) / l22
         val l43 = (m45 - (l40 * l30 + l41 * l31 + l42 * l32)) / l33
-        val l44 = sqrt(m55 - (l40 * l40 + l41 * l41 + l42 * l42 + l43 * l43))
+        val l44 = sqrte(m55 - (l40 * l40 + l41 * l41 + l42 * l42 + l43 * l43))
 
         val l50 = m16 / l00
         val l51 = (m26 - l50 * l10) / l11
         val l52 = (m36 - (l50 * l20 + l51 * l21)) / l22
         val l53 = (m46 - (l50 * l30 + l51 * l31 + l52 * l32)) / l33
         val l54 = (m56 - (l50 * l40 + l51 * l41 + l52 * l42 + l53 * l43)) / l44
-        val l55 = sqrt(m66 - (l50 * l50 + l51 * l51 + l52 * l52 + l53 * l53 + l54 * l54))
+        val l55 = sqrte(m66 - (l50 * l50 + l51 * l51 + l52 * l52 + l53 * l53 + l54 * l54))
 
         val y0 = v1 / l00
         val y1 = (v2 - l10 * y0) / l11
@@ -239,7 +240,7 @@ object MatrixMath {
             callsInPlace(after, InvocationKind.EXACTLY_ONCE)
         }
 
-        val m = fma(ax, bx, fma(ay, by, az * bz)) / sqrt(fma(ax, ax, fma(ay, ay, az * az)))
+        val m = fma(ax, bx, fma(ay, by, az * bz)) / sqrte(fma(ax, ax, fma(ay, ay, az * az)))
         val cx = bx - ax * m
         val cy = by - ay * m
         val cz = bz - az * m

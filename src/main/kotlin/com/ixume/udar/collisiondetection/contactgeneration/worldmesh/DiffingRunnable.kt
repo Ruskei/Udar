@@ -31,7 +31,6 @@ class DiffingRunnable : Runnable {
         while (i < end) {
             val gen = targets[i]
 
-//                println(" * ${gen.activeBody.idx}")
             val bb = gen.activeBody.tightBB
 
             val minX = floor(bb.minX).toInt() - 1
@@ -71,7 +70,6 @@ class DiffingRunnable : Runnable {
                             if (isPassable && state != 0L) {
                                 // is now air
                                 diff = true
-//                                    println("Diff at ($x $y $z), mp: (${mp.x} ${mp.y} ${mp.z})")
                                 val existingMesh = positionedMeshes[mp]
                                 if (existingMesh != null && existingMesh.stateAt(x, y, z) != 0L) {
                                     out.getOrPut(mp) { IntArrayList() } += i
@@ -89,7 +87,6 @@ class DiffingRunnable : Runnable {
                             if (state == 0L) {
                                 // was air
                                 diff = true
-//                                    println("Diff at ($x $y $z), mp: (${mp.x} ${mp.y} ${mp.z})")
                                 val existingMesh = positionedMeshes[mp]
                                 if (existingMesh != null) {
                                     if (!calculatedSum) {
@@ -150,7 +147,6 @@ class DiffingRunnable : Runnable {
 
                             if (sum != state) { // diff block
                                 diff = true
-//                                    println("Diff at ($x $y $z), mp: (${mp.x} ${mp.y} ${mp.z})")
                                 val existingMesh = positionedMeshes[mp]
                                 if (existingMesh != null && existingMesh.stateAt(x, y, z) != sum) {
                                     out.getOrPut(mp) { IntArrayList() } += i
@@ -170,14 +166,11 @@ class DiffingRunnable : Runnable {
                 minX - BB_SAFETY, minY - BB_SAFETY, minZ - BB_SAFETY,
                 maxX + BB_SAFETY, maxY + BB_SAFETY, maxZ + BB_SAFETY,
             ) {
-//                    println(" | $it")
                 val mesh = positionedMeshes[it]
                 if (mesh == null) {
-//                        println("${gen.activeBody.idx} genned (${it.x} ${it.y} ${it.z})")
                     out.getOrPut(it) { IntArrayList() } += i
                 } else {
                     if (!gen.meshes.map.containsKey(it)) {
-//                            println("${gen.activeBody.idx} needed (${it.x} ${it.y} ${it.z})")
                         gen.meshes.addMesh(it, mesh)
                     }
                 }

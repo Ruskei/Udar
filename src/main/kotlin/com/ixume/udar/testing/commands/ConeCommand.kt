@@ -113,11 +113,10 @@ object ConeCommand : Command {
                 z2y = -1f,
                 z2z = 0f,
 
-                maxXAngle = 45f.toRadians(),
-                maxYAngle = 45f.toRadians(),
-
-                minTwistAngle = (-60f).toRadians(),
-                maxTwistAngle = 60f.toRadians(),
+                maxXAngle = 85f.toRadians(),
+                maxYAngle = 80f.toRadians(),
+                minTwistAngle = (-30f).toRadians(),
+                maxTwistAngle = 30f.toRadians(),
             )
         )
 //        ph.constraintManager.constrain(
