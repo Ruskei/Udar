@@ -8,10 +8,10 @@ import com.ixume.udar.body.active.tag.Tag
 import com.ixume.udar.collisiondetection.contactgeneration.CompositeCompositeContactGenerator
 import com.ixume.udar.collisiondetection.local.LocalMathUtil
 import com.ixume.udar.dynamicaabb.AABB
-import com.ixume.udar.util.jacobiEigenDecomposition
 import com.ixume.udar.physics.contact.a2a.manifold.A2AManifoldCollection
 import com.ixume.udar.physics.contact.a2s.manifold.A2SManifoldCollection
 import com.ixume.udar.physicsWorld
+import com.ixume.udar.util.jacobiEigenDecomposition
 import org.bukkit.World
 import org.joml.Matrix3d
 import org.joml.Quaterniond
@@ -353,12 +353,22 @@ class CompositeImpl(
 
             return true
         } else {
+            val buf2 = math.compositeUtil.buf
+            buf2.clear()
             var isCollided = false
             for (part in parts) {
-                if (!part.tightBB.overlaps(other.tightBB)) continue
-                val r = part.collides(other, math, out)
+                if (!part.tightBB.overlaps(other.tightBB)) {
+                    continue
+                }
+                val r = part.collides(other, math, buf2)
                 if (r) {
                     isCollided = true
+                }
+
+                val s = buf2.size()
+                for (i in 0..<s) {
+                    buf2.setBodyData(i, this, other)
+                    out.load(buf2, i)
                 }
             }
 

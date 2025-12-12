@@ -3,14 +3,13 @@ package com.ixume.udar.physics.constraint
 import com.ixume.udar.PhysicsWorld
 import com.ixume.udar.physics.cone.ConeConstraint
 import com.ixume.udar.physics.cone.ConeConstraintSolver
+import com.ixume.udar.physics.constraint.QuatMath.transform
 import com.ixume.udar.physics.contact.v2.ContactSolver
 import com.ixume.udar.physics.hinge.HingeConstraint
-
 import com.ixume.udar.physics.hinge.HingeConstraintSolver
 import com.ixume.udar.physics.position.PointConstraint
 import com.ixume.udar.physics.position.PointConstraintSolver
 import org.joml.Quaterniond
-import org.joml.Quaternionf
 import org.joml.Vector3d
 import org.joml.Vector3f
 import java.nio.FloatBuffer
@@ -23,8 +22,6 @@ class ConstraintSolver(
     val pointConstraintSolver = PointConstraintSolver(this)
     val hingeConstraintSolver = HingeConstraintSolver(this)
     val coneConstraintSolver = ConeConstraintSolver(this)
-    private val _vec3 = Vector3f()
-    private val _quat = Quaternionf()
 
     private var bodyCount: Int = physicsWorld.activeBodies.size()
 
@@ -40,7 +37,6 @@ class ConstraintSolver(
         hingeConstraints: List<HingeConstraint>,
         coneConstraints: List<ConeConstraint>,
     ) {
-        bodyCount = physicsWorld.activeBodies.size()
         buildFlatBodyData()
 
         debugData.setup()
@@ -57,18 +53,23 @@ class ConstraintSolver(
     }
 
     private fun buildFlatBodyData() {
-        val n = physicsWorld.activeBodies.size()
-        if (flatBodyData.size < n * BODY_DATA_FLOATS) { // resizing is fine, since all the valid bodies should set their data anyway
-            flatBodyData = FloatArray(max(flatBodyData.size * 2, n * BODY_DATA_FLOATS))
+        bodyCount = physicsWorld.activeBodies.size()
+        if (flatBodyData.size < bodyCount * BODY_DATA_FLOATS) { // resizing is fine, since all the valid bodies should set their data anyway
+            val ns = max(flatBodyData.size * 2, bodyCount * BODY_DATA_FLOATS)
+            flatBodyData = FloatArray(ns)
         }
-
-        val buf = FloatBuffer.wrap(flatBodyData)
 
         var i = 0
         while (i < bodyCount) {
             val b = physicsWorld.activeBodies.fastGet(i)!!
-            buf.putVector3f(_vec3.set(b.velocity))
-            buf.putVector3f(_vec3.set(b.omega).rotate(_quat.set(b.q)))
+            flatBodyData[i * BODY_DATA_FLOATS + 0] = b.velocity.x.toFloat()
+            flatBodyData[i * BODY_DATA_FLOATS + 1] = b.velocity.y.toFloat()
+            flatBodyData[i * BODY_DATA_FLOATS + 2] = b.velocity.z.toFloat()
+            b.q.transform(b.omega.x, b.omega.y, b.omega.z) { x, y, z ->
+                flatBodyData[i * BODY_DATA_FLOATS + 3] = x.toFloat()
+                flatBodyData[i * BODY_DATA_FLOATS + 4] = y.toFloat()
+                flatBodyData[i * BODY_DATA_FLOATS + 5] = z.toFloat()
+            }
 
             i++
         }

@@ -69,13 +69,20 @@ class ConeConstraintSolver(val parent: ConstraintSolver) {
 
             val b1 = constraint.b1
             val b2 = constraint.b2
-            if (!b1.awake.get() && !b2.awake.get()) {
+
+            if (b1.idx == -1) {
+                i++
+                continue
+            }
+            if (b2.idx == -1) {
                 i++
                 continue
             }
 
-            check(b1.idx != -1)
-            check(b2.idx != -1)
+            if (!b1.awake.get() && !b2.awake.get()) {
+                i++
+                continue
+            }
 
             val q1 = b1.q
             val q2 = b2.q
