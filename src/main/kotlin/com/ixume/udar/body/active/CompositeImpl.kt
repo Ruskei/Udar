@@ -149,6 +149,8 @@ class CompositeImpl(
         .toTypedArray()
 
     init {
+        parts.forEach { it.isChild = true }
+
         val com = calcCOM()
         pos = com
         comOffset = Vector3d(com).sub(origin).rotate(Quaterniond(q).conjugate())
@@ -164,10 +166,20 @@ class CompositeImpl(
 
     override val isConvex: Boolean = false
 
-    private val relativePoses: Map<UUID, RelativePose> = parts.associateBy(
-        keySelector = { it.uuid },
-        valueTransform = { RelativePose(Vector3d(it.pos).sub(pos), Quaterniond(it.q)) }
-    )
+    private val relativePoses: Map<UUID, RelativePose> = run {
+        val conjugate = Quaterniond(q).conjugate()
+        parts.associateBy(
+            keySelector = { it.uuid },
+            valueTransform = {
+                val rp = Vector3d(it.pos).sub(pos).rotate(conjugate)
+                val rq = Quaterniond(conjugate).mul(it.q)
+                RelativePose(
+                    rp,
+                    rq,
+                )
+            }
+        )
+    }
 
     private fun updateVertices() {
         var i = 0
