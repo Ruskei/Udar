@@ -67,9 +67,12 @@ class ConeConstraintSolver(val parent: ConstraintSolver) {
         while (i < totalNumConstraints) {
             val constraint = constraints[i]
 
-
             val b1 = constraint.b1
             val b2 = constraint.b2
+            if (!b1.awake.get() && !b2.awake.get()) {
+                i++
+                continue
+            }
 
             check(b1.idx != -1)
             check(b2.idx != -1)
@@ -508,12 +511,10 @@ class ConeConstraintSolver(val parent: ConstraintSolver) {
                 val j42x = jThetaX
                 val j42y = jThetaY
                 val j42z = jThetaZ
-                check(abs(sqrt(j42x * j42x + j42y * j42y + j42z * j42z) - 1) < 1e-4)
 
                 val j52x = jPhiX
                 val j52y = jPhiY
                 val j52z = jPhiZ
-                check(abs(sqrt(j52x * j52x + j52y * j52y + j52z * j52z) - 1) < 1e-4)
 
                 val ej42x = fma(ii1.m00.toFloat(), j42x, fma(ii1.m10.toFloat(), j42y, ii1.m20.toFloat() * j42z))
                 val ej42y = fma(ii1.m01.toFloat(), j42x, fma(ii1.m11.toFloat(), j42y, ii1.m21.toFloat() * j42z))

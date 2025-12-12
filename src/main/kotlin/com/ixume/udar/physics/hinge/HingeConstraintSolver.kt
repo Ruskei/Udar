@@ -73,6 +73,10 @@ class HingeConstraintSolver(val parent: ConstraintSolver) {
 
             val b1 = constraint.b1
             val b2 = constraint.b2
+            if (!b1.awake.get() && !b2.awake.get()) {
+                i++
+                continue
+            }
 
             val q1 = b1.q
             val q2 = b2.q

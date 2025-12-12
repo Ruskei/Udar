@@ -35,8 +35,7 @@ class StatusUpdater(
                     continue
                 }
 
-                val sleep =
-                    obj.velocity.lengthSquared() < linear && obj.omega.lengthSquared() < angular
+                val sleep = obj.velocity.length() < linear && obj.omega.length() < angular
                 if (sleep) {
                     obj.idleTime++
 
@@ -59,6 +58,6 @@ fun Composite.isStartled(): Boolean {
         if (parts[i].startled.get()) return true
         i++
     }
-    
+
     return false
 }
