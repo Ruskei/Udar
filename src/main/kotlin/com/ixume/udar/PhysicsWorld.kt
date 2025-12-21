@@ -1,5 +1,7 @@
 package com.ixume.udar
 
+import com.ixume.udar.api.UdarTask
+import com.ixume.udar.api.invoke
 import com.ixume.udar.body.EnvironmentBody
 import com.ixume.udar.body.active.ActiveBody
 import com.ixume.udar.body.active.Composite
@@ -37,7 +39,10 @@ import kotlin.time.toDuration
 class PhysicsWorld(
     val world: World,
 ) {
-    private val tasks = AtomicList<Runnable>()
+    private val runnableTasks = AtomicList<UdarTask.Runnable>()
+    private val delayedTasks = AtomicList<UdarTask.Delayed>()
+    private val timerTasks = AtomicList<UdarTask.Timer>()
+
     private val bodiesToAdd = AtomicList<ActiveBody>()
     private val bodiesToRemove = AtomicList<ActiveBody>()
 
@@ -106,8 +111,23 @@ class PhysicsWorld(
         }
     }, 1, 1)
 
-    fun run(task: Runnable) {
-        tasks += task
+    fun runTask(task: Runnable) = runTask(UdarTask.Runnable.of(task))
+
+    fun runTask(task: UdarTask.Runnable) {
+        runnableTasks += task
+    }
+
+    fun runDelayed(delay: Long, task: Runnable) = runDelayed(UdarTask.Delayed(delay, UdarTask.Runnable.of(task)))
+
+    fun runDelayed(task: UdarTask.Delayed) {
+        delayedTasks += task
+    }
+
+    fun runTimer(period: Long, delay: Long, task: Runnable) =
+        runTimer(UdarTask.Timer(period, delay, UdarTask.Runnable.of(task)))
+
+    fun runTimer(task: UdarTask.Timer) {
+        timerTasks += task
     }
 
     fun registerBody(body: ActiveBody) {
@@ -157,13 +177,14 @@ class PhysicsWorld(
 
                 processToAdd()
                 processToRemove()
+                processTasks()
 
                 physicsTime++
 
                 manifoldBuffer.clear()
                 envManifoldBuffer.clear()
 
-                tasks.getAndClear().forEach { it.run() }
+                runnableTasks.getAndClear().forEach { if (!it.isCancelled) it.run() }
 
                 val bodiesSnapshot = activeBodies.activeBodies()
 
@@ -413,6 +434,46 @@ class PhysicsWorld(
         val ss = bodiesToRemove.getAndClear()
         for (body in ss) {
             kill(body)
+        }
+    }
+
+    private fun processTasks() {
+        runnableTasks.getAndClear().forEach { if (it.isCancelled) it() }
+        run {
+            val delayed = delayedTasks.get()
+            if (delayed.isEmpty()) return@run
+            delayed.forEach { it.delay-- }
+            val toRemove = mutableListOf<UdarTask.Delayed>()
+            delayed.forEach {
+                if (it.isCancelled) {
+                    toRemove += it
+                    return@forEach
+                }
+
+                if (it.delay <= -1L) {
+                    it()
+                    toRemove += it
+                }
+            }
+
+            delayedTasks -= toRemove
+        }
+
+        run {
+            val timer = timerTasks.get()
+            if (timer.isEmpty()) return@run
+            val toRemove = mutableListOf<UdarTask.Timer>()
+            timer.forEach {
+                if (it.isCancelled) {
+                    toRemove += it
+                    return@forEach
+                }
+
+                if (it.delay > -1) it.delay--
+                else if (it.tick()) it()
+            }
+
+            timerTasks -= toRemove
         }
     }
 

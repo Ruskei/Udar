@@ -1,6 +1,7 @@
 package com.ixume.udar.physics.constraint
 
 import com.ixume.udar.physics.constraint.MiscMath.sqrte
+import org.joml.Matrix3d
 import java.lang.Math.fma
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
@@ -246,5 +247,21 @@ object MatrixMath {
         val cz = bz - az * m
 
         after(cx, cy, cz)
+    }
+
+    inline fun Matrix3d.mul(
+        x0: Double, x1: Double, x2: Double,
+
+        after: (y0: Double, y1: Double, y2: Double) -> Unit,
+    ) {
+        contract {
+            callsInPlace(after, InvocationKind.EXACTLY_ONCE)
+        }
+
+        after(
+            fma(m00, x0, fma(m10, x1, m20 * x2)),
+            fma(m01, x0, fma(m11, x1, m21 * x2)),
+            fma(m02, x0, fma(m12, x1, m22 * x2)),
+        )
     }
 }
