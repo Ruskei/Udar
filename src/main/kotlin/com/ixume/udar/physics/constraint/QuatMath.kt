@@ -1,5 +1,6 @@
 package com.ixume.udar.physics.constraint
 
+import com.ixume.udar.Udar
 import org.joml.Quaterniond
 import java.lang.Math.fma
 import kotlin.contracts.ExperimentalContracts
@@ -31,7 +32,9 @@ object QuatMath {
         val yw = qy * qw
         val k = 1 / (xx + yy + zz + ww)
         if (k.isNaN()) {
-            throw IllegalStateException()
+            Udar.LOGGER.warning("Quaternion is 0!")
+            after(x, y, z)
+            return
         }
 
         after(

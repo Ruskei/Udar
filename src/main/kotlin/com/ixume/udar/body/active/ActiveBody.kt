@@ -9,6 +9,7 @@ import com.ixume.udar.body.active.tag.Tag
 import com.ixume.udar.collisiondetection.capability.Projectable
 import com.ixume.udar.dynamicaabb.AABB
 import com.ixume.udar.physics.constraint.QuatMath.quatTransform
+import com.ixume.udar.physics.constraint.QuatMath.transform
 import org.joml.Quaterniond
 import org.joml.Vector2d
 import org.joml.Vector3d
@@ -85,26 +86,24 @@ interface ActiveBody : A2ACollidable, A2SCollidable, Body, Projectable {
     )
 }
 
-fun ActiveBody.addForce(x: Double, y: Double, z: Double) {
+fun ActiveBody.addForce(x: Double, y: Double, z: Double, local: Boolean = false) {
     //F=ma,a=F/m, a=Δv
     val dt = Udar.CONFIG.timeStep
     val im = inverseMass
-    velocity.add(x * dt * im, y * dt * im, z * dt * im)
+    if (local) q.transform(x, y, z) { x, y, z ->
+        velocity.add(x * dt * im, y * dt * im, z * dt * im)
+    } else velocity.add(x * dt * im, y * dt * im, z * dt * im)
 }
 
-fun ActiveBody.addTorque(x: Double, y: Double, z: Double) {
+fun ActiveBody.addTorque(x: Double, y: Double, z: Double, local: Boolean = false) {
     //τ=Iα,α=I^(-1)τ, α=Δω
     //transform into local torque, apply inverse inertia, then edit omega
     val dt = Udar.CONFIG.timeStep
     val ii = localInertia
 
-    val qx = q.x
-    val qy = q.y
-    val qz = q.z
-    val qw = q.w
-
-    quatTransform(
-        -qx, -qy, -qz, qw,
+    if (local) omega.add(x * dt / ii.x, y * dt / ii.y, z * dt / ii.z)
+    else quatTransform(
+        -q.x, -q.y, -q.z, q.w,
         x, y, z
     ) { x, y, z ->
         omega.add(x * dt / ii.x, y * dt / ii.y, z * dt / ii.z)
